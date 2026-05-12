@@ -19,7 +19,7 @@ const YATA_COUNTRY_CODES = {
   "Cayman Islands": "cay",
   "Canada": "can",
   "Hawaii": "haw",
-  "United Kingdom": "gbr",
+  "United Kingdom": "uni",
   "Argentina": "arg",
   "Switzerland": "swi",
   "Japan": "jap",
@@ -123,8 +123,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
             </tr>
           </thead>
           <tbody>
-            {overseasItems.map(item => (
-              <tr key={`${item.country}-${item.id}`} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#252525'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+            {overseasItems.map(item => {
+              const stockInfo = getStockInfo(item.country, item.id);
+              const buyableQuantity = stockInfo ? Math.min(stockInfo.quantity, cargoCapacity) : 0;
+              
+              return (
+                <tr key={`${item.country}-${item.id}`} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#252525'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                 <td style={cellStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <img 
@@ -148,13 +152,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                   ${(item.market_value || 0).toLocaleString()}
                 </td>
                 <td style={{ ...cellStyle, textAlign: 'center' }}>
-                  <div style={{ fontWeight: 'bold', color: '#e0e0e0' }}>{cargoCapacity} units</div>
-                  <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                    Total: ${(item.buy_price * cargoCapacity).toLocaleString()}
-                  </div>
+                  {loadingYata ? (
+                    <span style={{ color: '#666' }}>...</span>
+                  ) : stockInfo ? (
+                    <>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71')
+                      }}>
+                        {stockInfo.quantity.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                        Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{ color: '#444' }}>No Data</span>
+                  )}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
