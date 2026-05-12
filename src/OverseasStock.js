@@ -14,6 +14,20 @@ const COUNTRY_MAP = {
   "South Africa": [282, 1497, 281, 203, 199, 201, 406, 200, 4, 225, 280, 651, 228, 227, 332, 206, 654, 226, 358, 652, 653, 1500]
 };
 
+const TRAVEL_TIMES = {
+  "Mexico": 18,
+  "Cayman Islands": 25,
+  "Canada": 29,
+  "Hawaii": 94,
+  "United Kingdom": 111,
+  "Argentina": 117,
+  "Switzerland": 123,
+  "Japan": 158,
+  "China": 169,
+  "UAE": 201,
+  "South Africa": 208
+};
+
 const YATA_COUNTRY_CODES = {
   "Mexico": "mex",
   "Cayman Islands": "cay",
@@ -32,6 +46,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [filter, setFilter] = useState('All');
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
+  const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
   useEffect(() => {
@@ -105,6 +120,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
       const bagProfit = profitPerItem * cargoCapacity;
       const stockQuantity = stockInfo?.quantity || 0;
 
+      // Calculate travel time in hours (round trip)
+      const baseTime = TRAVEL_TIMES[country] || 0;
+      let modifier = 1.0;
+      const travelMethod = userData?.travel?.method;
+      if (travelMethod === 'Business') modifier = 0.3;
+      else if (travelMethod === 'Private') modifier = 0.5;
+      else if (travelMethod === 'Airstrip') modifier = 0.7;
+      
+      const totalRoundTripMinutes = Math.round(baseTime * 2 * modifier);
+      const roundTripHours = totalRoundTripMinutes / 60;
+      const bagProfitPerHour = roundTripHours > 0 ? bagProfit / roundTripHours : 0;
+
+      const h = Math.floor(totalRoundTripMinutes / 60);
+      const m = totalRoundTripMinutes % 60;
+      const roundTripDisplay = h > 0 ? `${h}h ${m}m` : `${m}m`;
+
       return {
         ...item,
         id,
@@ -112,6 +143,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         owned,
         buy_price: effectiveBuyPrice, // Override with country-specific price
         bagProfit,
+        bagProfitPerHour,
+        roundTripDisplay,
         profitPerItem,
         stockQuantity,
         stockInfo
@@ -172,6 +205,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
               <th style={headerStyle} onClick={() => requestSort('buy_price')}>Buy Price {renderSortIndicator('buy_price')}</th>
               <th style={headerStyle} onClick={() => requestSort('market_value')}>Market Value {renderSortIndicator('market_value')}</th>
               <th style={headerStyle} onClick={() => requestSort('bagProfit')}>Bag Profit {renderSortIndicator('bagProfit')}</th>
+              <th style={headerStyle} onClick={() => requestSort('bagProfitPerHour')}>Profit/hr {renderSortIndicator('bagProfitPerHour')}</th>
               <th style={{ ...headerStyle, textAlign: 'center' }} onClick={() => requestSort('stockQuantity')}>Stock {renderSortIndicator('stockQuantity')}</th>
             </tr>
           </thead>
@@ -194,12 +228,18 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                 </td>
                 <td style={cellStyle}>
                   <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
+                  <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                    RT: {item.roundTripDisplay}
+                  </div>
                 </td>
                 <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
                   {(item.owned || 0).toLocaleString()}
                 </td>
                 <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
-                  ${(item.buy_price || 0).toLocaleString()}
+                  <div>${(item.buy_price || 0).toLocaleString()}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal', marginTop: '2px' }}>
+                    (${(item.buy_price * cargoCapacity).toLocaleString()})
+                  </div>
                 </td>
                 <td style={{ ...cellStyle, color: '#f39c12' }}>
                   ${(item.market_value || 0).toLocaleString()}
@@ -212,15 +252,24 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                     ${item.profitPerItem.toLocaleString()} ea
                   </div>
                 </td>
+                <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
+                  ${Math.round(item.bagProfitPerHour).toLocaleString()}
+                </td>
                 <td style={{ ...cellStyle, textAlign: 'center' }}>
                   {loadingYata ? (
                     <span style={{ color: '#666' }}>...</span>
                   ) : stockInfo ? (
                     <>
-                      <div style={{ 
-                        fontWeight: 'bold', 
-                        color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71')
-                      }}>
+                      <div 
+                        onClick={() => setSelectedItemForGraph(item)}
+                        style={{ 
+                          fontWeight: 'bold', 
+                          cursor: 'pointer',
+                          color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
+                          textDecoration: 'underline'
+                        }}
+                        title="Click to view stock history"
+                      >
                         {stockInfo.quantity.toLocaleString()}
                       </div>
                       <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
@@ -240,6 +289,89 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
       {sortedItems.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
           No items found for this selection.
+        </div>
+      )}
+
+      {/* Stock History Popup Overlay */}
+      {selectedItemForGraph && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '20px',
+          backdropFilter: 'blur(4px)'
+        }} onClick={() => setSelectedItemForGraph(null)}>
+          <div style={{
+            backgroundColor: '#1e1e1e',
+            padding: '30px',
+            borderRadius: '12px',
+            border: '1px solid #333',
+            maxWidth: '800px',
+            width: '100%',
+            position: 'relative',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            animation: 'fadeIn 0.2s ease-out'
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedItemForGraph(null)}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'none',
+                border: 'none',
+                color: '#888',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+            <h3 style={{ marginTop: 0, color: '#3498db' }}>Stock History: {selectedItemForGraph.name}</h3>
+            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '20px' }}>Country: {selectedItemForGraph.country}</p>
+            
+            <div style={{ 
+              height: '300px', 
+              backgroundColor: '#151515', 
+              borderRadius: '8px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              border: '1px dashed #444',
+              marginBottom: '20px'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ color: '#666', fontStyle: 'italic' }}>Graph placeholder for {selectedItemForGraph.name}</p>
+                <p style={{ color: '#444', fontSize: '0.8rem' }}>(Historical data collection coming soon)</p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setSelectedItemForGraph(null)}
+                style={{
+                  padding: '8px 25px',
+                  backgroundColor: '#333',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
