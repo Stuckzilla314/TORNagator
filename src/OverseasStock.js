@@ -83,6 +83,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     
     return {
       quantity: itemStock ? itemStock.quantity : 0,
+      cost: itemStock ? itemStock.cost : 0,
       lastUpdate: yataData.stocks[code].update
     };
   };
@@ -95,7 +96,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
       const item = itemsData[id] || {};
       const stockInfo = getStockInfo(country, id);
       const owned = getOwnedCount(id);
-      const profitPerItem = (item.market_value || 0) - (item.buy_price || 0);
+      
+      // Use YATA's 'cost' as the effective buy price for overseas items, 
+      // falling back to the TORN base buy_price if YATA data isn't available yet.
+      const effectiveBuyPrice = stockInfo?.cost || item.buy_price || 0;
+      
+      const profitPerItem = (item.market_value || 0) - effectiveBuyPrice;
       const bagProfit = profitPerItem * cargoCapacity;
       const stockQuantity = stockInfo?.quantity || 0;
 
@@ -104,6 +110,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         id,
         country,
         owned,
+        buy_price: effectiveBuyPrice, // Override with country-specific price
         bagProfit,
         profitPerItem,
         stockQuantity,
