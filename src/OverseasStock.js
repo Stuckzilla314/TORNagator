@@ -14,27 +14,41 @@ const COUNTRY_MAP = {
   "South Africa": [282, 1497, 281, 203, 199, 201, 406, 200, 4, 225, 280, 651, 228, 227, 332, 206, 654, 226, 358, 652, 653, 1500]
 };
 
-const OverseasStock = ({ itemsData }) => {
+const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [filter, setFilter] = useState('All');
 
-  const cardStyle = {
-    backgroundColor: '#1e1e1e',
-    padding: '1rem',
-    borderRadius: '8px',
-    border: '1px solid #333',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px'
+  const headerStyle = {
+    textAlign: 'left',
+    padding: '15px',
+    backgroundColor: '#252525',
+    color: '#888',
+    fontSize: '0.8rem',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    borderBottom: '2px solid #333'
+  };
+
+  const cellStyle = {
+    padding: '12px 15px',
+    borderBottom: '1px solid #2a2a2a'
   };
 
   // Flatten the mapping into a list of items with country info
+  if (!itemsData) return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading items...</div>;
+
   const overseasItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) => 
     ids.map(id => ({
-      ...itemsData[id],
+      ...(itemsData[id] || {}),
       id,
       country
     })).filter(item => !!item.name)
   ).filter(item => filter === 'All' || item.country === filter);
+
+  const getOwnedCount = (itemId) => {
+    if (!userData?.inventory || !Array.isArray(userData.inventory)) return 0;
+    const item = userData.inventory.find(i => i.id === itemId);
+    return item?.amount ?? 0;
+  };
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
@@ -50,37 +64,53 @@ const OverseasStock = ({ itemsData }) => {
         </select>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-        {overseasItems.map(item => (
-          <div key={item.id} style={cardStyle}>
-            <div style={{ 
-              width: '50px', 
-              height: '50px', 
-              backgroundColor: '#111', 
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px'
-            }}>
-              <img 
-                src={`https://www.torn.com/images/items/${item.id}/large.png`} 
-                alt={item.name} 
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{item.name}</div>
-              <div style={{ fontSize: '0.8rem', color: '#3498db' }}>{item.country}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: '#888' }}>Buy Price</div>
-              <div style={{ fontWeight: 'bold', color: '#2ecc71' }}>
-                ${item.buy_price?.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        ))}
+      <div style={{ backgroundColor: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e0e0e0' }}>
+          <thead>
+            <tr>
+              <th style={headerStyle}>Item Name</th>
+              <th style={headerStyle}>Country</th>
+              <th style={{ ...headerStyle, textAlign: 'center' }}>Owned</th>
+              <th style={headerStyle}>Buy Price</th>
+              <th style={headerStyle}>Market Price</th>
+              <th style={{ ...headerStyle, textAlign: 'center' }}>Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {overseasItems.map(item => (
+              <tr key={`${item.country}-${item.id}`} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#252525'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <td style={cellStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img 
+                      src={`https://www.torn.com/images/items/${item.id}/large.png`} 
+                      alt={item.name} 
+                      style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                    />
+                    <span style={{ fontWeight: '500' }}>{item.name}</span>
+                  </div>
+                </td>
+                <td style={cellStyle}>
+                  <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
+                </td>
+                <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
+                  {(getOwnedCount(item.id) || 0).toLocaleString()}
+                </td>
+                <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
+                  ${(item.buy_price || 0).toLocaleString()}
+                </td>
+                <td style={{ ...cellStyle, color: '#f39c12' }}>
+                  ${(item.market_value || 0).toLocaleString()}
+                </td>
+                <td style={{ ...cellStyle, textAlign: 'center' }}>
+                  <div style={{ fontWeight: 'bold', color: '#e0e0e0' }}>{cargoCapacity} units</div>
+                  <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                    Total: ${(item.buy_price * cargoCapacity).toLocaleString()}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {overseasItems.length === 0 && (
