@@ -54,17 +54,18 @@ export const fetchUserInventoryV2 = async (apiKey) => {
     results.forEach(data => {
       if (data?.inventory?.items) {
         data.inventory.items.forEach(item => {
-          const id = String(item.id);
+          const id = Number(item.id);
           // Aggregate quantities in case an item appears in multiple categories
-          allItems[id] = { 
-            quantity: (allItems[id]?.quantity || 0) + (item.amount || 0) 
-          };
+          allItems[id] = (allItems[id] || 0) + (item.amount || 0);
         });
       }
     });
-    return allItems;
+    return Object.entries(allItems).map(([id, amount]) => ({
+      id: Number(id),
+      amount: amount
+    }));
   } catch (error) {
     console.error("V2 Inventory Fetch Error:", error);
-    return {};
+    return [];
   }
 };

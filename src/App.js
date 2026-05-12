@@ -77,7 +77,7 @@ function App() {
         fetchUserInventoryV2(apiKey)
       ]);
 
-      setUserData({ ...user, inventory: inventory.inventory?.items || [] });
+      setUserData({ ...user, inventory: inventory });
       setItemsData(items);
       localStorage.setItem('torn_api_key', apiKey);
     } catch (err) {
@@ -163,14 +163,14 @@ function App() {
       const inventoryData = await fetchUserInventoryV2(apiKey); 
       
       if (!data.error && !manualOverride) {
-        const calculated = calculateCapacity({ ...data, inventory: inventoryData.inventory?.items || [] });
+        const calculated = calculateCapacity({ ...data, inventory: inventoryData });
         setCargoCapacity(calculated);
         
         // Merge calculations back into userData for the UI
         setUserData(prev => prev ? { 
           ...prev, 
           travel: { ...prev.travel, ...data.travel, calculatedCapacity: calculated },
-          inventory: inventoryData.inventory?.items || []
+          inventory: inventoryData
         } : null);
       }
     } catch (err) {
@@ -244,7 +244,7 @@ function App() {
           {activeTab === 'dashboard' ? (
             <UserDashboard userData={userData} onLogout={handleLogout} />
           ) : (
-            <OverseasStock itemsData={itemsData} userData={userData} />
+            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} />
           )}
         </>
       )}

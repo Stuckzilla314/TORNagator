@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
@@ -14,8 +14,40 @@ const COUNTRY_MAP = {
   "South Africa": [282, 1497, 281, 203, 199, 201, 406, 200, 4, 225, 280, 651, 228, 227, 332, 206, 654, 226, 358, 652, 653, 1500]
 };
 
+const YATA_COUNTRY_CODES = {
+  "Mexico": "mex",
+  "Cayman Islands": "cay",
+  "Canada": "can",
+  "Hawaii": "haw",
+  "United Kingdom": "gbr",
+  "Argentina": "arg",
+  "Switzerland": "swi",
+  "Japan": "jap",
+  "China": "chi",
+  "UAE": "uae",
+  "South Africa": "sou"
+};
+
 const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [filter, setFilter] = useState('All');
+  const [yataData, setYataData] = useState(null);
+  const [loadingYata, setLoadingYata] = useState(false);
+
+  useEffect(() => {
+    const fetchYataStock = async () => {
+      setLoadingYata(true);
+      try {
+        const response = await fetch('https://yata.yt/api/v1/travel/export/');
+        const data = await response.json();
+        setYataData(data);
+      } catch (err) {
+        console.error("Failed to fetch YATA stock data:", err);
+      } finally {
+        setLoadingYata(false);
+      }
+    };
+    fetchYataStock();
+  }, []);
 
   const headerStyle = {
     textAlign: 'left',
@@ -50,6 +82,20 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     return item?.amount ?? 0;
   };
 
+  const getStockInfo = (country, itemId) => {
+    if (!yataData?.stocks) return null;
+    const code = YATA_COUNTRY_CODES[country];
+    if (!code || !yataData.stocks[code]) return null;
+    
+    const stockList = yataData.stocks[code].stocks || [];
+    const itemStock = stockList.find(s => s.id === itemId);
+    
+    return {
+      quantity: itemStock ? itemStock.quantity : 0,
+      lastUpdate: yataData.stocks[code].update
+    };
+  };
+  
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
