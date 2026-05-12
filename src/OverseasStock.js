@@ -32,6 +32,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [filter, setFilter] = useState('All');
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
   useEffect(() => {
     const fetchYataStock = async () => {
@@ -57,24 +58,14 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     fontSize: '0.8rem',
     fontWeight: 'bold',
     textTransform: 'uppercase',
-    borderBottom: '2px solid #333'
+    borderBottom: '2px solid #333',
+    cursor: 'pointer'
   };
 
   const cellStyle = {
     padding: '12px 15px',
     borderBottom: '1px solid #2a2a2a'
   };
-
-  // Flatten the mapping into a list of items with country info
-  if (!itemsData) return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading items...</div>;
-
-  const overseasItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) => 
-    ids.map(id => ({
-      ...(itemsData[id] || {}),
-      id,
-      country
-    })).filter(item => !!item.name)
-  ).filter(item => filter === 'All' || item.country === filter);
 
   const getOwnedCount = (itemId) => {
     if (!userData?.inventory || !Array.isArray(userData.inventory)) return 0;
@@ -96,6 +87,60 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     };
   };
   
+  // Flatten mapping into items with pre-calculated values for sorting
+  if (!itemsData) return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading items...</div>;
+
+  const processedItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) => 
+    ids.map(id => {
+      const item = itemsData[id] || {};
+      const stockInfo = getStockInfo(country, id);
+      const owned = getOwnedCount(id);
+      const profitPerItem = (item.market_value || 0) - (item.buy_price || 0);
+      const bagProfit = profitPerItem * cargoCapacity;
+      const stockQuantity = stockInfo?.quantity || 0;
+
+      return {
+        ...item,
+        id,
+        country,
+        owned,
+        bagProfit,
+        profitPerItem,
+        stockQuantity,
+        stockInfo
+      };
+    }).filter(item => !!item.name)
+  ).filter(item => filter === 'All' || item.country === filter);
+
+  const sortedItems = [...processedItems].sort((a, b) => {
+    let aVal = a[sortConfig.key];
+    let bVal = b[sortConfig.key];
+
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const requestSort = (key) => {
+    let direction = (key === 'name' || key === 'country') ? 'asc' : 'desc';
+    if (sortConfig.key === key) {
+      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const renderSortIndicator = (key) => {
+    if (sortConfig.key !== key) return <span style={{ color: '#444', marginLeft: '8px', fontSize: '0.7rem' }}>↕</span>;
+    return sortConfig.direction === 'asc' ? 
+      <span style={{ color: '#3498db', marginLeft: '8px', fontSize: '0.7rem' }}>▲</span> : 
+      <span style={{ color: '#3498db', marginLeft: '8px', fontSize: '0.7rem' }}>▼</span>;
+  };
+  
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -114,17 +159,18 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e0e0e0' }}>
           <thead>
             <tr>
-              <th style={headerStyle}>Item Name</th>
-              <th style={headerStyle}>Country</th>
-              <th style={{ ...headerStyle, textAlign: 'center' }}>Owned</th>
-              <th style={headerStyle}>Buy Price</th>
-              <th style={headerStyle}>Market Price</th>
-              <th style={{ ...headerStyle, textAlign: 'center' }}>Stock</th>
+              <th style={headerStyle} onClick={() => requestSort('name')}>Item Name {renderSortIndicator('name')}</th>
+              <th style={headerStyle} onClick={() => requestSort('country')}>Country {renderSortIndicator('country')}</th>
+              <th style={{ ...headerStyle, textAlign: 'center' }} onClick={() => requestSort('owned')}>Owned {renderSortIndicator('owned')}</th>
+              <th style={headerStyle} onClick={() => requestSort('buy_price')}>Buy Price {renderSortIndicator('buy_price')}</th>
+              <th style={headerStyle} onClick={() => requestSort('market_value')}>Market Value {renderSortIndicator('market_value')}</th>
+              <th style={headerStyle} onClick={() => requestSort('bagProfit')}>Bag Profit {renderSortIndicator('bagProfit')}</th>
+              <th style={{ ...headerStyle, textAlign: 'center' }} onClick={() => requestSort('stockQuantity')}>Stock {renderSortIndicator('stockQuantity')}</th>
             </tr>
           </thead>
           <tbody>
-            {overseasItems.map(item => {
-              const stockInfo = getStockInfo(item.country, item.id);
+            {sortedItems.map(item => {
+              const stockInfo = item.stockInfo;
               const buyableQuantity = stockInfo ? Math.min(stockInfo.quantity, cargoCapacity) : 0;
               
               return (
@@ -143,13 +189,21 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                   <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
                 </td>
                 <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
-                  {(getOwnedCount(item.id) || 0).toLocaleString()}
+                  {(item.owned || 0).toLocaleString()}
                 </td>
                 <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
                   ${(item.buy_price || 0).toLocaleString()}
                 </td>
                 <td style={{ ...cellStyle, color: '#f39c12' }}>
                   ${(item.market_value || 0).toLocaleString()}
+                </td>
+                <td style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0' }}>
+                  <div style={{ fontWeight: 'bold' }}>
+                    ${item.bagProfit.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                    ${item.profitPerItem.toLocaleString()} ea
+                  </div>
                 </td>
                 <td style={{ ...cellStyle, textAlign: 'center' }}>
                   {loadingYata ? (
@@ -176,7 +230,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         </table>
       </div>
 
-      {overseasItems.length === 0 && (
+      {sortedItems.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
           No items found for this selection.
         </div>
