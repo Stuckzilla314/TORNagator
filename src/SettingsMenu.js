@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
 const SettingsMenu = ({ 
   userData, 
@@ -28,7 +28,7 @@ const SettingsMenu = ({
       color: '#e0e0e0'
     }}>
       <div 
-        onClick={() => setShowTabTimer(!showTabTimer)}
+        onClick={() => setShowTabTimer(prev => !prev)}
         style={{
           padding: '8px 12px',
           cursor: 'pointer',
@@ -44,8 +44,8 @@ const SettingsMenu = ({
         <input 
           type="checkbox" 
           checked={showTabTimer} 
-          readOnly 
-          style={{ cursor: 'pointer' }}
+          onChange={() => {}}
+          style={{ cursor: 'pointer', pointerEvents: 'none' }}
         />
       </div>
 
@@ -57,7 +57,7 @@ const SettingsMenu = ({
 
         {/* Manual Override: Indented and smaller font as requested */}
         <div 
-          onClick={() => setManualOverride(!manualOverride)}
+          onClick={() => setManualOverride(prev => !prev)}
           style={{
             padding: '2px 0 8px 12px',
             cursor: 'pointer',
@@ -70,8 +70,8 @@ const SettingsMenu = ({
           <input 
             type="checkbox" 
             checked={manualOverride} 
-            readOnly 
-            style={{ cursor: 'pointer', transform: 'scale(0.8)' }}
+            onChange={() => {}}
+            style={{ cursor: 'pointer', transform: 'scale(0.8)', pointerEvents: 'none' }}
           />
         </div>
 

@@ -30,8 +30,8 @@ function App() {
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   // Track travel time for the browser tab title
   const travelTimeLeft = useTravelTimer(
-    userData?.profile?.status?.state === 'Traveling' 
-      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.profile?.status?.until) 
+    (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
+      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until) 
       : 0
   );
 
