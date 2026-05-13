@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, Timestamp, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB63-pK0kObmbvZ05EhoccGZYXlfZPCJpc",
@@ -39,6 +39,11 @@ async function run() {
   console.log("Starting stock sync...");
   const yataRes = await fetch('https://yata.yt/api/v1/travel/export/');
   const data = await yataRes.json();
+  
+  // Fetch the latest state summary (1 read instead of 220+)
+  const stateRef = doc(db, "stock_metadata", "summary");
+  const stateSnap = await getDoc(stateRef);
+  const lastState = stateSnap.exists() ? stateSnap.data().items : {};
 
   let itemNames = {};
   if (process.env.TORN_API_KEY) {
@@ -47,46 +52,74 @@ async function run() {
     if (tornData.items) itemNames = tornData.items;
   }
 
+  const newState = { ...lastState };
   const tasks = [];
+  
+  // We will build a snapshot for the frontend to read in 1 go
+  const snapshotStocks = {};
+
+  // Handle cases where YATA returns data at root, under .stocks, or under .data
+  const rawStocks = data.stocks || data.data || data;
 
   for (const [countryName, countryCode] of Object.entries(YATA_COUNTRY_CODES)) {
-    const countryInfo = data.stocks[countryCode];
+    const countryInfo = rawStocks[countryCode] || rawStocks[countryName];
     if (!countryInfo?.stocks) continue;
 
     for (const s of countryInfo.stocks) {
-      if (!TRACKED_ITEM_IDS.has(s.id)) continue;
+      const numericId = Number(s.id);
+      if (!TRACKED_ITEM_IDS.has(numericId)) continue;
 
-      tasks.push((async () => {
-        // Find the most recent record for this specific item and country
-        const q = query(
-          collection(db, "stock_history"),
-          where("itemId", "==", Number(s.id)),
-          where("country", "==", countryName),
-          orderBy("timestamp", "desc"),
-          limit(1)
-        );
-        
-        const snap = await getDocs(q);
-        const lastDoc = snap.empty ? null : snap.docs[0].data();
+      const itemKey = `${countryCode}_${numericId}`;
+      
+      // Prepare snapshot data for frontend
+      if (!snapshotStocks[countryCode]) {
+        snapshotStocks[countryCode] = { stocks: [], update: countryInfo.update };
+      }
+      snapshotStocks[countryCode].stocks.push({ id: numericId, quantity: s.quantity, cost: s.cost });
 
-        // Only write if stock changed or item is new to the database
-        if (!lastDoc || lastDoc.stock !== s.quantity) {
+      // Only write to history if quantity changed
+      if (lastState[itemKey] !== s.quantity) {
+        tasks.push((async () => {
           await addDoc(collection(db, "stock_history"), {
-            itemId: Number(s.id),
-            itemName: itemNames[s.id]?.name || lastDoc?.itemName || "Unknown",
+            itemId: numericId,
+            itemName: itemNames[numericId]?.name || "Unknown",
             country: countryName,
             stock: s.quantity,
             cost: s.cost,
             timestamp: countryInfo.update,
             createdAt: Timestamp.now()
           });
-          console.log(`[UPDATED] ${countryName}: ${itemNames[s.id]?.name || s.id} is now ${s.quantity}`);
-        }
-      })());
+          console.log(`[HISTORY] ${countryName}: ${itemNames[numericId]?.name || numericId} updated`);
+        })());
+        newState[itemKey] = s.quantity;
+      }
     }
   }
 
   await Promise.all(tasks);
+
+  // Update the summary state and frontend snapshot (2 writes)
+  await Promise.all([
+    setDoc(stateRef, { items: newState, lastUpdated: Timestamp.now() }),
+    setDoc(doc(db, "stock_metadata", "snapshot"), { 
+      stocks: snapshotStocks, 
+      lastUpdated: Timestamp.now() 
+    })
+  ]);
+  
+  console.log("State and Snapshot updated.");
+
+  // Cleanup records older than 48 hours to stay within Firestore free tier limits
+  const cutoff = Math.floor(Date.now() / 1000) - (48 * 60 * 60);
+  const qCleanup = query(collection(db, "stock_history"), where("timestamp", "<", cutoff));
+  const cleanupSnap = await getDocs(qCleanup);
+  
+  if (!cleanupSnap.empty) {
+    const deleteTasks = cleanupSnap.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deleteTasks);
+    console.log(`[CLEANUP] Deleted ${cleanupSnap.size} records older than 48 hours.`);
+  }
+
   console.log("Sync finished.");
   process.exit(0);
 }

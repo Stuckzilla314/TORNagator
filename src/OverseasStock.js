@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { db } from './firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, limit, Timestamp, startAfter } from "firebase/firestore";
+import { collection, addDoc, query, where, orderBy, getDocs, limit, Timestamp, startAfter, doc, getDoc, onSnapshot } from "firebase/firestore";
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
@@ -58,41 +58,23 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
   useEffect(() => {
-    const fetchDbStock = async () => {
-      setLoadingYata(true);
-      try {
-        // Fetch the most recent records from history. 
-        // A limit of 1000 ensures we get the latest snapshot for all tracked items.
-        const q = query(
-          collection(db, "stock_history"),
-          orderBy("createdAt", "desc"),
-          limit(1000)
-        );
-        const snap = await getDocs(q);
-        
-        const stocksByCountry = {};
-        snap.docs.forEach(doc => {
-          const d = doc.data();
-          const code = YATA_COUNTRY_CODES[d.country];
-          if (!code) return;
-          
-          if (!stocksByCountry[code]) stocksByCountry[code] = { stocks: [], update: d.timestamp };
-          
-          // Since results are ordered by createdAt desc, the first time we see an item, it's the latest stock
-          if (!stocksByCountry[code].stocks.some(s => s.id === d.itemId)) {
-            stocksByCountry[code].stocks.push({ id: d.itemId, quantity: d.stock, cost: d.cost });
-          }
-        });
-        setYataData({ stocks: stocksByCountry });
-      } catch (err) {
-        console.error("Failed to fetch stock from Firestore:", err);
-      } finally {
+    setLoadingYata(true);
+
+    // Use real-time listener for the pre-computed snapshot document
+    const unsubscribe = onSnapshot(doc(db, "stock_metadata", "snapshot"), 
+      (snap) => {
+        if (snap.exists()) {
+          setYataData({ stocks: snap.data().stocks || {} });
+        }
+        setLoadingYata(false);
+      },
+      (err) => {
+        console.error("Firestore snapshot error:", err);
         setLoadingYata(false);
       }
-    };
-    fetchDbStock();
-    const interval = setInterval(fetchDbStock, 300000);
-    return () => clearInterval(interval);
+    );
+
+    return () => unsubscribe();
   }, [itemsData]);
 
   // State for historical data, now managed locally
@@ -215,12 +197,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   };
 
   const getStockInfo = (country, itemId) => {
-    if (!yataData?.stocks) return null;
+    if (!yataData || !yataData.stocks) return null;
     const code = YATA_COUNTRY_CODES[country];
     if (!code || !yataData.stocks[code]) return null;
     
     const stockList = yataData.stocks[code].stocks || [];
-    const itemStock = stockList.find(s => s.id === itemId);
+    const itemStock = stockList.find(s => Number(s.id) === Number(itemId));
     
     return {
       quantity: itemStock ? itemStock.quantity : 0,
