@@ -57,9 +57,6 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
-  // Ref to track the last known stock level written to DB during this session
-  const lastRecordedStockRef = useRef({});
-
   useEffect(() => {
     const fetchYataStock = async () => {
       setLoadingYata(true);
@@ -67,40 +64,6 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         const response = await fetch('https://yata.yt/api/v1/travel/export/');
         const data = await response.json();
         setYataData(data);
-
-        if (data && data.stocks) {
-          Object.entries(YATA_COUNTRY_CODES).forEach(([countryName, countryCode]) => {
-            const countryInfo = data.stocks[countryCode];
-            if (countryInfo && countryInfo.stocks) {
-              const updateTs = countryInfo.update; // YATA provided seconds
-              countryInfo.stocks.forEach(s => {
-                if (!TRACKED_ITEM_IDS.has(s.id)) return;
-
-                const itemKey = `${s.id}_${countryName}`;
-                const lastStock = lastRecordedStockRef.current[itemKey];
-
-                // DELTA COMPRESSION: Only write if the stock level has changed 
-                // or if we haven't recorded anything yet this session.
-                if (lastStock === undefined || lastStock !== s.quantity) {
-                  addDoc(collection(db, "stock_history"), {
-                    itemId: Number(s.id),
-                    itemName: itemsData[s.id]?.name || "Unknown",
-                    country: countryName,
-                    stock: s.quantity,
-                    cost: s.cost,
-                    timestamp: updateTs,
-                    createdAt: Timestamp.now()
-                  }).then(() => {
-                    // Only update the ref if the write actually succeeded
-                    lastRecordedStockRef.current[itemKey] = s.quantity;
-                  }).catch(e => {
-                    console.error(`Firebase write error for ${countryName}/${s.id}:`, e);
-                  });
-                }
-              });
-            }
-          });
-        }
       } catch (err) {
         console.error("Failed to fetch YATA stock data:", err);
       } finally {
