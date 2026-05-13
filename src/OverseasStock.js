@@ -109,8 +109,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     };
 
     fetchYataStock();
-    // Refresh the table data every minute
-    const interval = setInterval(fetchYataStock, 60000);
+    // Refresh the table data every 5 minutes
+    const interval = setInterval(fetchYataStock, 300000);
     return () => clearInterval(interval);
   }, [itemsData]); // Re-run if itemsData becomes available to ensure correct names are saved
 
