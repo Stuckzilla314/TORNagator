@@ -58,24 +58,42 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
   useEffect(() => {
-    const fetchYataStock = async () => {
+    const fetchDbStock = async () => {
       setLoadingYata(true);
       try {
-        const response = await fetch('https://yata.yt/api/v1/travel/export/');
-        const data = await response.json();
-        setYataData(data);
+        // Fetch the most recent records from history. 
+        // A limit of 1000 ensures we get the latest snapshot for all tracked items.
+        const q = query(
+          collection(db, "stock_history"),
+          orderBy("createdAt", "desc"),
+          limit(1000)
+        );
+        const snap = await getDocs(q);
+        
+        const stocksByCountry = {};
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          const code = YATA_COUNTRY_CODES[d.country];
+          if (!code) return;
+          
+          if (!stocksByCountry[code]) stocksByCountry[code] = { stocks: [], update: d.timestamp };
+          
+          // Since results are ordered by createdAt desc, the first time we see an item, it's the latest stock
+          if (!stocksByCountry[code].stocks.some(s => s.id === d.itemId)) {
+            stocksByCountry[code].stocks.push({ id: d.itemId, quantity: d.stock, cost: d.cost });
+          }
+        });
+        setYataData({ stocks: stocksByCountry });
       } catch (err) {
-        console.error("Failed to fetch YATA stock data:", err);
+        console.error("Failed to fetch stock from Firestore:", err);
       } finally {
         setLoadingYata(false);
       }
     };
-
-    fetchYataStock();
-    // Refresh the table data every 5 minutes
-    const interval = setInterval(fetchYataStock, 300000);
+    fetchDbStock();
+    const interval = setInterval(fetchDbStock, 300000);
     return () => clearInterval(interval);
-  }, [itemsData]); // Re-run if itemsData becomes available to ensure correct names are saved
+  }, [itemsData]);
 
   // State for historical data, now managed locally
   const [historicalData, setHistoricalData] = useState([]);
