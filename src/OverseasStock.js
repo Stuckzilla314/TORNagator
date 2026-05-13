@@ -404,17 +404,19 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                   {loadingYata ? (
                     <span style={{ color: '#666' }}>...</span>
                   ) : stockInfo ? (
-                    <div 
-                      onClick={() => setSelectedItemForGraph(item)}
-                      style={{ 
-                        fontWeight: 'bold', 
-                        cursor: 'pointer',
-                        color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
-                        textDecoration: 'underline'
-                      }}
-                      title="Click to view stock history"
-                    >
-                      <div>{stockInfo.quantity.toLocaleString()}</div>
+                    <div>
+                      <div 
+                        onClick={() => setSelectedItemForGraph(item)}
+                        style={{ 
+                          fontWeight: 'bold', 
+                          cursor: 'pointer',
+                          color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
+                          textDecoration: 'underline'
+                        }}
+                        title="Click to view stock history"
+                      >
+                        {stockInfo.quantity.toLocaleString()}
+                      </div>
                       <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
                         Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
                       </div>
