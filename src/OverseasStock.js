@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from 'recharts';
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
@@ -46,6 +47,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [filter, setFilter] = useState('All');
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
+  const [timeScale, setTimeScale] = useState(48); // New state for time scale in hours
+  const [loadingHistoricalData, setLoadingHistoricalData] = useState(false);
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
@@ -56,14 +59,78 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         const response = await fetch('https://yata.yt/api/v1/travel/export/');
         const data = await response.json();
         setYataData(data);
+
+        // Record real stock levels into local storage history whenever we get a fresh fetch
+        if (data && data.stocks) {
+          const now = Date.now();
+          const cutOff = now - (48 * 60 * 60 * 1000); // 48h limit
+
+          Object.entries(YATA_COUNTRY_CODES).forEach(([countryName, countryCode]) => {
+            const countryInfo = data.stocks[countryCode];
+            if (countryInfo && countryInfo.stocks) {
+              const updateTs = countryInfo.update * 1000; // Convert YATA seconds to MS
+              countryInfo.stocks.forEach(s => {
+                const key = `tornagator_stock_history_${s.id}_${countryName}`;
+                let history = JSON.parse(localStorage.getItem(key) || '[]');
+                if (history.length === 0 || history[history.length - 1].timestamp < updateTs) {
+                  history.push({ timestamp: updateTs, stock: s.quantity });
+                  history = history.filter(p => p.timestamp >= cutOff);
+                  localStorage.setItem(key, JSON.stringify(history));
+                }
+              });
+            }
+          });
+        }
       } catch (err) {
         console.error("Failed to fetch YATA stock data:", err);
       } finally {
         setLoadingYata(false);
       }
     };
+
     fetchYataStock();
+    // Refresh the table data every minute
+    const interval = setInterval(fetchYataStock, 60000);
+    return () => clearInterval(interval);
   }, []);
+
+  // State for historical data, now managed locally
+  const [historicalData, setHistoricalData] = useState([]);
+
+  // Helper to manage local storage for historical data
+  const getLocalStorageKey = useCallback((item) => `tornagator_stock_history_${item.id}_${item.country}`, []);
+
+  const loadHistoricalData = useCallback((item) => {
+    const key = getLocalStorageKey(item);
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  }, [getLocalStorageKey]);
+
+  const saveHistoricalData = useCallback((item, history) => {
+    const key = getLocalStorageKey(item);
+    localStorage.setItem(key, JSON.stringify(history));
+  }, [getLocalStorageKey]);
+
+  useEffect(() => {
+    if (selectedItemForGraph) {
+      setLoadingHistoricalData(true);
+      const currentHistory = loadHistoricalData(selectedItemForGraph);
+      setHistoricalData(currentHistory);
+      setLoadingHistoricalData(false);
+    } else {
+      setHistoricalData([]);
+    }
+  }, [selectedItemForGraph, yataData, loadHistoricalData]);
+
+  // Filter history points based on the timeScale slider
+  const windowStart = Date.now() - (timeScale * 60 * 60 * 1000);
+  const realHistory = historicalData.filter(point => point.timestamp >= windowStart);
+
+  // If we have data, pad the start of the window with 0 to satisfy the "line at zero" requirement
+  const filteredHistory = realHistory.length > 0 
+    ? [{ timestamp: windowStart, stock: 0 }, ...realHistory]
+    : [{ timestamp: windowStart, stock: 0 }, { timestamp: Date.now(), stock: 0 }];
+
 
   const headerStyle = {
     textAlign: 'left',
@@ -259,7 +326,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                   {loadingYata ? (
                     <span style={{ color: '#666' }}>...</span>
                   ) : stockInfo ? (
-                    <>
+                    <div onClick={() => setSelectedItemForGraph(item)} style={{ cursor: 'pointer' }}>
                       <div 
                         onClick={() => setSelectedItemForGraph(item)}
                         style={{ 
@@ -275,7 +342,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                       <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
                         Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <span style={{ color: '#444' }}>No Data</span>
                   )}
@@ -338,20 +405,60 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
             <h3 style={{ marginTop: 0, color: '#3498db' }}>Stock History: {selectedItemForGraph.name}</h3>
             <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '20px' }}>Country: {selectedItemForGraph.country}</p>
             
-            <div style={{ 
-              height: '300px', 
-              backgroundColor: '#151515', 
-              borderRadius: '8px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              border: '1px dashed #444',
-              marginBottom: '20px'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ color: '#666', fontStyle: 'italic' }}>Graph placeholder for {selectedItemForGraph.name}</p>
-                <p style={{ color: '#444', fontSize: '0.8rem' }}>(Historical data collection coming soon)</p>
+            {loadingHistoricalData ? (
+              <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                Loading historical data...
               </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart
+                  data={filteredHistory}
+                  margin={{
+                    top: 5,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    stroke="#888" 
+                    tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  />
+                  <YAxis stroke="#888" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#333', border: '1px solid #555', color: '#fff' }}
+                    labelFormatter={(label) => `Time: ${new Date(label).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
+                    formatter={(value) => [`Stock: ${value.toLocaleString()}`, '']}
+                  />
+                  <Line 
+                    type="stepAfter" 
+                    dataKey="stock" 
+                    stroke="#3498db" 
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 6 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+
+            {/* Time Scale Slider */}
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <label htmlFor="timeScaleSlider" style={{ display: 'block', marginBottom: '10px', color: '#bbb' }}>
+                Time Window: {timeScale} hours
+              </label>
+              <input
+                type="range"
+                id="timeScaleSlider"
+                min="1"
+                max="48"
+                step="1"
+                value={timeScale}
+                onChange={(e) => setTimeScale(parseInt(e.target.value))}
+                style={{ width: '80%', accentColor: '#3498db' }}
+              />
             </div>
             
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

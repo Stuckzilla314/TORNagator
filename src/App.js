@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
 import OverseasStock from './OverseasStock';
@@ -27,6 +27,7 @@ function App() {
     return saved !== null ? JSON.parse(saved) : false;
   });
 
+  const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   // Track travel time for the browser tab title
   const travelTimeLeft = useTravelTimer(
     userData?.profile?.status?.state === 'Traveling' 
@@ -42,32 +43,10 @@ function App() {
     }
   }, [travelTimeLeft, showTabTimer]);
 
-  useEffect(() => {
-    let interval;
-    if (apiKey) {
-      loadData(true);
-      // Polling every 30 seconds to stay well within TORN's 100/min rate limit
-      interval = setInterval(() => {
-        loadData(false);
-      }, 30000);
-    }
-    return () => clearInterval(interval);
-  }, [apiKey]);
-
-  useEffect(() => {
-    localStorage.setItem('show_tab_timer', JSON.stringify(showTabTimer));
-  }, [showTabTimer]);
-
-  useEffect(() => {
-    localStorage.setItem('cargo_capacity', JSON.stringify(cargoCapacity));
-  }, [cargoCapacity]);
-
-  useEffect(() => {
-    localStorage.setItem('manual_override', JSON.stringify(manualOverride));
-  }, [manualOverride]);
-
   // Fetch static item data once
-  const loadData = async (isInitial = false) => {
+  const loadData = useCallback(async (isInitial = false) => {
+    if (!apiKey) return; // Ensure apiKey is available
+
     if (isInitial) setLoading(true);
     setError(null);
     try {
@@ -82,7 +61,6 @@ function App() {
       localStorage.setItem('torn_api_key', apiKey);
     } catch (err) {
       setError(err.message);
-      // Only clear the key if it's explicitly an "Incorrect Key" error from TORN
       if (err.message.toLowerCase().includes('key')) {
         setApiKey('');
         localStorage.removeItem('torn_api_key');
@@ -90,12 +68,32 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiKey, itemsData]); // Dependencies for useCallback
+
+  useEffect(() => {
+    if (apiKey && apiKey !== loadedApiKeyRef.current) {
+      loadData(true);
+      loadedApiKeyRef.current = apiKey; // Update the ref to the current API key
+    }
+  }, [apiKey, loadData]);
+
+  useEffect(() => {
+    localStorage.setItem('show_tab_timer', JSON.stringify(showTabTimer));
+  }, [showTabTimer]);
+
+  useEffect(() => {
+    localStorage.setItem('cargo_capacity', JSON.stringify(cargoCapacity));
+  }, [cargoCapacity]);
+
+  useEffect(() => {
+    localStorage.setItem('manual_override', JSON.stringify(manualOverride));
+  }, [manualOverride]);
 
   const handleLogout = () => {
     setApiKey('');
     setUserData(null);
     localStorage.removeItem('torn_api_key');
+    loadedApiKeyRef.current = null; // Reset the ref on logout
   };
 
   const calculateCapacity = (data) => {
@@ -167,7 +165,7 @@ function App() {
         setCargoCapacity(calculated);
         
         // Merge calculations back into userData for the UI
-        setUserData(prev => prev ? { 
+        setUserData(prev => prev ? {
           ...prev, 
           travel: { ...prev.travel, ...data.travel, calculatedCapacity: calculated },
           inventory: inventoryData
