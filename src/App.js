@@ -12,7 +12,9 @@ function App() {
   const [itemsData, setItemsData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('active_tab') || 'dashboard';
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showTabTimer, setShowTabTimer] = useState(() => {
     const saved = localStorage.getItem('show_tab_timer');
@@ -78,16 +80,36 @@ function App() {
   }, [apiKey, loadData]);
 
   useEffect(() => {
-    localStorage.setItem('show_tab_timer', JSON.stringify(showTabTimer));
+    try {
+      localStorage.setItem('show_tab_timer', JSON.stringify(showTabTimer));
+    } catch (e) {
+      console.warn('LocalStorage quota exceeded: could not save tab timer setting.');
+    }
   }, [showTabTimer]);
 
   useEffect(() => {
-    localStorage.setItem('cargo_capacity', JSON.stringify(cargoCapacity));
+    try {
+      localStorage.setItem('cargo_capacity', JSON.stringify(cargoCapacity));
+    } catch (e) {
+      console.warn('LocalStorage quota exceeded: could not save cargo capacity.');
+    }
   }, [cargoCapacity]);
 
   useEffect(() => {
-    localStorage.setItem('manual_override', JSON.stringify(manualOverride));
+    try {
+      localStorage.setItem('manual_override', JSON.stringify(manualOverride));
+    } catch (e) {
+      console.warn('LocalStorage quota exceeded: could not save manual override.');
+    }
   }, [manualOverride]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('active_tab', activeTab);
+    } catch (e) {
+      console.warn('LocalStorage quota exceeded: could not save active tab.');
+    }
+  }, [activeTab]);
 
   const handleLogout = () => {
     setApiKey('');

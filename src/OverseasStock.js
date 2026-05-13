@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from 'recharts';
+import { db } from './firebase';
+import { collection, addDoc, query, where, orderBy, getDocs, limit, Timestamp, startAfter } from "firebase/firestore";
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
@@ -43,14 +45,20 @@ const YATA_COUNTRY_CODES = {
   "South Africa": "sou"
 };
 
+// Flatten the IDs from our map into a Set for O(1) lookups during background recording
+const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
+
 const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [filter, setFilter] = useState('All');
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
-  const [timeScale, setTimeScale] = useState(48); // New state for time scale in hours
+  const [timeScale, setTimeScale] = useState(24); // Default to 24h to save space
   const [loadingHistoricalData, setLoadingHistoricalData] = useState(false);
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
+
+  // Ref to track the last known stock level written to DB during this session
+  const lastRecordedStockRef = useRef({});
 
   useEffect(() => {
     const fetchYataStock = async () => {
@@ -60,22 +68,34 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
         const data = await response.json();
         setYataData(data);
 
-        // Record real stock levels into local storage history whenever we get a fresh fetch
         if (data && data.stocks) {
-          const now = Date.now();
-          const cutOff = now - (48 * 60 * 60 * 1000); // 48h limit
-
           Object.entries(YATA_COUNTRY_CODES).forEach(([countryName, countryCode]) => {
             const countryInfo = data.stocks[countryCode];
             if (countryInfo && countryInfo.stocks) {
-              const updateTs = countryInfo.update * 1000; // Convert YATA seconds to MS
+              const updateTs = countryInfo.update; // YATA provided seconds
               countryInfo.stocks.forEach(s => {
-                const key = `tornagator_stock_history_${s.id}_${countryName}`;
-                let history = JSON.parse(localStorage.getItem(key) || '[]');
-                if (history.length === 0 || history[history.length - 1].timestamp < updateTs) {
-                  history.push({ timestamp: updateTs, stock: s.quantity });
-                  history = history.filter(p => p.timestamp >= cutOff);
-                  localStorage.setItem(key, JSON.stringify(history));
+                if (!TRACKED_ITEM_IDS.has(s.id)) return;
+
+                const itemKey = `${s.id}_${countryName}`;
+                const lastStock = lastRecordedStockRef.current[itemKey];
+
+                // DELTA COMPRESSION: Only write if the stock level has changed 
+                // or if we haven't recorded anything yet this session.
+                if (lastStock === undefined || lastStock !== s.quantity) {
+                  addDoc(collection(db, "stock_history"), {
+                    itemId: Number(s.id),
+                    itemName: itemsData[s.id]?.name || "Unknown",
+                    country: countryName,
+                    stock: s.quantity,
+                    cost: s.cost,
+                    timestamp: updateTs,
+                    createdAt: Timestamp.now()
+                  }).then(() => {
+                    // Only update the ref if the write actually succeeded
+                    lastRecordedStockRef.current[itemKey] = s.quantity;
+                  }).catch(e => {
+                    console.error(`Firebase write error for ${countryName}/${s.id}:`, e);
+                  });
                 }
               });
             }
@@ -92,44 +112,102 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     // Refresh the table data every minute
     const interval = setInterval(fetchYataStock, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [itemsData]); // Re-run if itemsData becomes available to ensure correct names are saved
 
   // State for historical data, now managed locally
   const [historicalData, setHistoricalData] = useState([]);
-
-  // Helper to manage local storage for historical data
-  const getLocalStorageKey = useCallback((item) => `tornagator_stock_history_${item.id}_${item.country}`, []);
-
-  const loadHistoricalData = useCallback((item) => {
-    const key = getLocalStorageKey(item);
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
-  }, [getLocalStorageKey]);
-
-  const saveHistoricalData = useCallback((item, history) => {
-    const key = getLocalStorageKey(item);
-    localStorage.setItem(key, JSON.stringify(history));
-  }, [getLocalStorageKey]);
+  const [graphError, setGraphError] = useState(null);
 
   useEffect(() => {
-    if (selectedItemForGraph) {
+    const loadHistory = async () => {
+      if (!selectedItemForGraph) return;
+      
       setLoadingHistoricalData(true);
-      const currentHistory = loadHistoricalData(selectedItemForGraph);
-      setHistoricalData(currentHistory);
-      setLoadingHistoricalData(false);
-    } else {
-      setHistoricalData([]);
-    }
-  }, [selectedItemForGraph, yataData, loadHistoricalData]);
+      setGraphError(null);
+      const nowMs = Date.now();
+      const windowStart = Math.floor((nowMs - (timeScale * 60 * 60 * 1000)) / 1000);
+      
+      try {
+        // 1. Fetch the "Seed Point" (the most recent update BEFORE our time window)
+        // This ensures the graph doesn't start at 0 if no changes happened recently.
+        const seedQuery = query(
+          collection(db, "stock_history"),
+          where("itemId", "==", Number(selectedItemForGraph.id)),
+          where("country", "==", selectedItemForGraph.country),
+          where("timestamp", "<", windowStart),
+          orderBy("timestamp", "desc"),
+          limit(1)
+        );
 
-  // Filter history points based on the timeScale slider
-  const windowStart = Date.now() - (timeScale * 60 * 60 * 1000);
-  const realHistory = historicalData.filter(point => point.timestamp >= windowStart);
+        // 2. Fetch all changes WITHIN our time window
+        const windowQuery = query(
+          collection(db, "stock_history"),
+          where("itemId", "==", Number(selectedItemForGraph.id)),
+          where("country", "==", selectedItemForGraph.country),
+          where("timestamp", ">=", windowStart),
+          orderBy("timestamp", "asc")
+        );
 
-  // If we have data, pad the start of the window with 0 to satisfy the "line at zero" requirement
-  const filteredHistory = realHistory.length > 0 
-    ? [{ timestamp: windowStart, stock: 0 }, ...realHistory]
-    : [{ timestamp: windowStart, stock: 0 }, { timestamp: Date.now(), stock: 0 }];
+        const [seedSnap, windowSnap] = await Promise.all([
+          getDocs(seedQuery),
+          getDocs(windowQuery)
+        ]);
+
+        let history = windowSnap.docs.map(doc => ({
+          timestamp: doc.data().timestamp * 1000, // Convert to MS for Recharts
+          stock: doc.data().stock
+        }));
+
+        // If we found a seed point, inject it at the very start of the graph window
+        if (!seedSnap.empty) {
+          const seedData = seedSnap.docs[0].data();
+          history = [
+            { 
+              timestamp: windowStart * 1000, 
+              stock: seedData.stock,
+              isSeed: true 
+            }, 
+            ...history
+          ];
+        }
+        
+        // Fallback: If DB is empty for this window/item, use current live stock 
+        // as a starting point so the user sees a line immediately.
+        if (history.length === 0 && selectedItemForGraph.stockQuantity !== undefined) {
+          history = [
+            { 
+              timestamp: windowStart * 1000, 
+              stock: selectedItemForGraph.stockQuantity,
+              isFallback: true 
+            }
+          ];
+        }
+
+        // Append a point for "Now" so the line draws all the way to the right edge
+        if (history.length > 0) {
+          history.push({
+            timestamp: nowMs,
+            stock: history[history.length - 1].stock,
+            isCurrent: true
+          });
+        }
+
+        setHistoricalData(history);
+      } catch (err) {
+        console.error("Firestore Query Error:", err.message, err);
+        // Check if it's specifically an index error to give better feedback
+        if (err.message?.includes('index')) {
+          setGraphError("Database index is building or missing. Check the browser console for the direct creation link.");
+        } else {
+          setGraphError(`Error: ${err.message}`);
+        }
+      } finally {
+        setLoadingHistoricalData(false);
+      }
+    };
+
+    loadHistory();
+  }, [selectedItemForGraph, timeScale]);
 
 
   const headerStyle = {
@@ -326,19 +404,17 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                   {loadingYata ? (
                     <span style={{ color: '#666' }}>...</span>
                   ) : stockInfo ? (
-                    <div onClick={() => setSelectedItemForGraph(item)} style={{ cursor: 'pointer' }}>
-                      <div 
-                        onClick={() => setSelectedItemForGraph(item)}
-                        style={{ 
-                          fontWeight: 'bold', 
-                          cursor: 'pointer',
-                          color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
-                          textDecoration: 'underline'
-                        }}
-                        title="Click to view stock history"
-                      >
-                        {stockInfo.quantity.toLocaleString()}
-                      </div>
+                    <div 
+                      onClick={() => setSelectedItemForGraph(item)}
+                      style={{ 
+                        fontWeight: 'bold', 
+                        cursor: 'pointer',
+                        color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
+                        textDecoration: 'underline'
+                      }}
+                      title="Click to view stock history"
+                    >
+                      <div>{stockInfo.quantity.toLocaleString()}</div>
                       <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
                         Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
                       </div>
@@ -409,12 +485,14 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
               <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
                 Loading historical data...
               </div>
+            ) : graphError ? (
+              <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4444', textAlign: 'center' }}>{graphError}</div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart
-                  data={filteredHistory}
+                  data={historicalData}
                   margin={{
-                    top: 5,
+                    top: 20,
                     right: 30,
                     left: 20,
                     bottom: 5,
@@ -423,10 +501,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                   <XAxis 
                     dataKey="timestamp" 
+                    type="number"
+                    domain={[Date.now() - (timeScale * 60 * 60 * 1000), Date.now()]}
                     stroke="#888" 
                     tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   />
-                  <YAxis stroke="#888" />
+                  <YAxis stroke="#888" domain={[0, (dataMax) => Math.max(dataMax + 10, 10)]} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#333', border: '1px solid #555', color: '#fff' }}
                     labelFormatter={(label) => `Time: ${new Date(label).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
