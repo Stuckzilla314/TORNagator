@@ -4,6 +4,8 @@ const SettingsMenu = ({
   userData, 
   showTabTimer, 
   setShowTabTimer, 
+  autoSyncStock,
+  setAutoSyncStock,
   cargoCapacity, 
   setCargoCapacity, 
   manualOverride, 
@@ -44,6 +46,28 @@ const SettingsMenu = ({
         <input 
           type="checkbox" 
           checked={showTabTimer} 
+          onChange={() => {}}
+          style={{ cursor: 'pointer', pointerEvents: 'none' }}
+        />
+      </div>
+
+      <div 
+        onClick={() => setAutoSyncStock(prev => !prev)}
+        style={{
+          padding: '8px 12px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: '4px',
+          backgroundColor: autoSyncStock ? 'rgba(52, 152, 219, 0.1)' : 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <span style={{ fontSize: '0.9rem' }}>Auto-Sync Stock</span>
+        <input 
+          type="checkbox" 
+          checked={autoSyncStock} 
           onChange={() => {}}
           style={{ cursor: 'pointer', pointerEvents: 'none' }}
         />

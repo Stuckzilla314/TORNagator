@@ -20,6 +20,10 @@ function App() {
     const saved = localStorage.getItem('show_tab_timer');
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [autoSyncStock, setAutoSyncStock] = useState(() => {
+    const saved = localStorage.getItem('auto_sync_stock');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [cargoCapacity, setCargoCapacity] = useState(() => {
     const saved = localStorage.getItem('cargo_capacity');
     return saved !== null ? JSON.parse(saved) : 5;
@@ -86,6 +90,14 @@ function App() {
       console.warn('LocalStorage quota exceeded: could not save tab timer setting.');
     }
   }, [showTabTimer]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('auto_sync_stock', JSON.stringify(autoSyncStock));
+    } catch (e) {
+      console.warn('LocalStorage quota exceeded: could not save auto sync stock setting.');
+    }
+  }, [autoSyncStock]);
 
   useEffect(() => {
     try {
@@ -235,6 +247,8 @@ function App() {
               userData={userData}
               showTabTimer={showTabTimer}
               setShowTabTimer={setShowTabTimer}
+              autoSyncStock={autoSyncStock}
+              setAutoSyncStock={setAutoSyncStock}
               cargoCapacity={cargoCapacity}
               setCargoCapacity={setCargoCapacity}
               manualOverride={manualOverride}
@@ -264,7 +278,7 @@ function App() {
           {activeTab === 'dashboard' ? (
             <UserDashboard userData={userData} onLogout={handleLogout} />
           ) : (
-            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} />
+            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={autoSyncStock} />
           )}
         </>
       )}

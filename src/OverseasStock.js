@@ -48,7 +48,7 @@ const YATA_COUNTRY_CODES = {
 // Flatten the IDs from our map into a Set for O(1) lookups during background recording
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
-const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
+const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock }) => {
   const [filter, setFilter] = useState('All');
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
@@ -57,7 +57,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
+  const fetchStockData = useCallback(async () => {
+    setLoadingYata(true);
+    try {
+      const snap = await getDoc(doc(db, "stock_metadata", "snapshot"));
+      if (snap.exists()) {
+        setYataData({ stocks: snap.data().stocks || {} });
+      }
+    } catch (err) {
+      console.error("Firestore fetch error:", err);
+    } finally {
+      setLoadingYata(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (!autoSyncStock) {
+      fetchStockData();
+      return;
+    }
+
     setLoadingYata(true);
 
     // Use real-time listener for the pre-computed snapshot document
@@ -75,7 +94,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
     );
 
     return () => unsubscribe();
-  }, [itemsData]);
+  }, [itemsData, autoSyncStock, fetchStockData]);
 
   // State for historical data, now managed locally
   const [historicalData, setHistoricalData] = useState([]);
@@ -292,7 +311,31 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5 }) => {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
+          {!autoSyncStock && (
+            <button
+              onClick={fetchStockData}
+              disabled={loadingYata}
+              style={{
+                background: 'none',
+                border: '1px solid #444',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                cursor: loadingYata ? 'not-allowed' : 'pointer',
+                color: loadingYata ? '#666' : '#3498db',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s',
+                opacity: loadingYata ? 0.5 : 1
+              }}
+              title="Refresh Stock Data"
+            >
+              🔄
+            </button>
+          )}
+        </div>
         <select 
           value={filter} 
           onChange={(e) => setFilter(e.target.value)}
