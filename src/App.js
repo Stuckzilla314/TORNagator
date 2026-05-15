@@ -222,11 +222,18 @@ function App() {
     }
   }, [apiKey]);
 
+  const hasInitialSyncRun = useRef(false);
+  const hasFactionSyncRun = useRef(false);
+  const hasOverseasSyncRun = useRef(false);
+
   // Always recurring dashboard fetch (user data only)
   useEffect(() => {
     let interval;
     if (apiKey) {
-      loadDashboardData(true);
+      if (!hasInitialSyncRun.current) {
+        hasInitialSyncRun.current = true;
+        loadDashboardData(true);
+      }
       interval = setInterval(() => {
         loadDashboardData(false);
       }, 30000);
@@ -234,10 +241,15 @@ function App() {
     return () => clearInterval(interval);
   }, [apiKey, loadDashboardData]);
 
-  // Fetch faction data whenever the faction tab is activated (not on a timer)
+  // Fetch faction data whenever the faction tab is activated
   useEffect(() => {
     if (apiKey && activeTab === 'faction') {
-      loadFactionData();
+      if (!hasFactionSyncRun.current) {
+        hasFactionSyncRun.current = true;
+        loadFactionData();
+      }
+    } else {
+      hasFactionSyncRun.current = false;
     }
   }, [apiKey, activeTab, loadFactionData]);
 
@@ -245,8 +257,13 @@ function App() {
   useEffect(() => {
     let interval;
     if (apiKey && activeTab === 'stock' && stockAutoSync) {
-      loadOverseasData();
+      if (!hasOverseasSyncRun.current) {
+        hasOverseasSyncRun.current = true;
+        loadOverseasData();
+      }
       interval = setInterval(loadOverseasData, 30000);
+    } else if (activeTab !== 'stock') {
+      hasOverseasSyncRun.current = false;
     }
     return () => {
       if (interval) clearInterval(interval);
