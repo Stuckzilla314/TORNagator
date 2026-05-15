@@ -92,7 +92,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
   useEffect(() => {
     let unsubscribe = null;
-    
+
     if (!autoSyncStock) {
       // If auto-sync is off, we do NOT fetch on mount/refresh anymore.
       // Data will only be loaded from cache or manual refresh.
@@ -258,19 +258,31 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   if (!itemsData) return (
     <div style={{ textAlign: 'center', padding: '4rem' }}>
       <p style={{ color: '#888', marginBottom: '1.5rem' }}>Item data has not been loaded yet.</p>
-      <button 
+      <button
         onClick={handleManualSync}
         style={{
-          backgroundColor: '#3498db',
-          color: 'white',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '4px',
+          background: 'transparent',
+          border: '1px solid #3498db',
+          padding: '10px 28px',
+          borderRadius: '30px',
           cursor: 'pointer',
-          fontWeight: 'bold'
+          color: '#3498db',
+          fontWeight: '600',
+          fontSize: '0.85rem',
+          letterSpacing: '2px',
+          transition: 'all 0.3s ease',
+          boxShadow: '0 0 15px rgba(52, 152, 219, 0.1)'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
+          e.currentTarget.style.boxShadow = '0 0 20px rgba(52, 152, 219, 0.2)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+          e.currentTarget.style.boxShadow = '0 0 15px rgba(52, 152, 219, 0.1)';
         }}
       >
-        Fetch Item & Inventory Data
+        INITIALIZE CATALOG 🔄
       </button>
     </div>
   );
@@ -359,21 +371,37 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             onClick={handleManualSync}
             disabled={loadingYata}
             style={{
-              background: 'none',
-              border: '1px solid #444',
-              borderRadius: '4px',
-              padding: '4px 8px',
+              background: 'transparent',
+              border: `1px solid ${loadingYata ? '#222' : '#444'}`,
+              borderRadius: '20px',
+              padding: '4px 12px',
               cursor: loadingYata ? 'not-allowed' : 'pointer',
               color: loadingYata ? '#666' : '#3498db',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s',
-              opacity: loadingYata ? 0.5 : 1
+              gap: '6px',
+              fontWeight: '600',
+              fontSize: '0.75rem',
+              letterSpacing: '1px',
+              transition: 'all 0.3s ease',
+              opacity: loadingYata ? 0.6 : 1
+            }}
+            onMouseEnter={(e) => { 
+              if (!loadingYata) {
+                e.currentTarget.style.borderColor = '#3498db';
+                e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
+              }
+            }}
+            onMouseLeave={(e) => { 
+              if (!loadingYata) {
+                e.currentTarget.style.borderColor = '#444';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }
             }}
             title="Refresh Stock & Inventory"
           >
-            🔄
+            <span style={{ marginTop: '1px' }}>{loadingYata ? 'SYNCING...' : 'SYNC'}</span>
+            <span style={{ fontSize: '0.9rem' }}>🔄</span>
           </button>
         </div>
         <select
