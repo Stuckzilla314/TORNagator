@@ -50,6 +50,7 @@ function useLocalStorage(key, initialValue) {
     const ownedKeys = new Set([
       'torn_api_key', 'active_tab', 'show_tab_timer',
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
+      'tornagator_items_cache'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -74,6 +75,7 @@ function App() {
       'tornagator_stock_auto_sync',
       'cargo_capacity',
       'manual_override',
+      'tornagator_items_cache'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -167,6 +169,31 @@ function App() {
     }
   }, [apiKey]);
 
+  // Load cached items/inventory on mount
+  useEffect(() => {
+    try {
+      // 1. Items Data (LocalStorage - long lived)
+      const cachedItemsRaw = localStorage.getItem('tornagator_items_cache');
+      if (cachedItemsRaw) {
+        const { data, timestamp } = JSON.parse(cachedItemsRaw);
+        // Cache valid for 24 hours
+        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          setItemsData(data);
+          itemsDataRef.current = data;
+        }
+      }
+
+      // 2. Inventory (SessionStorage - survives refresh but tab-specific)
+      const cachedInvRaw = sessionStorage.getItem('tornagator_inventory_cache');
+      if (cachedInvRaw) {
+        const inventory = JSON.parse(cachedInvRaw);
+        setUserData(prev => prev ? { ...prev, inventory } : { inventory });
+      }
+    } catch (e) {
+      console.warn("Cache restoration failed:", e);
+    }
+  }, []);
+
   // Fetch Overseas Stock data (Inventory & Items)
   const loadOverseasData = useCallback(async () => {
     if (!apiKey) return;
@@ -180,8 +207,16 @@ function App() {
       if (!currentItems) {
         itemsDataRef.current = items;
         setItemsData(items);
+        try {
+          localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
+        } catch (e) { console.warn("Items cache failed:", e); }
       }
+      
       setUserData(prev => prev ? { ...prev, inventory } : { inventory });
+      try {
+        sessionStorage.setItem('tornagator_inventory_cache', JSON.stringify(inventory));
+      } catch (e) { console.warn("Inventory cache failed:", e); }
+      
     } catch (err) {
       console.error("Overseas Data Fetch Error:", err);
     }
@@ -206,23 +241,17 @@ function App() {
     }
   }, [apiKey, activeTab, loadFactionData]);
 
-  // Overseas fetch based on stockAutoSync
+  // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {
     let interval;
-    if (apiKey) {
-      if (stockAutoSync) {
-        loadOverseasData();
-        interval = setInterval(() => {
-          loadOverseasData();
-        }, 30000);
-      } else {
-        if (!itemsDataRef.current) {
-          loadOverseasData();
-        }
-      }
+    if (apiKey && activeTab === 'stock' && stockAutoSync) {
+      loadOverseasData();
+      interval = setInterval(loadOverseasData, 30000);
     }
-    return () => clearInterval(interval);
-  }, [apiKey, stockAutoSync, loadOverseasData]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [apiKey, activeTab, stockAutoSync, loadOverseasData]);
 
   const handleLogout = () => {
     setApiKey('');

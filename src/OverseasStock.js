@@ -57,12 +57,24 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
+  // Load cached stock data on mount
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem('tornagator_yata_cache');
+      if (cached) {
+        setYataData(JSON.parse(cached));
+      }
+    } catch (e) { console.warn("Yata cache restoration failed:", e); }
+  }, []);
+
   const fetchStockData = useCallback(async () => {
     setLoadingYata(true);
     try {
       const snap = await getDoc(doc(db, "stock_metadata", "snapshot"));
       if (snap.exists()) {
-        setYataData({ stocks: snap.data().stocks || {} });
+        const data = { stocks: snap.data().stocks || {} };
+        setYataData(data);
+        sessionStorage.setItem('tornagator_yata_cache', JSON.stringify(data));
       }
     } catch (err) {
       console.error("Firestore fetch error:", err);
@@ -79,18 +91,21 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   }, [fetchStockData, onManualSync]);
 
   useEffect(() => {
+    let unsubscribe = null;
+    
     if (!autoSyncStock) {
-      fetchStockData();
+      // If auto-sync is off, we do NOT fetch on mount/refresh anymore.
+      // Data will only be loaded from cache or manual refresh.
       return;
     }
 
     setLoadingYata(true);
-
-    // Use real-time listener for the pre-computed snapshot document
-    const unsubscribe = onSnapshot(doc(db, "stock_metadata", "snapshot"),
+    unsubscribe = onSnapshot(doc(db, "stock_metadata", "snapshot"),
       (snap) => {
         if (snap.exists()) {
-          setYataData({ stocks: snap.data().stocks || {} });
+          const data = { stocks: snap.data().stocks || {} };
+          setYataData(data);
+          sessionStorage.setItem('tornagator_yata_cache', JSON.stringify(data));
         }
         setLoadingYata(false);
       },
@@ -100,8 +115,10 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       }
     );
 
-    return () => unsubscribe();
-  }, [itemsData, autoSyncStock, fetchStockData]);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [autoSyncStock]);
 
   // State for historical data, now managed locally
   const [historicalData, setHistoricalData] = useState([]);
@@ -238,7 +255,25 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   };
 
   // Flatten mapping into items with pre-calculated values for sorting
-  if (!itemsData) return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading items...</div>;
+  if (!itemsData) return (
+    <div style={{ textAlign: 'center', padding: '4rem' }}>
+      <p style={{ color: '#888', marginBottom: '1.5rem' }}>Item data has not been loaded yet.</p>
+      <button 
+        onClick={handleManualSync}
+        style={{
+          backgroundColor: '#3498db',
+          color: 'white',
+          border: 'none',
+          padding: '10px 20px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontWeight: 'bold'
+        }}
+      >
+        Fetch Item & Inventory Data
+      </button>
+    </div>
+  );
 
   const processedItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) =>
     ids.map(id => {
@@ -320,28 +355,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
-          {!autoSyncStock && (
-            <button
-              onClick={handleManualSync}
-              disabled={loadingYata}
-              style={{
-                background: 'none',
-                border: '1px solid #444',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                cursor: loadingYata ? 'not-allowed' : 'pointer',
-                color: loadingYata ? '#666' : '#3498db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s',
-                opacity: loadingYata ? 0.5 : 1
-              }}
-              title="Refresh Stock Data"
-            >
-              🔄
-            </button>
-          )}
+          <button
+            onClick={handleManualSync}
+            disabled={loadingYata}
+            style={{
+              background: 'none',
+              border: '1px solid #444',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              cursor: loadingYata ? 'not-allowed' : 'pointer',
+              color: loadingYata ? '#666' : '#3498db',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s',
+              opacity: loadingYata ? 0.5 : 1
+            }}
+            title="Refresh Stock & Inventory"
+          >
+            🔄
+          </button>
         </div>
         <select
           value={filter}

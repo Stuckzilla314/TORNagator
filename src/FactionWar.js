@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { fetchFactionById } from './tornApi';
 
 const FactionWar = ({ apiKey, factionData }) => {
@@ -8,46 +8,44 @@ const FactionWar = ({ apiKey, factionData }) => {
   const [isLoadingTargets, setIsLoadingTargets] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
   const [errorTargets, setErrorTargets] = useState(null);
+  const [cachedAt, setCachedAt] = useState(null);
 
-  if (!factionData) {
-    return <div style={{ textAlign: 'center', marginTop: '2rem' }}>Loading Faction Data...</div>;
-  }
-
-  const cardStyle = {
-    backgroundColor: '#1e1e1e',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    border: '1px solid #333',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-    marginBottom: '2rem'
-  };
-
-  const labelStyle = {
-    color: '#888',
-    fontSize: '0.85rem',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    marginBottom: '4px'
-  };
-
-  const valueStyle = {
-    fontSize: '1.1rem',
-    fontWeight: '500',
-    color: '#fff'
-  };
-
-  const rankedWars = factionData.ranked_wars || {};
+  // Derive war state from factionData (safe to do before the guard — factionData may be null)
+  const rankedWars = factionData?.ranked_wars || {};
   const activeWars = Object.values(rankedWars);
   const isInWar = activeWars.length > 0;
 
   let firstEnemyFactionId = null;
-  if (isInWar) {
+  if (isInWar && factionData) {
     const factionsEntries = Object.entries(activeWars[0].factions || {}).map(([id, f]) => ({ id, ...f }));
     const enemyInfo = factionsEntries.find(f => f.name !== factionData.name) || {};
     firstEnemyFactionId = enemyInfo.id;
   }
 
-  const handleFetchTargets = async () => {
+  const cacheKey = firstEnemyFactionId ? `tornagator_targets_${firstEnemyFactionId}` : null;
+
+  // Load from sessionStorage cache on mount (or when cacheKey changes)
+  useEffect(() => {
+    if (!cacheKey) return;
+    try {
+      const raw = sessionStorage.getItem(cacheKey);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        setEnemyFactionData(cached.factionData);
+        setMemberProfiles(cached.profiles);
+        setCachedAt(cached.fetchedAt);
+      }
+    } catch (e) {
+      sessionStorage.removeItem(cacheKey);
+    }
+  }, [cacheKey]);
+
+  // Early return AFTER all hooks
+  if (!factionData) {
+    return <div style={{ textAlign: 'center', marginTop: '2rem' }}>Loading Faction Data...</div>;
+  }
+
+  const doFetchTargets = async () => {
     if (!firstEnemyFactionId || !apiKey) return;
     setIsLoadingTargets(true);
     setErrorTargets(null);
@@ -55,7 +53,6 @@ const FactionWar = ({ apiKey, factionData }) => {
     try {
       const data = await fetchFactionById(apiKey, firstEnemyFactionId);
       setEnemyFactionData(data);
-      // Now fetch individual profiles for all members
       const memberIds = Object.keys(data.members || {});
       setLoadingProgress({ done: 0, total: memberIds.length });
       const BATCH_SIZE = 5;
@@ -80,11 +77,55 @@ const FactionWar = ({ apiKey, factionData }) => {
         }
       }
       setMemberProfiles(profiles);
+      const fetchedAt = Date.now();
+      setCachedAt(fetchedAt);
+      // Persist to sessionStorage
+      if (cacheKey) {
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ factionData: data, profiles, fetchedAt }));
+        } catch (e) {
+          console.warn('[TORNagator] sessionStorage full, targets not cached:', e);
+        }
+      }
     } catch (err) {
-      setErrorTargets("Failed to fetch targets.");
+      setErrorTargets('Failed to fetch targets.');
     } finally {
       setIsLoadingTargets(false);
     }
+  };
+
+  // Called when navigating to the targets tab — uses cache if available
+  const handleLoadTargets = () => {
+    if (!enemyFactionData) doFetchTargets();
+  };
+
+  // Called by the Refresh button — always bypasses cache
+  const handleForceRefresh = () => {
+    if (cacheKey) sessionStorage.removeItem(cacheKey);
+    doFetchTargets();
+  };
+
+  const cardStyle = {
+    backgroundColor: '#1e1e1e',
+    padding: '1.5rem',
+    borderRadius: '12px',
+    border: '1px solid #333',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+    marginBottom: '2rem'
+  };
+
+  const labelStyle = {
+    color: '#888',
+    fontSize: '0.85rem',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    marginBottom: '4px'
+  };
+
+  const valueStyle = {
+    fontSize: '1.1rem',
+    fontWeight: '500',
+    color: '#fff'
   };
 
   const navItemStyle = (tab) => ({
@@ -118,7 +159,7 @@ const FactionWar = ({ apiKey, factionData }) => {
           <div style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</div>
           <div style={navItemStyle('targets')} onClick={() => {
             setActiveSubTab('targets');
-            if (!enemyFactionData) handleFetchTargets();
+            handleLoadTargets();
           }}>Enemy Targets</div>
         </nav>
       )}
@@ -201,12 +242,17 @@ const FactionWar = ({ apiKey, factionData }) => {
 
       {activeSubTab === 'targets' && isInWar && (
         <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: cachedAt ? '0.5rem' : '1.5rem' }}>
             <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem' }}>🎯 Target Selection</h3>
-            <button onClick={handleFetchTargets} disabled={isLoadingTargets} style={{ padding: '8px 16px', backgroundColor: isLoadingTargets ? '#222' : '#333', color: isLoadingTargets ? '#666' : '#fff', border: '1px solid #555', borderRadius: '4px', cursor: isLoadingTargets ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-              {isLoadingTargets ? 'Loading...' : 'Refresh Targets'}
+            <button onClick={handleForceRefresh} disabled={isLoadingTargets} style={{ padding: '8px 16px', backgroundColor: isLoadingTargets ? '#222' : '#333', color: isLoadingTargets ? '#666' : '#fff', border: '1px solid #555', borderRadius: '4px', cursor: isLoadingTargets ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+              {isLoadingTargets ? 'Loading...' : '🔄 Refresh Targets'}
             </button>
           </div>
+          {cachedAt && !isLoadingTargets && (
+            <div style={{ fontSize: '0.78rem', color: '#555', marginBottom: '1.5rem' }}>
+              ✅ Cached — last fetched {new Date(cachedAt).toLocaleTimeString()}. Click Refresh to update.
+            </div>
+          )}
 
           {isLoadingTargets ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
