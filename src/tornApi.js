@@ -66,6 +66,25 @@ export const fetchFactionData = async (apiKey) => {
   }
 };
 
+/**
+ * Fetches basic faction data for a specific faction ID
+ * @param {string} apiKey - The user's private API key
+ * @param {string|number} factionId - The ID of the faction to fetch
+ */
+export const fetchFactionById = async (apiKey, factionId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/faction/${factionId}?selections=basic&key=${apiKey}`);
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error.error || 'Unknown API Error');
+    }
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const fetchTornItems = async (apiKey) => {
   try {
     const response = await fetch(`${BASE_URL}/torn/?selections=items&key=${apiKey}`);

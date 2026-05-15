@@ -1,6 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { fetchFactionById } from './tornApi';
 
-const FactionWar = ({ factionData }) => {
+const FactionWar = ({ apiKey, factionData }) => {
+  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [enemyFactionData, setEnemyFactionData] = useState(null);
+  const [isLoadingTargets, setIsLoadingTargets] = useState(false);
+  const [errorTargets, setErrorTargets] = useState(null);
+
   if (!factionData) {
     return <div style={{ textAlign: 'center', marginTop: '2rem' }}>Loading Faction Data...</div>;
   }
@@ -32,6 +38,37 @@ const FactionWar = ({ factionData }) => {
   const activeWars = Object.values(rankedWars);
   const isInWar = activeWars.length > 0;
 
+  let firstEnemyFactionId = null;
+  if (isInWar) {
+    const factionsEntries = Object.entries(activeWars[0].factions || {}).map(([id, f]) => ({ id, ...f }));
+    const enemyInfo = factionsEntries.find(f => f.name !== factionData.name) || {};
+    firstEnemyFactionId = enemyInfo.id;
+  }
+
+  const handleFetchTargets = async () => {
+    if (!firstEnemyFactionId || !apiKey) return;
+    setIsLoadingTargets(true);
+    setErrorTargets(null);
+    try {
+      const data = await fetchFactionById(apiKey, firstEnemyFactionId);
+      setEnemyFactionData(data);
+    } catch (err) {
+      setErrorTargets("Failed to fetch targets.");
+    } finally {
+      setIsLoadingTargets(false);
+    }
+  };
+
+  const navItemStyle = (tab) => ({
+    padding: '10px 20px',
+    cursor: 'pointer',
+    borderBottom: activeSubTab === tab ? '2px solid #e74c3c' : '2px solid transparent',
+    color: activeSubTab === tab ? '#e74c3c' : '#888',
+    fontWeight: 'bold',
+    transition: 'all 0.3s ease',
+    display: 'inline-block'
+  });
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <header style={{ marginBottom: '2rem' }}>
@@ -48,7 +85,19 @@ const FactionWar = ({ factionData }) => {
         </div>
       </header>
 
-      {isInWar ? (
+      {isInWar && (
+        <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333' }}>
+          <div style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</div>
+          <div style={navItemStyle('targets')} onClick={() => {
+            setActiveSubTab('targets');
+            if (!enemyFactionData) handleFetchTargets();
+          }}>Enemy Targets</div>
+        </nav>
+      )}
+
+      {activeSubTab === 'overview' && (
+        <>
+          {isInWar ? (
         activeWars.map((war, index) => {
           const factionsEntries = Object.entries(war.factions || {}).map(([id, f]) => ({ id, ...f }));
 
@@ -116,9 +165,60 @@ const FactionWar = ({ factionData }) => {
           <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Leader</div><div style={valueStyle}>{factionData.leader !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData.leader}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3498db', textDecoration: 'none' }}>{factionData.leader_name} [{factionData.leader}]</a> : 'Unknown'}</div></div>
           <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Co-Leader</div><div style={valueStyle}>{factionData['co-leader'] !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData['co-leader']}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3498db', textDecoration: 'none' }}>{factionData.co_leader_name} [{factionData['co-leader']}]</a> : 'Unknown'}</div></div>
           <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Age</div><div style={valueStyle}>{factionData.age || 'N/A'} days</div></div>
-          <div style={{ marginBottom: '0' }}><div style={labelStyle}>Members</div><div style={valueStyle}>{Object.keys(factionData.members || {}).length}</div></div>
+            <div style={{ marginBottom: '0' }}><div style={labelStyle}>Members</div><div style={valueStyle}>{Object.keys(factionData.members || {}).length}</div></div>
+          </div>
         </div>
-      </div>
+        </>
+      )}
+
+      {activeSubTab === 'targets' && isInWar && (
+         <div style={cardStyle}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+             <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem' }}>🎯 Target Selection</h3>
+             <button onClick={handleFetchTargets} style={{ padding: '8px 16px', backgroundColor: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+               Refresh Targets
+             </button>
+           </div>
+           
+           {isLoadingTargets ? (
+             <div style={{ textAlign: 'center', padding: '2rem', fontSize: '1.2rem', color: '#aaa' }}>Loading target data...</div>
+           ) : errorTargets ? (
+             <div style={{ color: '#e74c3c', textAlign: 'center', padding: '2rem' }}>{errorTargets}</div>
+           ) : enemyFactionData && enemyFactionData.members ? (
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+               {Object.entries(enemyFactionData.members)
+                  .map(([id, member]) => ({ id, ...member }))
+                  .sort((a, b) => {
+                     const aOkay = a.status.state === 'Okay' ? 0 : 1;
+                     const bOkay = b.status.state === 'Okay' ? 0 : 1;
+                     if (aOkay !== bOkay) return aOkay - bOkay;
+                     return a.level - b.level;
+                  })
+                  .map((member) => {
+                     const isOkay = member.status.state === 'Okay';
+                     const statusColor = isOkay ? '#2ecc71' : member.status.state === 'Hospital' ? '#e74c3c' : member.status.state === 'Jail' ? '#f39c12' : '#3498db';
+                     return (
+                       <div key={member.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', backgroundColor: '#222', borderRadius: '8px', borderLeft: `6px solid ${statusColor}`, transition: 'transform 0.2s', ':hover': { transform: 'scale(1.01)' } }}>
+                         <div style={{ flex: 1 }}>
+                           <a href={`https://www.torn.com/profiles.php?XID=${member.id}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                             {member.name} [{member.id}]
+                           </a>
+                           <div style={{ fontSize: '0.9rem', color: '#aaa', marginTop: '6px' }}>Level {member.level} • Last action: {member.last_action?.relative || 'Unknown'}</div>
+                         </div>
+                         <div style={{ textAlign: 'right', flex: 1 }}>
+                           <div style={{ color: statusColor, fontWeight: 'bold', fontSize: '1.1rem' }}>{member.status.state}</div>
+                           <div style={{ fontSize: '0.85rem', color: '#888', marginTop: '4px' }}>{member.status.description.replace(/<[^>]+>/g, '')}</div>
+                         </div>
+                       </div>
+                     );
+                  })
+               }
+             </div>
+           ) : (
+             <div style={{ textAlign: 'center', padding: '2rem' }}>No targets found.</div>
+           )}
+         </div>
+      )}
     </div>
   );
 };

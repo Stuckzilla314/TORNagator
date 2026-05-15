@@ -325,7 +325,7 @@ function App() {
           {activeTab === 'dashboard' ? (
             <UserDashboard userData={userData} onLogout={handleLogout} />
           ) : activeTab === 'faction' ? (
-            <FactionWar factionData={factionData} userData={userData} />
+            <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} />
           ) : (
             <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={autoSyncStock} onManualSync={loadOverseasData} />
           )}
