@@ -36,7 +36,7 @@ const FactionWar = ({ factionData }) => {
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
-          {factionData.name} <span style={{ color: '#666', fontSize: '1.5rem' }}>[{factionData.tag}]</span>
+          <a href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{factionData.name}</a> <span style={{ color: '#666', fontSize: '1.5rem' }}>[{factionData.tag}]</span>
         </h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px' }}>
           <span style={{ backgroundColor: '#333', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
@@ -75,7 +75,9 @@ const FactionWar = ({ factionData }) => {
                 </div>
                 <div style={{ display: 'flex', gap: '2rem', textAlign: 'center', flexWrap: 'wrap' }}>
                   <div>
-                    <div style={{ ...labelStyle, color: '#aaa' }}>{factionData.name}</div>
+                    <div style={{ ...labelStyle, color: '#aaa' }}>
+                      <a href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{factionData.name}</a>
+                    </div>
                     <div style={{ ...valueStyle, fontSize: '2rem', color: '#3498db' }}>{ourFactionScore}</div>
                   </div>
                   <div style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
