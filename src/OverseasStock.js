@@ -225,7 +225,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     fontWeight: 'bold',
     textTransform: 'uppercase',
     borderBottom: '2px solid #333',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    whiteSpace: 'nowrap'
   };
 
   const cellStyle = {
@@ -418,14 +419,46 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e0e0e0' }}>
           <thead>
             <tr>
-              <th style={headerStyle} onClick={() => requestSort('name')}>Item Name {renderSortIndicator('name')}</th>
-              <th style={headerStyle} onClick={() => requestSort('country')}>Country {renderSortIndicator('country')}</th>
-              <th style={{ ...headerStyle, textAlign: 'center' }} onClick={() => requestSort('owned')}>Owned {renderSortIndicator('owned')}</th>
-              <th style={headerStyle} onClick={() => requestSort('buy_price')}>Buy Price {renderSortIndicator('buy_price')}</th>
-              <th style={headerStyle} onClick={() => requestSort('market_value')}>Market Value {renderSortIndicator('market_value')}</th>
-              <th style={headerStyle} onClick={() => requestSort('bagProfit')}>Bag Profit {renderSortIndicator('bagProfit')}</th>
-              <th style={headerStyle} onClick={() => requestSort('bagProfitPerHour')}>Profit/hr {renderSortIndicator('bagProfitPerHour')}</th>
-              <th style={{ ...headerStyle, textAlign: 'center' }} onClick={() => requestSort('stockQuantity')}>Stock {renderSortIndicator('stockQuantity')}</th>
+              <th style={headerStyle} onClick={() => requestSort('name')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Item Name {renderSortIndicator('name')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('country')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Country {renderSortIndicator('country')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('owned')}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  Owned {renderSortIndicator('owned')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('buy_price')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Buy Price {renderSortIndicator('buy_price')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('market_value')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Market Value {renderSortIndicator('market_value')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('bagProfit')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Bag Profit {renderSortIndicator('bagProfit')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('bagProfitPerHour')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Profit/hr {renderSortIndicator('bagProfitPerHour')}
+                </div>
+              </th>
+              <th style={headerStyle} onClick={() => requestSort('stockQuantity')}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  Stock {renderSortIndicator('stockQuantity')}
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
