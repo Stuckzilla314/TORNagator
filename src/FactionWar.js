@@ -1,6 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { fetchFactionById } from './tornApi';
 
+import { useWarTimer } from './useWarTimer';
+
+const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle }) => {
+  const factionsEntries = Object.entries(war.factions || {}).map(([id, f]) => ({ id, ...f }));
+  const ourFactionInfo = factionsEntries.find(f => f.name === factionData.name) || {};
+  const ourFactionScore = ourFactionInfo.score || 0;
+
+  const enemyFactionInfo = factionsEntries.find(f => f.name !== factionData.name) || {};
+  const enemyFactionId = enemyFactionInfo.id || '';
+  const enemyFactionName = enemyFactionInfo.name || 'Unknown Faction';
+  const enemyFactionScore = enemyFactionInfo.score || 0;
+
+  const targetScore = war.war.target || 'N/A';
+  const startTime = war.war.start;
+  const timer = useWarTimer(startTime);
+
+  return (
+    <div style={{ ...cardStyle, border: `1px solid ${timer.isFuture ? '#f1c40f' : '#e74c3c'}`, background: timer.isFuture ? 'linear-gradient(145deg, #1e1e1e, #2c251a)' : 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h3 style={{ marginTop: 0, color: timer.isFuture ? '#f1c40f' : '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
+            {timer.isFuture ? '⏳ Upcoming Ranked War' : '⚔️ Active Ranked War'}
+          </h3>
+          <p style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
+            vs <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>{enemyFactionName}</a>
+          </p>
+          <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+            <div style={{ ...labelStyle, color: '#888', fontSize: '0.75rem' }}>
+              Scheduled: {new Date(startTime * 1000).toLocaleString()}
+            </div>
+            <div style={{ ...labelStyle, color: timer.isFuture ? '#f1c40f' : '#3498db', fontSize: '0.75rem', fontWeight: 'bold' }}>
+              {timer.status}: {timer.display}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '2rem', textAlign: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ ...labelStyle, color: '#aaa' }}>
+              <a href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{factionData.name}</a>
+            </div>
+            <div style={{ ...valueStyle, fontSize: '2rem', color: '#3498db' }}>{ourFactionScore}</div>
+          </div>
+          <div style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
+          <div>
+            <div style={{ ...labelStyle, color: '#aaa' }}>
+              <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{enemyFactionName}</a>
+            </div>
+            <div style={{ ...valueStyle, fontSize: '2rem', color: '#e74c3c' }}>{enemyFactionScore}</div>
+          </div>
+          <div style={{ alignSelf: 'center', borderLeft: '1px solid #444', height: '50px', margin: '0 10px' }}></div>
+          <div>
+            <div style={{ ...labelStyle, color: '#aaa' }}>Target Score</div>
+            <div style={{ ...valueStyle, fontSize: '2rem', color: '#f1c40f' }}>{targetScore}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const FactionWar = ({ apiKey, factionData }) => {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [enemyFactionData, setEnemyFactionData] = useState(null);
@@ -167,54 +227,16 @@ const FactionWar = ({ apiKey, factionData }) => {
       {activeSubTab === 'overview' && (
         <>
           {isInWar ? (
-            activeWars.map((war, index) => {
-              const factionsEntries = Object.entries(war.factions || {}).map(([id, f]) => ({ id, ...f }));
-
-              const ourFactionInfo = factionsEntries.find(f => f.name === factionData.name) || {};
-              const ourFactionScore = ourFactionInfo.score || 0;
-
-              const enemyFactionInfo = factionsEntries.find(f => f.name !== factionData.name) || {};
-              const enemyFactionId = enemyFactionInfo.id || '';
-              const enemyFactionName = enemyFactionInfo.name || 'Unknown Faction';
-              const enemyFactionScore = enemyFactionInfo.score || 0;
-
-              const targetScore = war.war.target || 'N/A';
-
-              return (
-                <div key={index} style={{ ...cardStyle, border: '1px solid #e74c3c', background: 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
-                        ⚔️ Active Ranked War
-                      </h3>
-                      <p style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                        vs <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>{enemyFactionName}</a>
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '2rem', textAlign: 'center', flexWrap: 'wrap' }}>
-                      <div>
-                        <div style={{ ...labelStyle, color: '#aaa' }}>
-                          <a href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{factionData.name}</a>
-                        </div>
-                        <div style={{ ...valueStyle, fontSize: '2rem', color: '#3498db' }}>{ourFactionScore}</div>
-                      </div>
-                      <div style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
-                      <div>
-                        <div style={{ ...labelStyle, color: '#aaa' }}>
-                          <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{enemyFactionName}</a>
-                        </div>
-                        <div style={{ ...valueStyle, fontSize: '2rem', color: '#e74c3c' }}>{enemyFactionScore}</div>
-                      </div>
-                      <div style={{ alignSelf: 'center', borderLeft: '1px solid #444', height: '50px', margin: '0 10px' }}></div>
-                      <div>
-                        <div style={{ ...labelStyle, color: '#aaa' }}>Target Score</div>
-                        <div style={{ ...valueStyle, fontSize: '2rem', color: '#f1c40f' }}>{targetScore}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+            activeWars.map((war, index) => (
+              <RankedWarCard 
+                key={index} 
+                war={war} 
+                factionData={factionData} 
+                cardStyle={cardStyle} 
+                labelStyle={labelStyle} 
+                valueStyle={valueStyle} 
+              />
+            ))
           ) : (
             <div style={{ ...cardStyle, border: '1px solid #2ecc71', background: 'linear-gradient(145deg, #1e1e1e, #1a2c20)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
