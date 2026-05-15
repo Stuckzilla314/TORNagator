@@ -199,78 +199,141 @@ const UserDashboard = ({ userData, onLogout }) => {
 
       {/* Travel Information Section */}
       {isTraveling && (
-        <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #3498db', background: 'linear-gradient(145deg, #1e1e1e, #1a2a3a)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                ✈️ Travel Manifest
-              </h3>
-              <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={labelStyle}>Time Remaining</div>
-              <div style={{ ...valueStyle, fontSize: '1.8rem', color: '#3498db' }}>
-                {travelTimeLeft || 'Arriving soon...'}
+        <a 
+          href="https://www.torn.com/index.php" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            textDecoration: 'none', 
+            color: 'inherit', 
+            display: 'block',
+            transition: 'transform 0.2s ease, filter 0.2s ease',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.filter = 'brightness(1.1)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.filter = 'brightness(1)';
+          }}
+        >
+          <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #3498db', background: 'linear-gradient(145deg, #1e1e1e, #1a2a3a)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  ✈️ Travel Manifest
+                </h3>
+                <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
               </div>
-              {landingTime && (
-                <div style={{ fontSize: '0.85rem', color: '#888' }}>
-                  Estimated landing at {landingTime}
+              <div style={{ textAlign: 'right' }}>
+                <div style={labelStyle}>Time Remaining</div>
+                <div style={{ ...valueStyle, fontSize: '1.8rem', color: '#3498db' }}>
+                  {travelTimeLeft || 'Arriving soon...'}
                 </div>
-              )}
+                {landingTime && (
+                  <div style={{ fontSize: '0.85rem', color: '#888' }}>
+                    Estimated landing at {landingTime}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       )}
 
       {/* Hospital Information Section */}
       {isHospitalized && (
-        <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #e74c3c', background: 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                🏥 Medical Report
-              </h3>
-              <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
-              {userData.status?.details && <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#aaa' }}>{userData.status.details}</p>}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={labelStyle}>Recovery Time</div>
-              <div style={{ ...valueStyle, fontSize: '1.8rem', color: '#e74c3c' }}>
-                {statusTimeLeft || 'Discharging...'}
+        <a 
+          href="https://www.torn.com/hospital.php" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            textDecoration: 'none', 
+            color: 'inherit', 
+            display: 'block',
+            transition: 'transform 0.2s ease, filter 0.2s ease',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.filter = 'brightness(1.1)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.filter = 'brightness(1)';
+          }}
+        >
+          <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #e74c3c', background: 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  🏥 Medical Report
+                </h3>
+                <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
+                {userData.status?.details && <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#aaa' }}>{userData.status.details}</p>}
               </div>
-              {releaseTime && (
-                <div style={{ fontSize: '0.85rem', color: '#888' }}>
-                  Estimated discharge at {releaseTime}
+              <div style={{ textAlign: 'right' }}>
+                <div style={labelStyle}>Recovery Time</div>
+                <div style={{ ...valueStyle, fontSize: '1.8rem', color: '#e74c3c' }}>
+                  {statusTimeLeft || 'Discharging...'}
                 </div>
-              )}
+                {releaseTime && (
+                  <div style={{ fontSize: '0.85rem', color: '#888' }}>
+                    Estimated discharge at {releaseTime}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       )}
 
       {/* Jail Information Section */}
       {isJailed && (
-        <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #f39c12', background: 'linear-gradient(145deg, #1e1e1e, #2c241a)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ marginTop: 0, color: '#f39c12', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                ⚖️ Incarceration Status
-              </h3>
-              <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={labelStyle}>Time Until Release</div>
-              <div style={{ ...valueStyle, fontSize: '1.8rem', color: '#f39c12' }}>
-                {statusTimeLeft || 'Processing...'}
+        <a 
+          href="https://www.torn.com/jailview.php" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            textDecoration: 'none', 
+            color: 'inherit', 
+            display: 'block',
+            transition: 'transform 0.2s ease, filter 0.2s ease',
+            cursor: 'pointer'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.filter = 'brightness(1.1)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.filter = 'brightness(1)';
+          }}
+        >
+          <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #f39c12', background: 'linear-gradient(145deg, #1e1e1e, #2c241a)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ marginTop: 0, color: '#f39c12', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  ⚖️ Incarceration Status
+                </h3>
+                <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
               </div>
-              {releaseTime && (
-                <div style={{ fontSize: '0.85rem', color: '#888' }}>
-                  Estimated release at {releaseTime}
+              <div style={{ textAlign: 'right' }}>
+                <div style={labelStyle}>Time Until Release</div>
+                <div style={{ ...valueStyle, fontSize: '1.8rem', color: '#f39c12' }}>
+                  {statusTimeLeft || 'Processing...'}
                 </div>
-              )}
+                {releaseTime && (
+                  <div style={{ fontSize: '0.85rem', color: '#888' }}>
+                    Estimated release at {releaseTime}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
