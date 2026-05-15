@@ -35,10 +35,34 @@ const UserDashboard = ({ userData, onLogout }) => {
     color: '#fff'
   };
 
-  const StatBar = ({ label, current, max, color, timeRemaining }) => (
+  const StatBar = ({ label, current, max, color, timeRemaining, link }) => (
     <div style={{ flex: '1 1 200px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#bbb' }}>{label}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+        {link ? (
+          <a 
+            href={link} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            style={{ 
+              fontSize: '0.85rem', 
+              fontWeight: 'bold', 
+              color: '#bbb', 
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'color 0.2s ease',
+              cursor: 'pointer'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.color = color}
+            onMouseOut={(e) => e.currentTarget.style.color = '#bbb'}
+          >
+            {label}
+            <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>
+          </a>
+        ) : (
+          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#bbb' }}>{label}</span>
+        )}
         <span style={{ fontSize: '0.85rem', color: '#fff' }}>
           {current || 0} / {max || 0}
           {timeRemaining && <span style={{ color: '#888', marginLeft: '8px', fontSize: '0.75rem' }}>{timeRemaining}</span>}
@@ -83,7 +107,14 @@ const UserDashboard = ({ userData, onLogout }) => {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
-            {userData.name} <span style={{ color: '#666', fontSize: '1.5rem' }}>[{userData.player_id}]</span>
+            {userData.name} <a 
+              href={`https://www.torn.com/profiles.php?XID=${userData.player_id}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#666', fontSize: '1.5rem', textDecoration: 'none' }}
+              onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
+              onMouseOut={(e) => e.currentTarget.style.color = '#666'}
+            >[{userData.player_id}]</a>
           </h1>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px' }}>
             <span style={{ backgroundColor: '#333', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
@@ -92,6 +123,34 @@ const UserDashboard = ({ userData, onLogout }) => {
             <span style={{ color: statusColor, fontWeight: 'bold' }}>
               ● {userData.status?.description}
             </span>
+            <a 
+              href="https://www.torn.com/index.php" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ 
+                marginLeft: '10px', 
+                fontSize: '0.8rem', 
+                color: '#888', 
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                border: '1px solid #444',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#3498db';
+                e.currentTarget.style.color = '#3498db';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = '#444';
+                e.currentTarget.style.color = '#888';
+              }}
+            >
+              TORN Home ↗
+            </a>
           </div>
         </div>
         <button 
@@ -104,10 +163,38 @@ const UserDashboard = ({ userData, onLogout }) => {
 
       {/* Status Bars Section */}
       <div style={{ ...cardStyle, marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
-        <StatBar label="Life" current={userData.life?.current} max={userData.life?.maximum} color="#2ecc71" timeRemaining={lifeTime} />
-        <StatBar label="Energy" current={userData.energy?.current} max={userData.energy?.maximum} color="#f1c40f" timeRemaining={energyTime} />
-        <StatBar label="Nerve" current={userData.nerve?.current} max={userData.nerve?.maximum} color="#e74c3c" timeRemaining={nerveTime} />
-        <StatBar label="Happy" current={userData.happy?.current} max={userData.happy?.maximum} color="#3498db" timeRemaining={happyTime} />
+        <StatBar 
+          label="Life" 
+          current={userData.life?.current} 
+          max={userData.life?.maximum} 
+          color="#2ecc71" 
+          timeRemaining={lifeTime} 
+          link="https://www.torn.com/hospital.php"
+        />
+        <StatBar 
+          label="Energy" 
+          current={userData.energy?.current} 
+          max={userData.energy?.maximum} 
+          color="#f1c40f" 
+          timeRemaining={energyTime} 
+          link="https://www.torn.com/gym.php"
+        />
+        <StatBar 
+          label="Nerve" 
+          current={userData.nerve?.current} 
+          max={userData.nerve?.maximum} 
+          color="#e74c3c" 
+          timeRemaining={nerveTime} 
+          link="https://www.torn.com/crimes.php"
+        />
+        <StatBar 
+          label="Happy" 
+          current={userData.happy?.current} 
+          max={userData.happy?.maximum} 
+          color="#3498db" 
+          timeRemaining={happyTime} 
+          link="https://www.torn.com/properties.php"
+        />
       </div>
 
       {/* Travel Information Section */}
@@ -191,7 +278,21 @@ const UserDashboard = ({ userData, onLogout }) => {
         <div style={cardStyle}>
           <h3 style={{ marginTop: 0, color: '#3498db' }}>General Information</h3>
           <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Rank</div><div style={valueStyle}>{userData.rank}</div></div>
-          <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Property</div><div style={valueStyle}>{userData.property}</div></div>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={labelStyle}>Property</div>
+            <div style={valueStyle}>
+              <a 
+                href="https://www.torn.com/properties.php" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none' }}
+                onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
+              >
+                {userData.property}
+              </a>
+            </div>
+          </div>
           <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Age / Signup</div><div style={valueStyle}>{userData.age} days (Signed up {userData.signup?.split(' ')[0]})</div></div>
           <div style={{ marginBottom: '0' }}><div style={labelStyle}>Last Action</div><div style={valueStyle}>{userData.last_action?.relative}</div></div>
         </div>
@@ -200,15 +301,50 @@ const UserDashboard = ({ userData, onLogout }) => {
           <h3 style={{ marginTop: 0, color: '#3498db' }}>Occupation & Social</h3>
           <div style={{ marginBottom: '12px' }}>
             <div style={labelStyle}>Job</div>
-            <div style={valueStyle}>{userData.job?.position} at {decodeHtml(userData.job?.company_name || 'None')}</div>
+            <div style={valueStyle}>
+              <a 
+                href={userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php"} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none' }}
+                onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
+              >
+                {userData.job?.position} at {decodeHtml(userData.job?.company_name || 'None')}
+              </a>
+            </div>
           </div>
           <div style={{ marginBottom: '12px' }}>
             <div style={labelStyle}>Faction</div>
-            <div style={valueStyle}>{userData.faction?.faction_name} [{userData.faction?.faction_tag}]</div>
+            <div style={valueStyle}>
+              <a 
+                href={`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ color: 'inherit', textDecoration: 'none' }}
+                onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
+              >
+                {userData.faction?.faction_name} [{userData.faction?.faction_tag}]
+              </a>
+            </div>
           </div>
           <div style={{ marginBottom: '0' }}>
             <div style={labelStyle}>Marital Status</div>
-            <div style={valueStyle}>{userData.married?.spouse_name}</div>
+            <div style={valueStyle}>
+              {userData.married?.spouse_id ? (
+                <a 
+                  href={`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                  onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
+                  onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
+                >
+                  {userData.married?.spouse_name}
+                </a>
+              ) : userData.married?.spouse_name || 'Single'}
+            </div>
           </div>
         </div>
 
