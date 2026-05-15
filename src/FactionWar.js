@@ -244,8 +244,40 @@ const FactionWar = ({ apiKey, factionData }) => {
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: cachedAt ? '0.5rem' : '1.5rem' }}>
             <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem' }}>🎯 Target Selection</h3>
-            <button onClick={handleForceRefresh} disabled={isLoadingTargets} style={{ padding: '8px 16px', backgroundColor: isLoadingTargets ? '#222' : '#333', color: isLoadingTargets ? '#666' : '#fff', border: '1px solid #555', borderRadius: '4px', cursor: isLoadingTargets ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-              {isLoadingTargets ? 'Loading...' : '🔄 Refresh Targets'}
+            <button 
+              onClick={handleForceRefresh} 
+              disabled={isLoadingTargets} 
+              style={{ 
+                background: 'transparent',
+                border: `1px solid ${isLoadingTargets ? '#222' : '#444'}`,
+                borderRadius: '20px',
+                padding: '4px 12px',
+                cursor: isLoadingTargets ? 'not-allowed' : 'pointer',
+                color: isLoadingTargets ? '#666' : '#3498db',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '600',
+                fontSize: '0.75rem',
+                letterSpacing: '1px',
+                transition: 'all 0.3s ease',
+                opacity: isLoadingTargets ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => { 
+                if (!isLoadingTargets) {
+                  e.currentTarget.style.borderColor = '#3498db';
+                  e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
+                }
+              }}
+              onMouseLeave={(e) => { 
+                if (!isLoadingTargets) {
+                  e.currentTarget.style.borderColor = '#444';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
+            >
+              <span style={{ marginTop: '1px' }}>{isLoadingTargets ? 'SYNCING...' : 'SYNC TARGETS'}</span>
+              <span style={{ fontSize: '0.9rem' }}>🔄</span>
             </button>
           </div>
           {cachedAt && !isLoadingTargets && (
