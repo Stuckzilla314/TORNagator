@@ -87,7 +87,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     setLoadingYata(true);
 
     // Use real-time listener for the pre-computed snapshot document
-    const unsubscribe = onSnapshot(doc(db, "stock_metadata", "snapshot"), 
+    const unsubscribe = onSnapshot(doc(db, "stock_metadata", "snapshot"),
       (snap) => {
         if (snap.exists()) {
           setYataData({ stocks: snap.data().stocks || {} });
@@ -110,12 +110,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   useEffect(() => {
     const loadHistory = async () => {
       if (!selectedItemForGraph) return;
-      
+
       setLoadingHistoricalData(true);
       setGraphError(null);
       const nowMs = Date.now();
       const windowStart = Math.floor((nowMs - (timeScale * 60 * 60 * 1000)) / 1000);
-      
+
       try {
         // 1. Fetch the "Seed Point" (the most recent update BEFORE our time window)
         // This ensures the graph doesn't start at 0 if no changes happened recently.
@@ -151,23 +151,23 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         if (!seedSnap.empty) {
           const seedData = seedSnap.docs[0].data();
           history = [
-            { 
-              timestamp: windowStart * 1000, 
+            {
+              timestamp: windowStart * 1000,
               stock: seedData.stock,
-              isSeed: true 
-            }, 
+              isSeed: true
+            },
             ...history
           ];
         }
-        
+
         // Fallback: If DB is empty for this window/item, use current live stock 
         // as a starting point so the user sees a line immediately.
         if (history.length === 0 && selectedItemForGraph.stockQuantity !== undefined) {
           history = [
-            { 
-              timestamp: windowStart * 1000, 
+            {
+              timestamp: windowStart * 1000,
               stock: selectedItemForGraph.stockQuantity,
-              isFallback: true 
+              isFallback: true
             }
           ];
         }
@@ -226,30 +226,30 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     if (!yataData || !yataData.stocks) return null;
     const code = YATA_COUNTRY_CODES[country];
     if (!code || !yataData.stocks[code]) return null;
-    
+
     const stockList = yataData.stocks[code].stocks || [];
     const itemStock = stockList.find(s => Number(s.id) === Number(itemId));
-    
+
     return {
       quantity: itemStock ? itemStock.quantity : 0,
       cost: itemStock ? itemStock.cost : 0,
       lastUpdate: yataData.stocks[code].update
     };
   };
-  
+
   // Flatten mapping into items with pre-calculated values for sorting
   if (!itemsData) return <div style={{ textAlign: 'center', padding: '2rem' }}>Loading items...</div>;
 
-  const processedItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) => 
+  const processedItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) =>
     ids.map(id => {
       const item = itemsData[id] || {};
       const stockInfo = getStockInfo(country, id);
       const owned = getOwnedCount(id);
-      
+
       // Use YATA's 'cost' as the effective buy price for overseas items, 
       // falling back to the TORN base buy_price if YATA data isn't available yet.
       const effectiveBuyPrice = stockInfo?.cost || item.buy_price || 0;
-      
+
       const profitPerItem = (item.market_value || 0) - effectiveBuyPrice;
       const bagProfit = profitPerItem * cargoCapacity;
       const stockQuantity = stockInfo?.quantity || 0;
@@ -261,7 +261,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       if (travelMethod === 'Business') modifier = 0.3;
       else if (travelMethod === 'Private') modifier = 0.5;
       else if (travelMethod === 'Airstrip') modifier = 0.7;
-      
+
       const totalRoundTripMinutes = Math.round(baseTime * 2 * modifier);
       const roundTripHours = totalRoundTripMinutes / 60;
       const bagProfitPerHour = roundTripHours > 0 ? bagProfit / roundTripHours : 0;
@@ -310,11 +310,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
   const renderSortIndicator = (key) => {
     if (sortConfig.key !== key) return <span style={{ color: '#444', marginLeft: '8px', fontSize: '0.7rem' }}>↕</span>;
-    return sortConfig.direction === 'asc' ? 
-      <span style={{ color: '#3498db', marginLeft: '8px', fontSize: '0.7rem' }}>▲</span> : 
+    return sortConfig.direction === 'asc' ?
+      <span style={{ color: '#3498db', marginLeft: '8px', fontSize: '0.7rem' }}>▲</span> :
       <span style={{ color: '#3498db', marginLeft: '8px', fontSize: '0.7rem' }}>▼</span>;
   };
-  
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -343,8 +343,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             </button>
           )}
         </div>
-        <select 
-          value={filter} 
+        <select
+          value={filter}
           onChange={(e) => setFilter(e.target.value)}
           style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
         >
@@ -371,75 +371,76 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {sortedItems.map(item => {
               const stockInfo = item.stockInfo;
               const buyableQuantity = stockInfo ? Math.min(stockInfo.quantity, cargoCapacity) : 0;
-              
+
               return (
                 <tr key={`${item.country}-${item.id}`} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#252525'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                <td style={cellStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img 
-                      src={`https://www.torn.com/images/items/${item.id}/large.png`} 
-                      alt={item.name} 
-                      style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-                    />
-                    <span style={{ fontWeight: '500' }}>{item.name}</span>
-                  </div>
-                </td>
-                <td style={cellStyle}>
-                  <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
-                  <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                    RT: {item.roundTripDisplay}
-                  </div>
-                </td>
-                <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
-                  {(item.owned || 0).toLocaleString()}
-                </td>
-                <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
-                  <div>${(item.buy_price || 0).toLocaleString()}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal', marginTop: '2px' }}>
-                    (${(item.buy_price * cargoCapacity).toLocaleString()})
-                  </div>
-                </td>
-                <td style={{ ...cellStyle, color: '#f39c12' }}>
-                  ${(item.market_value || 0).toLocaleString()}
-                </td>
-                <td style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0' }}>
-                  <div style={{ fontWeight: 'bold' }}>
-                    ${item.bagProfit.toLocaleString()}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                    ${item.profitPerItem.toLocaleString()} ea
-                  </div>
-                </td>
-                <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
-                  ${Math.round(item.bagProfitPerHour).toLocaleString()}
-                </td>
-                <td style={{ ...cellStyle, textAlign: 'center' }}>
-                  {loadingYata ? (
-                    <span style={{ color: '#666' }}>...</span>
-                  ) : stockInfo ? (
-                    <div>
-                      <div 
-                        onClick={() => setSelectedItemForGraph(item)}
-                        style={{ 
-                          fontWeight: 'bold', 
-                          cursor: 'pointer',
-                          color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
-                          textDecoration: 'underline'
-                        }}
-                        title="Click to view stock history"
-                      >
-                        {stockInfo.quantity.toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                        Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
-                      </div>
+                  <td style={cellStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <img
+                        src={`https://www.torn.com/images/items/${item.id}/large.png`}
+                        alt={item.name}
+                        style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                      />
+                      <span style={{ fontWeight: '500' }}>{item.name}</span>
                     </div>
-                  ) : (
-                    <span style={{ color: '#444' }}>No Data</span>
-                  )}
-                </td>
-              </tr>
-            )})}
+                  </td>
+                  <td style={cellStyle}>
+                    <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
+                    <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                      RT: {item.roundTripDisplay}
+                    </div>
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
+                    {(item.owned || 0).toLocaleString()}
+                  </td>
+                  <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
+                    <div>${(item.buy_price || 0).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal', marginTop: '2px' }}>
+                      (${(item.buy_price * cargoCapacity).toLocaleString()})
+                    </div>
+                  </td>
+                  <td style={{ ...cellStyle, color: '#f39c12' }}>
+                    ${(item.market_value || 0).toLocaleString()}
+                  </td>
+                  <td style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0' }}>
+                    <div style={{ fontWeight: 'bold' }}>
+                      ${item.bagProfit.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                      ${item.profitPerItem.toLocaleString()} ea
+                    </div>
+                  </td>
+                  <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
+                    ${Math.round(item.bagProfitPerHour).toLocaleString()}
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    {loadingYata ? (
+                      <span style={{ color: '#666' }}>...</span>
+                    ) : stockInfo ? (
+                      <div>
+                        <div
+                          onClick={() => setSelectedItemForGraph(item)}
+                          style={{
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
+                            textDecoration: 'underline'
+                          }}
+                          title="Click to view stock history"
+                        >
+                          {stockInfo.quantity.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                          Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
+                        </div>
+                      </div>
+                    ) : (
+                      <span style={{ color: '#444' }}>No Data</span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -477,7 +478,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
             animation: 'fadeIn 0.2s ease-out'
           }} onClick={e => e.stopPropagation()}>
-            <button 
+            <button
               onClick={() => setSelectedItemForGraph(null)}
               style={{
                 position: 'absolute',
@@ -495,7 +496,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             </button>
             <h3 style={{ marginTop: 0, color: '#3498db' }}>Stock History: {selectedItemForGraph.name}</h3>
             <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '20px' }}>Country: {selectedItemForGraph.country}</p>
-            
+
             {loadingHistoricalData ? (
               <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
                 Loading historical data...
@@ -514,26 +515,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis 
-                    dataKey="timestamp" 
+                  <XAxis
+                    dataKey="timestamp"
                     type="number"
                     domain={[Date.now() - (timeScale * 60 * 60 * 1000), Date.now()]}
-                    stroke="#888" 
+                    stroke="#888"
                     tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   />
                   <YAxis stroke="#888" domain={[0, (dataMax) => Math.max(dataMax + 10, 10)]} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#333', border: '1px solid #555', color: '#fff' }}
                     labelFormatter={(label) => `Time: ${new Date(label).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
                     formatter={(value) => [`Stock: ${value.toLocaleString()}`, '']}
                   />
-                  <Line 
-                    type="stepAfter" 
-                    dataKey="stock" 
-                    stroke="#3498db" 
+                  <Line
+                    type="stepAfter"
+                    dataKey="stock"
+                    stroke="#3498db"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 6 }} 
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -555,9 +556,9 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 style={{ width: '80%', accentColor: '#3498db' }}
               />
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 onClick={() => setSelectedItemForGraph(null)}
                 style={{
                   padding: '8px 25px',
@@ -576,7 +577,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           </div>
         </div>
       )}
-      
+
       <p style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#555', textAlign: 'center' }}>
         Prices shown are base buy prices from the TORN Items database. Actual overseas stock quantities require visiting the country or community-driven data.
       </p>

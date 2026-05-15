@@ -43,7 +43,12 @@ async function run() {
   // Fetch the latest state summary (1 read instead of 220+)
   const stateRef = doc(db, "stock_metadata", "summary");
   const stateSnap = await getDoc(stateRef);
-  const lastState = stateSnap.exists() ? stateSnap.data().items : {};
+  const stateData = stateSnap.exists() ? stateSnap.data() : {};
+  const lastState = stateData.items || {};
+  let lastCleanup = 0;
+  if (stateData.lastCleanup) {
+    lastCleanup = typeof stateData.lastCleanup.toMillis === 'function' ? stateData.lastCleanup.toMillis() : stateData.lastCleanup;
+  }
 
   let itemNames = {};
   if (process.env.TORN_API_KEY) {
@@ -98,9 +103,37 @@ async function run() {
 
   await Promise.all(tasks);
 
+  let newLastCleanup = lastCleanup;
+  const nowMs = Date.now();
+
+  if (nowMs - lastCleanup > 24 * 60 * 60 * 1000) {
+    console.log("Running 24-hour cleanup cycle...");
+    try {
+      // Cleanup records older than 48 hours to stay within Firestore free tier limits
+      const cutoff = Math.floor(nowMs / 1000) - (48 * 60 * 60);
+      const qCleanup = query(collection(db, "stock_history"), where("timestamp", "<", cutoff));
+      const cleanupSnap = await getDocs(qCleanup);
+      
+      if (!cleanupSnap.empty) {
+        const deleteTasks = cleanupSnap.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deleteTasks);
+        console.log(`[CLEANUP] Deleted ${cleanupSnap.size} records older than 48 hours.`);
+      } else {
+        console.log(`[CLEANUP] No records older than 48 hours to delete.`);
+      }
+      newLastCleanup = nowMs;
+    } catch (err) {
+      console.error("[CLEANUP] Failed:", err);
+    }
+  }
+
   // Update the summary state and frontend snapshot (2 writes)
   await Promise.all([
-    setDoc(stateRef, { items: newState, lastUpdated: Timestamp.now() }),
+    setDoc(stateRef, { 
+      items: newState, 
+      lastUpdated: Timestamp.now(),
+      lastCleanup: typeof newLastCleanup === 'number' ? Timestamp.fromMillis(newLastCleanup) : newLastCleanup
+    }),
     setDoc(doc(db, "stock_metadata", "snapshot"), { 
       stocks: snapshotStocks, 
       lastUpdated: Timestamp.now() 
@@ -108,18 +141,6 @@ async function run() {
   ]);
   
   console.log("State and Snapshot updated.");
-
-  // Cleanup records older than 48 hours to stay within Firestore free tier limits
-  const cutoff = Math.floor(Date.now() / 1000) - (48 * 60 * 60);
-  const qCleanup = query(collection(db, "stock_history"), where("timestamp", "<", cutoff));
-  const cleanupSnap = await getDocs(qCleanup);
-  
-  if (!cleanupSnap.empty) {
-    const deleteTasks = cleanupSnap.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deleteTasks);
-    console.log(`[CLEANUP] Deleted ${cleanupSnap.size} records older than 48 hours.`);
-  }
-
   console.log("Sync finished.");
   process.exit(0);
 }
