@@ -2,108 +2,101 @@ import React from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
 
+// Helper to decode HTML entities like &#039;
+const decodeHtml = (html) => {
+  if (!html) return '';
+  const txt = document.createElement("textarea");
+  txt.innerHTML = html;
+  return txt.value;
+};
+
+const cardStyle = {
+  backgroundColor: '#1e1e1e',
+  padding: '1.5rem',
+  borderRadius: '12px',
+  border: '1px solid #333',
+  boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+};
+
+const labelStyle = {
+  color: '#888',
+  fontSize: '0.85rem',
+  textTransform: 'uppercase',
+  letterSpacing: '1px',
+  marginBottom: '4px'
+};
+
+const valueStyle = {
+  fontSize: '1.1rem',
+  fontWeight: '500',
+  color: '#fff'
+};
+
+const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
+  const content = (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+        <span className="stat-label" style={{ 
+          fontSize: '0.85rem', 
+          fontWeight: 'bold', 
+          color: '#bbb', 
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          transition: 'color 0.2s ease'
+        }}>
+          {label}
+          {link && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>}
+        </span>
+        <span style={{ fontSize: '0.85rem', color: '#fff' }}>
+          {current || 0} / {max || 0}
+          {timeRemaining && <span style={{ color: '#888', marginLeft: '8px', fontSize: '0.75rem' }}>{timeRemaining}</span>}
+        </span>
+      </div>
+      <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', overflow: 'hidden' }}>
+        <div style={{ 
+          width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%`, 
+          height: '100%', 
+          backgroundColor: color,
+          transition: 'width 0.6s cubic-bezier(0.1, 0.7, 1.0, 0.1)',
+          boxShadow: `0 0 10px ${color}44`
+        }} />
+      </div>
+    </>
+  );
+
+  if (link) {
+    return (
+      <a 
+        href={link} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="dashboard-card-link"
+        style={{ 
+          flex: '1 1 200px', 
+          textDecoration: 'none', 
+          color: 'inherit',
+          display: 'block',
+          cursor: 'pointer',
+          '--hover-color': color 
+        }}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <div style={{ flex: '1 1 200px' }}>
+      {content}
+    </div>
+  );
+};
+
 const UserDashboard = ({ userData, onLogout }) => {
-  // Helper to decode HTML entities like &#039;
-  const decodeHtml = (html) => {
-    const txt = document.createElement("textarea");
-    txt.innerHTML = html;
-    return txt.value;
-  };
 
   const statusColor = userData.status?.color === 'blue' ? '#3498db' : 
                       userData.status?.color === 'red' ? '#e74c3c' : '#2ecc71';
-
-  const cardStyle = {
-    backgroundColor: '#1e1e1e',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    border: '1px solid #333',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-  };
-
-  const labelStyle = {
-    color: '#888',
-    fontSize: '0.85rem',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    marginBottom: '4px'
-  };
-
-  const valueStyle = {
-    fontSize: '1.1rem',
-    fontWeight: '500',
-    color: '#fff'
-  };
-
-  const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
-    const content = (
-      <>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
-          <span style={{ 
-            fontSize: '0.85rem', 
-            fontWeight: 'bold', 
-            color: '#bbb', 
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            transition: 'color 0.2s ease'
-          }}>
-            {label}
-            {link && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>}
-          </span>
-          <span style={{ fontSize: '0.85rem', color: '#fff' }}>
-            {current || 0} / {max || 0}
-            {timeRemaining && <span style={{ color: '#888', marginLeft: '8px', fontSize: '0.75rem' }}>{timeRemaining}</span>}
-          </span>
-        </div>
-        <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', overflow: 'hidden' }}>
-          <div style={{ 
-            width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%`, 
-            height: '100%', 
-            backgroundColor: color,
-            transition: 'width 0.6s cubic-bezier(0.1, 0.7, 1.0, 0.1)',
-            boxShadow: `0 0 10px ${color}44`
-          }} />
-        </div>
-      </>
-    );
-
-    if (link) {
-      return (
-        <a 
-          href={link} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          style={{ 
-            flex: '1 1 200px', 
-            textDecoration: 'none', 
-            color: 'inherit',
-            display: 'block',
-            cursor: 'pointer',
-            transition: 'transform 0.2s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            const labelSpan = e.currentTarget.querySelector('span');
-            if (labelSpan) labelSpan.style.color = color;
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            const labelSpan = e.currentTarget.querySelector('span');
-            if (labelSpan) labelSpan.style.color = '#bbb';
-          }}
-        >
-          {content}
-        </a>
-      );
-    }
-
-    return (
-      <div style={{ flex: '1 1 200px' }}>
-        {content}
-      </div>
-    );
-  };
 
   const isTraveling = userData.status?.state === 'Traveling';
   const isHospitalized = userData.status?.state === 'Hospital';
@@ -136,9 +129,8 @@ const UserDashboard = ({ userData, onLogout }) => {
               href={`https://www.torn.com/profiles.php?XID=${userData.player_id}`} 
               target="_blank" 
               rel="noopener noreferrer"
+              className="text-link"
               style={{ color: '#666', fontSize: '1.5rem', textDecoration: 'none' }}
-              onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
-              onMouseOut={(e) => e.currentTarget.style.color = '#666'}
             >[{userData.player_id}]</a>
           </h1>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px' }}>
@@ -152,6 +144,7 @@ const UserDashboard = ({ userData, onLogout }) => {
               href="https://www.torn.com/index.php" 
               target="_blank" 
               rel="noopener noreferrer"
+              className="header-link"
               style={{ 
                 marginLeft: '10px', 
                 fontSize: '0.8rem', 
@@ -162,16 +155,7 @@ const UserDashboard = ({ userData, onLogout }) => {
                 gap: '4px',
                 border: '1px solid #444',
                 padding: '2px 8px',
-                borderRadius: '4px',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = '#3498db';
-                e.currentTarget.style.color = '#3498db';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = '#444';
-                e.currentTarget.style.color = '#888';
+                borderRadius: '4px'
               }}
             >
               TORN Home ↗
@@ -228,20 +212,12 @@ const UserDashboard = ({ userData, onLogout }) => {
           href="https://www.torn.com/index.php" 
           target="_blank" 
           rel="noopener noreferrer"
+          className="dashboard-card-link"
           style={{ 
             textDecoration: 'none', 
             color: 'inherit', 
             display: 'block',
-            transition: 'transform 0.2s ease, filter 0.2s ease',
             cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.filter = 'brightness(1.1)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.filter = 'brightness(1)';
           }}
         >
           <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #3498db', background: 'linear-gradient(145deg, #1e1e1e, #1a2a3a)' }}>
@@ -274,20 +250,12 @@ const UserDashboard = ({ userData, onLogout }) => {
           href="https://www.torn.com/hospital.php" 
           target="_blank" 
           rel="noopener noreferrer"
+          className="dashboard-card-link"
           style={{ 
             textDecoration: 'none', 
             color: 'inherit', 
             display: 'block',
-            transition: 'transform 0.2s ease, filter 0.2s ease',
             cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.filter = 'brightness(1.1)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.filter = 'brightness(1)';
           }}
         >
           <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #e74c3c', background: 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
@@ -321,20 +289,12 @@ const UserDashboard = ({ userData, onLogout }) => {
           href="https://www.torn.com/jailview.php" 
           target="_blank" 
           rel="noopener noreferrer"
+          className="dashboard-card-link"
           style={{ 
             textDecoration: 'none', 
             color: 'inherit', 
             display: 'block',
-            transition: 'transform 0.2s ease, filter 0.2s ease',
             cursor: 'pointer'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.filter = 'brightness(1.1)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.filter = 'brightness(1)';
           }}
         >
           <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #f39c12', background: 'linear-gradient(145deg, #1e1e1e, #2c241a)' }}>
@@ -373,9 +333,8 @@ const UserDashboard = ({ userData, onLogout }) => {
                 href="https://www.torn.com/properties.php" 
                 target="_blank" 
                 rel="noopener noreferrer"
+                className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
-                onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
-                onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
               >
                 {userData.property}
               </a>
@@ -394,9 +353,8 @@ const UserDashboard = ({ userData, onLogout }) => {
                 href={userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php"} 
                 target="_blank" 
                 rel="noopener noreferrer"
+                className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
-                onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
-                onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
               >
                 {userData.job?.position} at {decodeHtml(userData.job?.company_name || 'None')}
               </a>
@@ -409,9 +367,8 @@ const UserDashboard = ({ userData, onLogout }) => {
                 href={`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
+                className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
-                onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
-                onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
               >
                 {userData.faction?.faction_name} [{userData.faction?.faction_tag}]
               </a>
@@ -425,9 +382,8 @@ const UserDashboard = ({ userData, onLogout }) => {
                   href={`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  className="text-link"
                   style={{ color: 'inherit', textDecoration: 'none' }}
-                  onMouseOver={(e) => e.currentTarget.style.color = '#3498db'}
-                  onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}
                 >
                   {userData.married?.spouse_name}
                 </a>

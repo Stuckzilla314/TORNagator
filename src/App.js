@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
+import './App.css';
 import OverseasStock from './OverseasStock';
 import FactionWar from './FactionWar';
 import SettingsMenu from './SettingsMenu';
