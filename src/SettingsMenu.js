@@ -4,8 +4,8 @@ const SettingsMenu = ({
   userData, 
   showTabTimer, 
   setShowTabTimer, 
-  autoSyncStock,
-  setAutoSyncStock,
+  stockAutoSync,
+  setStockAutoSync,
   cargoCapacity, 
   setCargoCapacity, 
   manualOverride, 
@@ -29,8 +29,7 @@ const SettingsMenu = ({
       gap: '5px',
       color: '#e0e0e0'
     }}>
-      <div 
-        onClick={() => setShowTabTimer(prev => !prev)}
+      <label 
         style={{
           padding: '8px 12px',
           cursor: 'pointer',
@@ -46,13 +45,12 @@ const SettingsMenu = ({
         <input 
           type="checkbox" 
           checked={showTabTimer} 
-          onChange={() => {}}
-          style={{ cursor: 'pointer', pointerEvents: 'none' }}
+          onChange={(e) => setShowTabTimer(e.target.checked)}
+          style={{ cursor: 'pointer' }}
         />
-      </div>
+      </label>
 
-      <div 
-        onClick={() => setAutoSyncStock(prev => !prev)}
+      <label 
         style={{
           padding: '8px 12px',
           cursor: 'pointer',
@@ -60,18 +58,18 @@ const SettingsMenu = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           borderRadius: '4px',
-          backgroundColor: autoSyncStock ? 'rgba(52, 152, 219, 0.1)' : 'transparent',
+          backgroundColor: stockAutoSync ? 'rgba(52, 152, 219, 0.1)' : 'transparent',
           transition: 'background-color 0.2s'
         }}
       >
         <span style={{ fontSize: '0.9rem' }}>Auto-Sync Stock</span>
         <input 
           type="checkbox" 
-          checked={autoSyncStock} 
-          onChange={() => {}}
-          style={{ cursor: 'pointer', pointerEvents: 'none' }}
+          checked={stockAutoSync} 
+          onChange={(e) => setStockAutoSync(e.target.checked)}
+          style={{ cursor: 'pointer' }}
         />
-      </div>
+      </label>
 
       <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -80,8 +78,7 @@ const SettingsMenu = ({
         </div>
 
         {/* Manual Override: Indented and smaller font as requested */}
-        <div 
-          onClick={() => setManualOverride(prev => !prev)}
+        <label 
           style={{
             padding: '2px 0 8px 12px',
             cursor: 'pointer',
@@ -94,10 +91,10 @@ const SettingsMenu = ({
           <input 
             type="checkbox" 
             checked={manualOverride} 
-            onChange={() => {}}
-            style={{ cursor: 'pointer', transform: 'scale(0.8)', pointerEvents: 'none' }}
+            onChange={(e) => setManualOverride(e.target.checked)}
+            style={{ cursor: 'pointer', transform: 'scale(0.8)' }}
           />
-        </div>
+        </label>
 
         <input 
           type="range" 

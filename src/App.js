@@ -7,7 +7,101 @@ import SettingsMenu from './SettingsMenu';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item === null) return initialValue;
+      if (item === 'true' || item === '"true"') return true;
+      if (item === 'false' || item === '"false"') return false;
+      try {
+        return JSON.parse(item);
+      } catch {
+        return item;
+      }
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (typeof storedValue === 'boolean') {
+        window.localStorage.setItem(key, storedValue ? 'true' : 'false');
+      } else if (typeof storedValue === 'string') {
+        window.localStorage.setItem(key, storedValue);
+      } else {
+        window.localStorage.setItem(key, JSON.stringify(storedValue));
+      }
+    } catch (error) {
+      // Catch QuotaExceededError or other write errors
+      console.warn(`Error setting localStorage key "${key}":`, error);
+    }
+  }, [key, storedValue]);
+
+  return [storedValue, setStoredValue];
+}
+
+// Synchronously purge stale/large localStorage entries before App mounts.
+// Runs at module load time so state initializers always have free space to write.
+(function purgeStaleStorage() {
+  try {
+    const ownedKeys = new Set([
+      'torn_api_key', 'active_tab', 'show_tab_timer',
+      'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
+    ]);
+    // Remove known stale keys from previous feature iterations
+    ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
+    // Remove any unrecognized key whose value is large (> ~5 KB)
+    const toPurge = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!ownedKeys.has(k) && (localStorage.getItem(k) || '').length > 2500) toPurge.push(k);
+    }
+    toPurge.forEach(k => { console.warn(`[TORNagator] Purging oversized localStorage key: "${k}"`); localStorage.removeItem(k); });
+  } catch (e) { /* ignore */ }
+})();
+
 function App() {
+  // On mount: purge stale/orphaned localStorage keys from old app versions
+  useEffect(() => {
+    // Keys we actually own in the current version
+    const ownedKeys = new Set([
+      'torn_api_key',
+      'active_tab',
+      'show_tab_timer',
+      'tornagator_stock_auto_sync',
+      'cargo_capacity',
+      'manual_override',
+    ]);
+
+    // Stale keys from previous iterations of this feature
+    const staleKeys = [
+      'auto_sync_stock',
+      'setting_refresh_stock_auto',
+      'app_stock_sync_v2',
+    ];
+    staleKeys.forEach(k => localStorage.removeItem(k));
+
+    // Also nuke any unrecognized key with a large value (> 10 KB)
+    // This catches any accidental large-object caching from prior code
+    const keysToDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!ownedKeys.has(k)) {
+        const v = localStorage.getItem(k) || '';
+        if (v.length > 5000) { // > ~10 KB in UTF-16
+          keysToDelete.push(k);
+        }
+      }
+    }
+    keysToDelete.forEach(k => {
+      console.warn(`[TORNagator] Removing large/unrecognized localStorage key: "${k}"`);
+      localStorage.removeItem(k);
+    });
+  }, []);
+
   const [apiKey, setApiKey] = useState(localStorage.getItem('torn_api_key') || '');
   const [userData, setUserData] = useState(null);
   const [factionData, setFactionData] = useState(null);
@@ -15,32 +109,18 @@ function App() {
   const itemsDataRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('active_tab') || 'dashboard';
-  });
+  const [activeTab, setActiveTab] = useLocalStorage('active_tab', 'dashboard');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [showTabTimer, setShowTabTimer] = useState(() => {
-    const saved = localStorage.getItem('show_tab_timer');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-  const [autoSyncStock, setAutoSyncStock] = useState(() => {
-    const saved = localStorage.getItem('auto_sync_stock');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-  const [cargoCapacity, setCargoCapacity] = useState(() => {
-    const saved = localStorage.getItem('cargo_capacity');
-    return saved !== null ? JSON.parse(saved) : 5;
-  });
-  const [manualOverride, setManualOverride] = useState(() => {
-    const saved = localStorage.getItem('manual_override');
-    return saved !== null ? JSON.parse(saved) : false;
-  });
+  const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
+  const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
+  const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
+  const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
 
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   // Track travel time for the browser tab title
   const travelTimeLeft = useTravelTimer(
     (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
-      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until) 
+      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
       : 0
   );
 
@@ -67,7 +147,11 @@ function App() {
       ]);
       setUserData(prev => prev ? { ...prev, ...user } : user);
       if (faction && !faction.error) setFactionData(faction);
-      localStorage.setItem('torn_api_key', apiKey);
+      try {
+        localStorage.setItem('torn_api_key', apiKey);
+      } catch (e) {
+        console.warn("Could not save API key to localStorage:", e);
+      }
     } catch (err) {
       setError(err.message);
       if (err.message.toLowerCase().includes('key')) {
@@ -111,11 +195,11 @@ function App() {
     return () => clearInterval(interval);
   }, [apiKey, loadDashboardData]);
 
-  // Overseas fetch based on autoSyncStock
+  // Overseas fetch based on stockAutoSync
   useEffect(() => {
     let interval;
     if (apiKey) {
-      if (autoSyncStock) {
+      if (stockAutoSync) {
         loadOverseasData();
         interval = setInterval(() => {
           loadOverseasData();
@@ -127,47 +211,7 @@ function App() {
       }
     }
     return () => clearInterval(interval);
-  }, [apiKey, autoSyncStock, loadOverseasData]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('show_tab_timer', JSON.stringify(showTabTimer));
-    } catch (e) {
-      console.warn('LocalStorage quota exceeded: could not save tab timer setting.');
-    }
-  }, [showTabTimer]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('auto_sync_stock', JSON.stringify(autoSyncStock));
-    } catch (e) {
-      console.warn('LocalStorage quota exceeded: could not save auto sync stock setting.');
-    }
-  }, [autoSyncStock]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('cargo_capacity', JSON.stringify(cargoCapacity));
-    } catch (e) {
-      console.warn('LocalStorage quota exceeded: could not save cargo capacity.');
-    }
-  }, [cargoCapacity]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('manual_override', JSON.stringify(manualOverride));
-    } catch (e) {
-      console.warn('LocalStorage quota exceeded: could not save manual override.');
-    }
-  }, [manualOverride]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('active_tab', activeTab);
-    } catch (e) {
-      console.warn('LocalStorage quota exceeded: could not save active tab.');
-    }
-  }, [activeTab]);
+  }, [apiKey, stockAutoSync, loadOverseasData]);
 
   const handleLogout = () => {
     setApiKey('');
@@ -186,7 +230,7 @@ function App() {
     const hasWLT = (data.stock_perks || []).some(perk => perk.toLowerCase().includes("wlt block"));
 
     // Check travel method or check if user has an airstrip PI (Base 15)
-    const hasAirstripPI = data.properties && Object.values(data.properties).some(p => 
+    const hasAirstripPI = data.properties && Object.values(data.properties).some(p =>
       p.modifications?.airstrip === 1 || p.staff?.pilot === 1
     );
 
@@ -196,10 +240,10 @@ function App() {
 
     // 2. Aggregate perks from categorized selections (faction_perks, job_perks, etc.)
     const perkCategories = [
-      'faction_perks', 
-      'job_perks', 
-      'property_perks', 
-      'education_perks', 
+      'faction_perks',
+      'job_perks',
+      'property_perks',
+      'education_perks',
       'enhancer_perks',
       'book_perks',
       'stock_perks'
@@ -217,7 +261,7 @@ function App() {
         const genericMatch = p.match(/(\d+)\s+(?:travel item|carrying capacity)/);
         if (genericMatch) {
           capacityBonus = parseInt(genericMatch[1], 10);
-        } 
+        }
         // Parse specific "additional flowers" or "additional plushies" bonuses
         const flowerPlushieMatch = p.match(/(\d+)\s+additional\s+(?:flowers|plushies)/);
         if (flowerPlushieMatch) {
@@ -238,15 +282,15 @@ function App() {
       const response = await fetch(`https://api.torn.com/user/?selections=travel,perks,properties&key=${apiKey}`);
       const data = await response.json();
       // Fetch inventory separately using the dedicated V2 inventory endpoint
-      const inventoryData = await fetchUserInventoryV2(apiKey); 
-      
+      const inventoryData = await fetchUserInventoryV2(apiKey);
+
       if (!data.error && !manualOverride) {
         const calculated = calculateCapacity({ ...data, inventory: inventoryData });
         setCargoCapacity(calculated);
-        
+
         // Merge calculations back into userData for the UI
         setUserData(prev => prev ? {
-          ...prev, 
+          ...prev,
           travel: { ...prev.travel, ...data.travel, calculatedCapacity: calculated },
           inventory: inventoryData
         } : null);
@@ -269,10 +313,10 @@ function App() {
     <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', padding: '20px', color: '#e0e0e0', lineHeight: '1.6' }}>
       {apiKey && (
         <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
-          <div 
+          <div
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            style={{ 
-              cursor: 'pointer', 
+            style={{
+              cursor: 'pointer',
               fontSize: '1.2rem',
               padding: '8px',
               borderRadius: '50%',
@@ -287,14 +331,14 @@ function App() {
           >
             ⚙️
           </div>
-          
+
           {isSettingsOpen && (
-            <SettingsMenu 
+            <SettingsMenu
               userData={userData}
               showTabTimer={showTabTimer}
               setShowTabTimer={setShowTabTimer}
-              autoSyncStock={autoSyncStock}
-              setAutoSyncStock={setAutoSyncStock}
+              stockAutoSync={stockAutoSync}
+              setStockAutoSync={setStockAutoSync}
               cargoCapacity={cargoCapacity}
               setCargoCapacity={setCargoCapacity}
               manualOverride={manualOverride}
@@ -306,13 +350,13 @@ function App() {
       )}
 
       {!apiKey && <LoginForm onLogin={setApiKey} />}
-      
+
       {apiKey && userData && (
         <>
-          <nav style={{ 
-            display: 'flex', 
-            gap: '10px', 
-            marginBottom: '30px', 
+          <nav style={{
+            display: 'flex',
+            gap: '10px',
+            marginBottom: '30px',
             borderBottom: '1px solid #333',
             maxWidth: '1200px',
             margin: '0 auto 30px auto'
@@ -327,7 +371,7 @@ function App() {
           ) : activeTab === 'faction' ? (
             <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} />
           ) : (
-            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={autoSyncStock} onManualSync={loadOverseasData} />
+            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={stockAutoSync} onManualSync={loadOverseasData} />
           )}
         </>
       )}
