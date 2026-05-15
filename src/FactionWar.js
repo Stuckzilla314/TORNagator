@@ -60,7 +60,7 @@ const FactionWar = ({ factionData }) => {
           const enemyFactionName = enemyFactionInfo.name || 'Unknown Faction';
           const enemyFactionScore = enemyFactionInfo.score || 0;
 
-          const targetScore = war.target || 'N/A';
+          const targetScore = war.war.target || 'N/A';
 
           return (
             <div key={index} style={{ ...cardStyle, border: '1px solid #e74c3c', background: 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
@@ -113,8 +113,8 @@ const FactionWar = ({ factionData }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
         <div style={cardStyle}>
           <h3 style={{ marginTop: 0, color: '#3498db' }}>General Information</h3>
-          <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Leader</div><div style={valueStyle}>{factionData.leader !== 0 ? `ID: ${factionData.leader}` : 'Unknown'}</div></div>
-          <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Co-Leader</div><div style={valueStyle}>{factionData.co_leader !== 0 ? `ID: ${factionData.co_leader}` : 'Unknown'}</div></div>
+          <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Leader</div><div style={valueStyle}>{factionData.leader !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData.leader}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3498db', textDecoration: 'none' }}>{factionData.leader_name} [{factionData.leader}]</a> : 'Unknown'}</div></div>
+          <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Co-Leader</div><div style={valueStyle}>{factionData['co-leader'] !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData['co-leader']}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3498db', textDecoration: 'none' }}>{factionData.co_leader_name} [{factionData['co-leader']}]</a> : 'Unknown'}</div></div>
           <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Age</div><div style={valueStyle}>{factionData.age || 'N/A'} days</div></div>
           <div style={{ marginBottom: '0' }}><div style={labelStyle}>Members</div><div style={valueStyle}>{Object.keys(factionData.members || {}).length}</div></div>
         </div>

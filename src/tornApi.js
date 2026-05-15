@@ -31,6 +31,35 @@ export const fetchFactionData = async (apiKey) => {
     if (data.error) {
       throw new Error(data.error.error || 'Unknown API Error');
     }
+
+    const leaderId = data.leader;
+    if (leaderId && leaderId !== 0) {
+      data.leader_name = data.members?.[leaderId]?.name;
+      if (!data.leader_name) {
+        try {
+          const leaderRes = await fetch(`${BASE_URL}/user/${leaderId}?selections=basic&key=${apiKey}`);
+          const leaderData = await leaderRes.json();
+          data.leader_name = leaderData.name || 'Unknown';
+        } catch (e) {
+          data.leader_name = 'Unknown';
+        }
+      }
+    }
+
+    const coLeaderId = data['co-leader'];
+    if (coLeaderId && coLeaderId !== 0) {
+      data.co_leader_name = data.members?.[coLeaderId]?.name;
+      if (!data.co_leader_name) {
+        try {
+          const coLeaderRes = await fetch(`${BASE_URL}/user/${coLeaderId}?selections=basic&key=${apiKey}`);
+          const coLeaderData = await coLeaderRes.json();
+          data.co_leader_name = coLeaderData.name || 'Unknown';
+        } catch (e) {
+          data.co_leader_name = 'Unknown';
+        }
+      }
+    }
+
     return data;
   } catch (error) {
     throw error;
