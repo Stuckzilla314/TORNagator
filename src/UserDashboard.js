@@ -35,50 +35,75 @@ const UserDashboard = ({ userData, onLogout }) => {
     color: '#fff'
   };
 
-  const StatBar = ({ label, current, max, color, timeRemaining, link }) => (
-    <div style={{ flex: '1 1 200px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
-        {link ? (
-          <a 
-            href={link} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            style={{ 
-              fontSize: '0.85rem', 
-              fontWeight: 'bold', 
-              color: '#bbb', 
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'color 0.2s ease',
-              cursor: 'pointer'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.color = color}
-            onMouseOut={(e) => e.currentTarget.style.color = '#bbb'}
-          >
+  const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
+    const content = (
+      <>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+          <span style={{ 
+            fontSize: '0.85rem', 
+            fontWeight: 'bold', 
+            color: '#bbb', 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'color 0.2s ease'
+          }}>
             {label}
-            <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>
-          </a>
-        ) : (
-          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#bbb' }}>{label}</span>
-        )}
-        <span style={{ fontSize: '0.85rem', color: '#fff' }}>
-          {current || 0} / {max || 0}
-          {timeRemaining && <span style={{ color: '#888', marginLeft: '8px', fontSize: '0.75rem' }}>{timeRemaining}</span>}
-        </span>
+            {link && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>}
+          </span>
+          <span style={{ fontSize: '0.85rem', color: '#fff' }}>
+            {current || 0} / {max || 0}
+            {timeRemaining && <span style={{ color: '#888', marginLeft: '8px', fontSize: '0.75rem' }}>{timeRemaining}</span>}
+          </span>
+        </div>
+        <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', overflow: 'hidden' }}>
+          <div style={{ 
+            width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%`, 
+            height: '100%', 
+            backgroundColor: color,
+            transition: 'width 0.6s cubic-bezier(0.1, 0.7, 1.0, 0.1)',
+            boxShadow: `0 0 10px ${color}44`
+          }} />
+        </div>
+      </>
+    );
+
+    if (link) {
+      return (
+        <a 
+          href={link} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{ 
+            flex: '1 1 200px', 
+            textDecoration: 'none', 
+            color: 'inherit',
+            display: 'block',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            const labelSpan = e.currentTarget.querySelector('span');
+            if (labelSpan) labelSpan.style.color = color;
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            const labelSpan = e.currentTarget.querySelector('span');
+            if (labelSpan) labelSpan.style.color = '#bbb';
+          }}
+        >
+          {content}
+        </a>
+      );
+    }
+
+    return (
+      <div style={{ flex: '1 1 200px' }}>
+        {content}
       </div>
-      <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', overflow: 'hidden' }}>
-        <div style={{ 
-          width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%`, 
-          height: '100%', 
-          backgroundColor: color,
-          transition: 'width 0.6s cubic-bezier(0.1, 0.7, 1.0, 0.1)',
-          boxShadow: `0 0 10px ${color}44`
-        }} />
-      </div>
-    </div>
-  );
+    );
+  };
 
   const isTraveling = userData.status?.state === 'Traveling';
   const isHospitalized = userData.status?.state === 'Hospital';
