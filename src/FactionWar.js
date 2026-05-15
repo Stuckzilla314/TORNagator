@@ -50,12 +50,13 @@ const FactionWar = ({ factionData }) => {
 
       {isInWar ? (
         activeWars.map((war, index) => {
-          const factions = Object.values(war.factions || {});
+          const factionsEntries = Object.entries(war.factions || {}).map(([id, f]) => ({ id, ...f }));
 
-          const ourFactionInfo = factions.find(f => f.name === factionData.name) || {};
+          const ourFactionInfo = factionsEntries.find(f => f.name === factionData.name) || {};
           const ourFactionScore = ourFactionInfo.score || 0;
 
-          const enemyFactionInfo = factions.find(f => f.name !== factionData.name) || {};
+          const enemyFactionInfo = factionsEntries.find(f => f.name !== factionData.name) || {};
+          const enemyFactionId = enemyFactionInfo.id || '';
           const enemyFactionName = enemyFactionInfo.name || 'Unknown Faction';
           const enemyFactionScore = enemyFactionInfo.score || 0;
 
@@ -68,7 +69,9 @@ const FactionWar = ({ factionData }) => {
                   <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
                     ⚔️ Active Ranked War
                   </h3>
-                  <p style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>vs {enemyFactionName}</p>
+                  <p style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                    vs <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'underline' }}>{enemyFactionName}</a>
+                  </p>
                 </div>
                 <div style={{ display: 'flex', gap: '2rem', textAlign: 'center', flexWrap: 'wrap' }}>
                   <div>
@@ -77,7 +80,9 @@ const FactionWar = ({ factionData }) => {
                   </div>
                   <div style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
                   <div>
-                    <div style={{ ...labelStyle, color: '#aaa' }}>{enemyFactionName}</div>
+                    <div style={{ ...labelStyle, color: '#aaa' }}>
+                      <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{enemyFactionName}</a>
+                    </div>
                     <div style={{ ...valueStyle, fontSize: '2rem', color: '#e74c3c' }}>{enemyFactionScore}</div>
                   </div>
                   <div style={{ alignSelf: 'center', borderLeft: '1px solid #444', height: '50px', margin: '0 10px' }}></div>
