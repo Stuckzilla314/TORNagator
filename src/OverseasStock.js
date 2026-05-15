@@ -356,6 +356,18 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     setSortConfig({ key, direction });
   };
 
+  const handleRowClick = (item) => {
+    const totalCost = item.buy_price * cargoCapacity;
+    const cashOnHand = userData?.money_onhand || 0;
+
+    if (cashOnHand < totalCost) {
+      const confirmed = window.confirm(`⚠️ Low on Cash! \n\nTo buy ${cargoCapacity}x ${item.name}, you need $${totalCost.toLocaleString()}.\nYou only have $${cashOnHand.toLocaleString()} on hand.\n\nDo you want to go to the Travel Agency anyway?`);
+      if (!confirmed) return;
+    }
+
+    window.open('https://www.torn.com/travelagency.php', '_blank');
+  };
+
   const renderSortIndicator = (key) => {
     if (sortConfig.key !== key) return <span style={{ color: '#444', marginLeft: '8px', fontSize: '0.7rem' }}>↕</span>;
     return sortConfig.direction === 'asc' ?
@@ -387,13 +399,13 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
               transition: 'all 0.3s ease',
               opacity: loadingYata ? 0.6 : 1
             }}
-            onMouseEnter={(e) => { 
+            onMouseEnter={(e) => {
               if (!loadingYata) {
                 e.currentTarget.style.borderColor = '#3498db';
                 e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
               }
             }}
-            onMouseLeave={(e) => { 
+            onMouseLeave={(e) => {
               if (!loadingYata) {
                 e.currentTarget.style.borderColor = '#444';
                 e.currentTarget.style.backgroundColor = 'transparent';
@@ -467,7 +479,25 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
               const buyableQuantity = stockInfo ? Math.min(stockInfo.quantity, cargoCapacity) : 0;
 
               return (
-                <tr key={`${item.country}-${item.id}`} style={{ transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#252525'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <tr
+                  key={`${item.country}-${item.id}`}
+                  onClick={() => handleRowClick(item)}
+                  style={{
+                    transition: 'all 0.2s',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#252525';
+                    e.currentTarget.style.transform = 'scale(1.002)';
+                    e.currentTarget.style.boxShadow = 'inset 0 0 10px rgba(52, 152, 219, 0.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
                   <td style={cellStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <img
@@ -513,12 +543,16 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     ) : stockInfo ? (
                       <div>
                         <div
-                          onClick={() => setSelectedItemForGraph(item)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItemForGraph(item);
+                          }}
                           style={{
                             fontWeight: 'bold',
                             cursor: 'pointer',
                             color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
-                            textDecoration: 'underline'
+                            textDecoration: 'underline',
+                            padding: '4px'
                           }}
                           title="Click to view stock history"
                         >
