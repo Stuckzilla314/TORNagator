@@ -141,7 +141,7 @@ function App() {
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel');
+      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats');
       setUserData(prev => prev ? { ...prev, ...user } : user);
       try {
         localStorage.setItem('torn_api_key', apiKey);

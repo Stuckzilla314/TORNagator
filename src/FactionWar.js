@@ -61,8 +61,9 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle }) 
   );
 };
 
-const FactionWar = ({ apiKey, factionData }) => {
+const FactionWar = ({ apiKey, factionData, userData }) => {
   const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [compareMode, setCompareMode] = useState(false);
   const [enemyFactionData, setEnemyFactionData] = useState(null);
   const [memberProfiles, setMemberProfiles] = useState({});
   const [isLoadingTargets, setIsLoadingTargets] = useState(false);
@@ -265,7 +266,34 @@ const FactionWar = ({ apiKey, factionData }) => {
       {activeSubTab === 'targets' && isInWar && (
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: cachedAt ? '0.5rem' : '1.5rem' }}>
-            <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem' }}>🎯 Target Selection</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem' }}>🎯 Target Selection</h3>
+              <div 
+                onClick={() => setCompareMode(!compareMode)}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  cursor: 'pointer',
+                  backgroundColor: '#333',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  transition: 'all 0.2s',
+                  border: `1px solid ${compareMode ? '#e74c3c' : '#444'}`
+                }}
+              >
+                <div style={{ 
+                  width: '12px', 
+                  height: '12px', 
+                  borderRadius: '50%', 
+                  backgroundColor: compareMode ? '#e74c3c' : '#555',
+                  transition: 'all 0.2s'
+                }} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: compareMode ? '#fff' : '#888' }}>
+                  COMPARE TO OWN
+                </span>
+              </div>
+            </div>
             <button 
               onClick={handleForceRefresh} 
               disabled={isLoadingTargets} 
@@ -416,25 +444,58 @@ const FactionWar = ({ apiKey, factionData }) => {
                         {hasProfile && (
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
                             {[
-                              { label: '🔪 Crimes', value: criminalOffenses, color: '#e67e22' },
-                              { label: '💊 Drugs', value: drugsUsed, color: '#9b59b6' },
-                              { label: '⚡ Refills', value: totalRefills, color: '#3498db' },
-                              { label: '💉 Boosters', value: boostersUsed, color: '#2ecc71' },
-                            ].map(({ label, value, color }) => (
-                              <span key={label} style={{
-                                backgroundColor: '#1a1a1a',
-                                border: `1px solid ${color}44`,
-                                color: '#ccc',
-                                padding: '3px 10px',
-                                borderRadius: '20px',
-                                fontSize: '0.8rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '5px'
-                              }}>
-                                {label}: <strong style={{ color }}>{value.toLocaleString()}</strong>
-                              </span>
-                            ))}
+                              { 
+                                label: '🔪 Crimes', 
+                                value: criminalOffenses, 
+                                color: '#e67e22',
+                                own: userData.personalstats?.criminaloffenses || 0
+                              },
+                              { 
+                                label: '💊 Drugs', 
+                                value: drugsUsed, 
+                                color: '#9b59b6',
+                                own: userData.personalstats?.drugsused || 0
+                              },
+                              { 
+                                label: '⚡ Refills', 
+                                value: totalRefills, 
+                                color: '#3498db',
+                                own: (userData.personalstats?.refills || 0) + (userData.personalstats?.nerverefills || 0) + (userData.personalstats?.tokenrefills || 0)
+                              },
+                              { 
+                                label: '💉 Boosters', 
+                                value: boostersUsed, 
+                                color: '#2ecc71',
+                                own: userData.personalstats?.boostersused || 0
+                              },
+                            ].map(({ label, value, color, own }) => {
+                              const diff = value - own;
+                              const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+                              const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
+
+                              return (
+                                <span key={label} style={{
+                                  backgroundColor: '#1a1a1a',
+                                  border: `1px solid ${color}44`,
+                                  color: '#ccc',
+                                  padding: '3px 10px',
+                                  borderRadius: '20px',
+                                  fontSize: '0.8rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '5px'
+                                }}>
+                                  {label}: <strong style={{ color }}>
+                                    {compareMode ? diffStr : value.toLocaleString()}
+                                  </strong>
+                                  {compareMode && (
+                                    <span style={{ fontSize: '0.7rem', color: diffColor, marginLeft: '2px', fontStyle: 'italic' }}>
+                                      {diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'}
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
