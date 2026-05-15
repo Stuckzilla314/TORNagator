@@ -48,7 +48,7 @@ const YATA_COUNTRY_CODES = {
 // Flatten the IDs from our map into a Set for O(1) lookups during background recording
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
-const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock }) => {
+const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync }) => {
   const [filter, setFilter] = useState('All');
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
@@ -70,6 +70,13 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock }
       setLoadingYata(false);
     }
   }, []);
+
+  const handleManualSync = useCallback(() => {
+    fetchStockData();
+    if (onManualSync) {
+      onManualSync();
+    }
+  }, [fetchStockData, onManualSync]);
 
   useEffect(() => {
     if (!autoSyncStock) {
@@ -315,7 +322,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock }
           <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
           {!autoSyncStock && (
             <button
-              onClick={fetchStockData}
+              onClick={handleManualSync}
               disabled={loadingYata}
               style={{
                 background: 'none',

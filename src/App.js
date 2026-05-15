@@ -10,6 +10,7 @@ function App() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('torn_api_key') || '');
   const [userData, setUserData] = useState(null);
   const [itemsData, setItemsData] = useState(null);
+  const itemsDataRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
@@ -49,21 +50,14 @@ function App() {
     }
   }, [travelTimeLeft, showTabTimer]);
 
-  // Fetch static item data once
-  const loadData = useCallback(async (isInitial = false) => {
-    if (!apiKey) return; // Ensure apiKey is available
-
+  // Fetch Dashboard data
+  const loadDashboardData = useCallback(async (isInitial = false) => {
+    if (!apiKey) return;
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const [user, items, inventory] = await Promise.all([
-        fetchUserData(apiKey, 'basic,profile,bars,travel'),
-        itemsData ? Promise.resolve(itemsData) : fetchTornItems(apiKey),
-        fetchUserInventoryV2(apiKey)
-      ]);
-
-      setUserData({ ...user, inventory: inventory });
-      setItemsData(items);
+      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel');
+      setUserData(prev => prev ? { ...prev, ...user } : user);
       localStorage.setItem('torn_api_key', apiKey);
     } catch (err) {
       setError(err.message);
@@ -72,16 +66,59 @@ function App() {
         localStorage.removeItem('torn_api_key');
       }
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
-  }, [apiKey, itemsData]); // Dependencies for useCallback
+  }, [apiKey]);
 
-  useEffect(() => {
-    if (apiKey && apiKey !== loadedApiKeyRef.current) {
-      loadData(true);
-      loadedApiKeyRef.current = apiKey; // Update the ref to the current API key
+  // Fetch Overseas Stock data (Inventory & Items)
+  const loadOverseasData = useCallback(async () => {
+    if (!apiKey) return;
+    try {
+      const currentItems = itemsDataRef.current;
+      const [items, inventory] = await Promise.all([
+        currentItems ? Promise.resolve(currentItems) : fetchTornItems(apiKey),
+        fetchUserInventoryV2(apiKey)
+      ]);
+
+      if (!currentItems) {
+        itemsDataRef.current = items;
+        setItemsData(items);
+      }
+      setUserData(prev => prev ? { ...prev, inventory } : { inventory });
+    } catch (err) {
+      console.error("Overseas Data Fetch Error:", err);
     }
-  }, [apiKey, loadData]);
+  }, [apiKey]);
+
+  // Always recurring dashboard fetch
+  useEffect(() => {
+    let interval;
+    if (apiKey) {
+      loadDashboardData(true);
+      interval = setInterval(() => {
+        loadDashboardData(false);
+      }, 30000);
+    }
+    return () => clearInterval(interval);
+  }, [apiKey, loadDashboardData]);
+
+  // Overseas fetch based on autoSyncStock
+  useEffect(() => {
+    let interval;
+    if (apiKey) {
+      if (autoSyncStock) {
+        loadOverseasData();
+        interval = setInterval(() => {
+          loadOverseasData();
+        }, 30000);
+      } else {
+        if (!itemsDataRef.current) {
+          loadOverseasData();
+        }
+      }
+    }
+    return () => clearInterval(interval);
+  }, [apiKey, autoSyncStock, loadOverseasData]);
 
   useEffect(() => {
     try {
@@ -278,7 +315,7 @@ function App() {
           {activeTab === 'dashboard' ? (
             <UserDashboard userData={userData} onLogout={handleLogout} />
           ) : (
-            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={autoSyncStock} />
+            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={autoSyncStock} onManualSync={loadOverseasData} />
           )}
         </>
       )}
