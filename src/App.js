@@ -132,21 +132,14 @@ function App() {
     }
   }, [travelTimeLeft, showTabTimer]);
 
-  // Fetch Dashboard data
+  // Fetch Dashboard data (user only — faction is fetched separately on-demand)
   const loadDashboardData = useCallback(async (isInitial = false) => {
     if (!apiKey) return;
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const [user, faction] = await Promise.all([
-        fetchUserData(apiKey, 'basic,profile,bars,travel'),
-        fetchFactionData(apiKey).catch(err => {
-          console.warn("Faction data fetch failed", err);
-          return null;
-        })
-      ]);
+      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel');
       setUserData(prev => prev ? { ...prev, ...user } : user);
-      if (faction && !faction.error) setFactionData(faction);
       try {
         localStorage.setItem('torn_api_key', apiKey);
       } catch (e) {
@@ -160,6 +153,17 @@ function App() {
       }
     } finally {
       if (isInitial) setLoading(false);
+    }
+  }, [apiKey]);
+
+  // Fetch Faction data — only called on-demand when visiting the Faction War tab
+  const loadFactionData = useCallback(async () => {
+    if (!apiKey) return;
+    try {
+      const faction = await fetchFactionData(apiKey);
+      if (faction && !faction.error) setFactionData(faction);
+    } catch (err) {
+      console.warn("Faction data fetch failed", err);
     }
   }, [apiKey]);
 
@@ -183,7 +187,7 @@ function App() {
     }
   }, [apiKey]);
 
-  // Always recurring dashboard fetch
+  // Always recurring dashboard fetch (user data only)
   useEffect(() => {
     let interval;
     if (apiKey) {
@@ -194,6 +198,13 @@ function App() {
     }
     return () => clearInterval(interval);
   }, [apiKey, loadDashboardData]);
+
+  // Fetch faction data whenever the faction tab is activated (not on a timer)
+  useEffect(() => {
+    if (apiKey && activeTab === 'faction') {
+      loadFactionData();
+    }
+  }, [apiKey, activeTab, loadFactionData]);
 
   // Overseas fetch based on stockAutoSync
   useEffect(() => {
