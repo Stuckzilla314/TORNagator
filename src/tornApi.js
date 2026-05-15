@@ -19,6 +19,24 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
   }
 };
 
+/**
+ * Fetches basic faction data from Torn API
+ * @param {string} apiKey - The user's private API key
+ */
+export const fetchFactionData = async (apiKey) => {
+  try {
+    const response = await fetch(`${BASE_URL}/faction/?selections=basic&key=${apiKey}`);
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error.error || 'Unknown API Error');
+    }
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const fetchTornItems = async (apiKey) => {
   try {
     const response = await fetch(`${BASE_URL}/torn/?selections=items&key=${apiKey}`);

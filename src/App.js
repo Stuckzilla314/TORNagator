@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
 import OverseasStock from './OverseasStock';
+import FactionWar from './FactionWar';
 import SettingsMenu from './SettingsMenu';
-import { fetchUserData, fetchTornItems, fetchUserInventoryV2 } from './tornApi';
+import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 
 function App() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('torn_api_key') || '');
   const [userData, setUserData] = useState(null);
+  const [factionData, setFactionData] = useState(null);
   const [itemsData, setItemsData] = useState(null);
   const itemsDataRef = useRef(null);
   const [loading, setLoading] = useState(false);
@@ -56,8 +58,15 @@ function App() {
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel');
+      const [user, faction] = await Promise.all([
+        fetchUserData(apiKey, 'basic,profile,bars,travel'),
+        fetchFactionData(apiKey).catch(err => {
+          console.warn("Faction data fetch failed", err);
+          return null;
+        })
+      ]);
       setUserData(prev => prev ? { ...prev, ...user } : user);
+      if (faction && !faction.error) setFactionData(faction);
       localStorage.setItem('torn_api_key', apiKey);
     } catch (err) {
       setError(err.message);
@@ -309,11 +318,14 @@ function App() {
             margin: '0 auto 30px auto'
           }}>
             <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
+            <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
             <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
           </nav>
 
           {activeTab === 'dashboard' ? (
             <UserDashboard userData={userData} onLogout={handleLogout} />
+          ) : activeTab === 'faction' ? (
+            <FactionWar factionData={factionData} userData={userData} />
           ) : (
             <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={autoSyncStock} onManualSync={loadOverseasData} />
           )}
