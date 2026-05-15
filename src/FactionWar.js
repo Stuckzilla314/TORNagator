@@ -241,61 +241,94 @@ const FactionWar = ({ apiKey, factionData }) => {
                   const defendsLost = ps.defendslost || 0;
                   const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
                   const winRate = totalFights > 0 ? Math.round(((attacksWon + defendsWon) / totalFights) * 100) : null;
+                  const criminalOffenses = ps.criminaloffenses || 0;
+                  const drugsUsed = ps.drugsused || 0;
+                  const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
+                  const boostersUsed = ps.boostersused || 0;
                   const hasProfile = Object.keys(profile).length > 0;
                   return (
-                    <div key={member.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '1rem', alignItems: 'center', padding: '16px', backgroundColor: '#222', borderRadius: '8px', borderLeft: `6px solid ${statusColor}` }}>
-                      {/* Name + Status */}
-                      <div>
-                        <a href={`https://www.torn.com/profiles.php?XID=${member.id}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                          {member.name}
-                        </a>
-                        <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
-                        <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
-                          Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
+                    <div key={member.id} style={{ padding: '16px', backgroundColor: '#222', borderRadius: '8px', borderLeft: `6px solid ${statusColor}` }}>
+                      {/* Main stats row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+                        {/* Name + Status */}
+                        <div>
+                          <a href={`https://www.torn.com/profiles.php?XID=${member.id}`} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'none', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                            {member.name}
+                          </a>
+                          <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
+                          <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
+                            Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
+                          </div>
+                          <div style={{ marginTop: '4px' }}>
+                            <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.9rem' }}>{member.status.state}</span>
+                            <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>{member.status.description?.replace(/<[^>]+>/g, '')}</span>
+                          </div>
                         </div>
-                        <div style={{ marginTop: '4px' }}>
-                          <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.9rem' }}>{member.status.state}</span>
-                          <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>{member.status.description?.replace(/<[^>]+>/g, '')}</span>
+                        {/* Days Playing */}
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Days Playing</div>
+                          {hasProfile ? (
+                            <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f1c40f' }}>
+                              {daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
+                            </div>
+                          ) : (
+                            <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading...</div>
+                          )}
+                        </div>
+                        {/* Attack / Defend record */}
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Atk W/L</div>
+                          {hasProfile ? (
+                            <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                              <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
+                              <span style={{ color: '#555', margin: '0 4px' }}>/</span>
+                              <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
+                            </div>
+                          ) : (
+                            <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
+                          )}
+                          {hasProfile && (
+                            <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>Def: <span style={{ color: '#2ecc71' }}>{defendsWon.toLocaleString()}</span>/<span style={{ color: '#e74c3c' }}>{defendsLost.toLocaleString()}</span></div>
+                          )}
+                        </div>
+                        {/* Win Rate */}
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Win Rate</div>
+                          {hasProfile ? (
+                            <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
+                              {winRate !== null ? `${winRate}%` : '—'}
+                            </div>
+                          ) : (
+                            <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
+                          )}
                         </div>
                       </div>
-                      {/* Days Playing */}
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Days Playing</div>
-                        {hasProfile ? (
-                          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f1c40f' }}>
-                            {daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
-                          </div>
-                        ) : (
-                          <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading...</div>
-                        )}
-                      </div>
-                      {/* Attack / Defend record */}
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Atk W/L</div>
-                        {hasProfile ? (
-                          <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#3498db' }}>
-                            <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
-                            <span style={{ color: '#555', margin: '0 4px' }}>/</span>
-                            <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
-                          </div>
-                        ) : (
-                          <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
-                        )}
-                        {hasProfile && (
-                          <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>Def: <span style={{ color: '#2ecc71' }}>{defendsWon.toLocaleString()}</span>/<span style={{ color: '#e74c3c' }}>{defendsLost.toLocaleString()}</span></div>
-                        )}
-                      </div>
-                      {/* Win Rate */}
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Win Rate</div>
-                        {hasProfile ? (
-                          <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
-                            {winRate !== null ? `${winRate}%` : '—'}
-                          </div>
-                        ) : (
-                          <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
-                        )}
-                      </div>
+
+                      {/* Activity strip */}
+                      {hasProfile && (
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
+                          {[
+                            { label: '🔪 Crimes', value: criminalOffenses, color: '#e67e22' },
+                            { label: '💊 Drugs', value: drugsUsed, color: '#9b59b6' },
+                            { label: '⚡ Refills', value: totalRefills, color: '#3498db' },
+                            { label: '💉 Boosters', value: boostersUsed, color: '#2ecc71' },
+                          ].map(({ label, value, color }) => (
+                            <span key={label} style={{
+                              backgroundColor: '#1a1a1a',
+                              border: `1px solid ${color}44`,
+                              color: '#ccc',
+                              padding: '3px 10px',
+                              borderRadius: '20px',
+                              fontSize: '0.8rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}>
+                              {label}: <strong style={{ color }}>{value.toLocaleString()}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })
