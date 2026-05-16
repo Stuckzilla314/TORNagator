@@ -18,17 +18,17 @@ const COUNTRY_MAP = {
 };
 
 const TRAVEL_TIMES = {
-  "Mexico": 18,
-  "Cayman Islands": 25,
-  "Canada": 29,
-  "Hawaii": 94,
-  "United Kingdom": 111,
-  "Argentina": 117,
-  "Switzerland": 123,
-  "Japan": 158,
-  "China": 169,
-  "UAE": 201,
-  "South Africa": 208
+  "Mexico": 26,
+  "Cayman Islands": 35,
+  "Canada": 41,
+  "Hawaii": 134,
+  "United Kingdom": 159,
+  "Argentina": 167,
+  "Switzerland": 175,
+  "Japan": 225,
+  "China": 242,
+  "UAE": 271,
+  "South Africa": 297
 };
 
 const YATA_COUNTRY_CODES = {
