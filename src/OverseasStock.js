@@ -56,6 +56,24 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
 
+  // Memoized stocks lookup map for O(1) item lookups
+  const stocksLookup = React.useMemo(() => {
+    if (!yataData?.stocks) return {};
+    const map = {};
+    Object.entries(YATA_COUNTRY_CODES).forEach(([country, code]) => {
+      if (yataData.stocks[code]?.stocks) {
+        yataData.stocks[code].stocks.forEach(s => {
+          map[`${country}_${s.id}`] = {
+            quantity: s.quantity,
+            cost: s.cost,
+            update: yataData.stocks[code].update
+          };
+        });
+      }
+    });
+    return map;
+  }, [yataData]);
+
   // Load cached stock data on mount
   useEffect(() => {
     try {
@@ -76,7 +94,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         sessionStorage.setItem('tornagator_yata_cache', JSON.stringify(data));
       }
     } catch (err) {
-      console.error("Firestore fetch error:", err);
+      if (err.code === 'unavailable' || err.message.includes('offline')) {
+        console.warn("Firestore: Client is offline, using cached data if available.");
+      } else {
+        console.error("Firestore fetch error:", err);
+      }
     } finally {
       setLoadingYata(false);
     }
@@ -109,7 +131,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         setLoadingYata(false);
       },
       (err) => {
-        console.error("Firestore snapshot error:", err);
+        if (err.code === 'unavailable' || err.message.includes('offline')) {
+          console.warn("Firestore: Snapshot unavailable while offline.");
+        } else {
+          console.error("Firestore snapshot error:", err);
+        }
         setLoadingYata(false);
       }
     );
@@ -239,20 +265,71 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     return item?.amount ?? 0;
   };
 
-  const getStockInfo = (country, itemId) => {
-    if (!yataData || !yataData.stocks) return null;
-    const code = YATA_COUNTRY_CODES[country];
-    if (!code || !yataData.stocks[code]) return null;
+  const getStockInfo = useCallback((country, itemId) => {
+    return stocksLookup[`${country}_${itemId}`] || null;
+  }, [stocksLookup]);
 
-    const stockList = yataData.stocks[code].stocks || [];
-    const itemStock = stockList.find(s => Number(s.id) === Number(itemId));
+  const processedItems = React.useMemo(() => {
+    if (!itemsData) return [];
+    
+    return Object.entries(COUNTRY_MAP).flatMap(([country, ids]) =>
+      ids.map(id => {
+        const item = itemsData[id] || {};
+        const stockInfo = getStockInfo(country, id);
+        const owned = getOwnedCount(id);
 
-    return {
-      quantity: itemStock ? itemStock.quantity : 0,
-      cost: itemStock ? itemStock.cost : 0,
-      lastUpdate: yataData.stocks[code].update
-    };
-  };
+        const effectiveBuyPrice = stockInfo?.cost || item.buy_price || 0;
+        const profitPerItem = (item.market_value || 0) - effectiveBuyPrice;
+        const bagProfit = profitPerItem * cargoCapacity;
+        const stockQuantity = stockInfo?.quantity || 0;
+
+        const baseTime = TRAVEL_TIMES[country] || 0;
+        let modifier = 1.0;
+        const travelMethod = userData?.travel?.method;
+        if (travelMethod === 'Business') modifier = 0.3;
+        else if (travelMethod === 'Private') modifier = 0.5;
+        else if (travelMethod === 'Airstrip') modifier = 0.7;
+
+        const totalRoundTripMinutes = Math.round(baseTime * 2 * modifier);
+        const roundTripHours = totalRoundTripMinutes / 60;
+        const bagProfitPerHour = roundTripHours > 0 ? bagProfit / roundTripHours : 0;
+
+        const h = Math.floor(totalRoundTripMinutes / 60);
+        const m = totalRoundTripMinutes % 60;
+        const roundTripDisplay = h > 0 ? `${h}h ${m}m` : `${m}m`;
+
+        return {
+          ...item,
+          id,
+          country,
+          owned,
+          buy_price: effectiveBuyPrice,
+          bagProfit,
+          bagProfitPerHour,
+          roundTripDisplay,
+          profitPerItem,
+          stockQuantity,
+          stockInfo
+        };
+      }).filter(item => !!item.name)
+    ).filter(item => filter === 'All' || item.country === filter);
+  }, [itemsData, stocksLookup, userData, cargoCapacity, filter, getOwnedCount, getStockInfo]);
+
+  const sortedItems = React.useMemo(() => {
+    return [...processedItems].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [processedItems, sortConfig]);
 
   // Flatten mapping into items with pre-calculated values for sorting
   if (!itemsData) return (
@@ -287,66 +364,6 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     </div>
   );
 
-  const processedItems = Object.entries(COUNTRY_MAP).flatMap(([country, ids]) =>
-    ids.map(id => {
-      const item = itemsData[id] || {};
-      const stockInfo = getStockInfo(country, id);
-      const owned = getOwnedCount(id);
-
-      // Use YATA's 'cost' as the effective buy price for overseas items, 
-      // falling back to the TORN base buy_price if YATA data isn't available yet.
-      const effectiveBuyPrice = stockInfo?.cost || item.buy_price || 0;
-
-      const profitPerItem = (item.market_value || 0) - effectiveBuyPrice;
-      const bagProfit = profitPerItem * cargoCapacity;
-      const stockQuantity = stockInfo?.quantity || 0;
-
-      // Calculate travel time in hours (round trip)
-      const baseTime = TRAVEL_TIMES[country] || 0;
-      let modifier = 1.0;
-      const travelMethod = userData?.travel?.method;
-      if (travelMethod === 'Business') modifier = 0.3;
-      else if (travelMethod === 'Private') modifier = 0.5;
-      else if (travelMethod === 'Airstrip') modifier = 0.7;
-
-      const totalRoundTripMinutes = Math.round(baseTime * 2 * modifier);
-      const roundTripHours = totalRoundTripMinutes / 60;
-      const bagProfitPerHour = roundTripHours > 0 ? bagProfit / roundTripHours : 0;
-
-      const h = Math.floor(totalRoundTripMinutes / 60);
-      const m = totalRoundTripMinutes % 60;
-      const roundTripDisplay = h > 0 ? `${h}h ${m}m` : `${m}m`;
-
-      return {
-        ...item,
-        id,
-        country,
-        owned,
-        buy_price: effectiveBuyPrice, // Override with country-specific price
-        bagProfit,
-        bagProfitPerHour,
-        roundTripDisplay,
-        profitPerItem,
-        stockQuantity,
-        stockInfo
-      };
-    }).filter(item => !!item.name)
-  ).filter(item => filter === 'All' || item.country === filter);
-
-  const sortedItems = [...processedItems].sort((a, b) => {
-    let aVal = a[sortConfig.key];
-    let bVal = b[sortConfig.key];
-
-    if (typeof aVal === 'string') {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
-    }
-
-    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
   const requestSort = (key) => {
     let direction = (key === 'name' || key === 'country') ? 'asc' : 'desc';
     if (sortConfig.key === key) {
@@ -379,42 +396,44 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
-          <button
-            onClick={handleManualSync}
-            disabled={loadingYata}
-            style={{
-              background: 'transparent',
-              border: `1px solid ${loadingYata ? '#222' : '#444'}`,
-              borderRadius: '20px',
-              padding: '4px 12px',
-              cursor: loadingYata ? 'not-allowed' : 'pointer',
-              color: loadingYata ? '#666' : '#3498db',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: '600',
-              fontSize: '0.75rem',
-              letterSpacing: '1px',
-              transition: 'all 0.3s ease',
-              opacity: loadingYata ? 0.6 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (!loadingYata) {
-                e.currentTarget.style.borderColor = '#3498db';
-                e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loadingYata) {
-                e.currentTarget.style.borderColor = '#444';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }
-            }}
-            title="Refresh Stock & Inventory"
-          >
-            <span style={{ marginTop: '1px' }}>{loadingYata ? 'SYNCING...' : 'SYNC'}</span>
-            <span style={{ fontSize: '0.9rem' }}>🔄</span>
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <button
+              onClick={handleManualSync}
+              disabled={loadingYata}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${loadingYata ? '#222' : '#444'}`,
+                borderRadius: '20px',
+                padding: '4px 12px',
+                cursor: loadingYata ? 'not-allowed' : 'pointer',
+                color: loadingYata ? '#666' : '#3498db',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: '600',
+                fontSize: '0.75rem',
+                letterSpacing: '1px',
+                transition: 'all 0.3s ease',
+                opacity: loadingYata ? 0.6 : 1
+              }}
+              title="Refresh Stock & Inventory"
+            >
+              <span style={{ marginTop: '1px' }}>{loadingYata ? 'SYNCING...' : 'SYNC'}</span>
+              <span style={{ fontSize: '0.9rem' }}>🔄</span>
+            </button>
+            {yataData?.stocks && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                <span style={{ fontSize: '0.6rem', color: '#555', marginLeft: '5px' }}>
+                  Last Sync: {new Date(Object.values(yataData.stocks)[0]?.update * 1000).toLocaleTimeString()}
+                </span>
+                {!navigator.onLine && (
+                  <span style={{ fontSize: '0.6rem', color: '#f39c12', fontWeight: 'bold' }}>
+                    [OFFLINE MODE]
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <select
           value={filter}
@@ -621,7 +640,46 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             >
               ×
             </button>
-            <h3 style={{ marginTop: 0, color: '#3498db' }}>Stock History: {selectedItemForGraph.name}</h3>
+            <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Stock History: {selectedItemForGraph.name}</span>
+              {(() => {
+                // Simple restock prediction logic
+                if (historicalData.length < 2) return null;
+                
+                const restocks = [];
+                for (let i = 1; i < historicalData.length; i++) {
+                  // A restock is when stock goes from 0 to > 0
+                  if (historicalData[i-1].stock === 0 && historicalData[i].stock > 0) {
+                    restocks.push(historicalData[i].timestamp);
+                  }
+                }
+
+                if (restocks.length < 2) return null;
+
+                const intervals = [];
+                for (let i = 1; i < restocks.length; i++) {
+                  intervals.push(restocks[i] - restocks[i-1]);
+                }
+
+                const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                const lastRestock = restocks[restocks.length - 1];
+                const nextExpected = lastRestock + avgInterval;
+                const timeLeft = nextExpected - Date.now();
+
+                if (timeLeft < 0) return <span style={{ fontSize: '0.8rem', color: '#f39c12' }}>Restock Overdue ⏳</span>;
+
+                const minutes = Math.floor(timeLeft / 60000);
+                const hours = Math.floor(minutes / 60);
+                const displayTime = hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+
+                return (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#2ecc71' }}>Expected Restock: ~{displayTime}</div>
+                    <div style={{ fontSize: '0.6rem', color: '#666' }}>Based on {restocks.length} events</div>
+                  </div>
+                );
+              })()}
+            </h3>
             <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '20px' }}>Country: {selectedItemForGraph.country}</p>
 
             {loadingHistoricalData ? (
@@ -649,7 +707,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     stroke="#888"
                     tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   />
-                  <YAxis stroke="#888" domain={[0, (dataMax) => Math.max(dataMax + 10, 10)]} />
+                  <YAxis 
+                    stroke="#888" 
+                    domain={['auto', 'auto']} 
+                    tickFormatter={(tick) => tick?.toLocaleString() || '0'}
+                  />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#333', border: '1px solid #555', color: '#fff' }}
                     labelFormatter={(label) => `Time: ${new Date(label).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
@@ -676,7 +738,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 type="range"
                 id="timeScaleSlider"
                 min="1"
-                max="48"
+                max="168"
                 step="1"
                 value={timeScale}
                 onChange={(e) => setTimeScale(parseInt(e.target.value))}

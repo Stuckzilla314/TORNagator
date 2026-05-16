@@ -148,8 +148,8 @@ async function run() {
   if (nowMs - lastCleanup > 24 * 60 * 60 * 1000) {
     console.log("Running 24-hour cleanup cycle...");
     try {
-      // Cleanup records older than 48 hours to stay within Firestore free tier limits
-      const cutoff = Math.floor(nowMs / 1000) - (48 * 60 * 60);
+      // Cleanup records older than 7 days to stay within Firestore free tier limits
+      const cutoff = Math.floor(nowMs / 1000) - (7 * 24 * 60 * 60);
       const qCleanup = query(collection(db, "stock_history"), where("timestamp", "<", cutoff));
       const cleanupSnap = await getDocs(qCleanup);
       
