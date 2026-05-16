@@ -9,7 +9,7 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
   try {
     const response = await fetch(`${BASE_URL}/user/?selections=${selections}&key=${apiKey}`);
     const data = await response.json();
-    
+
     if (data.error) {
       throw new Error(data.error.error || 'Unknown API Error');
     }
@@ -27,7 +27,7 @@ export const fetchFactionData = async (apiKey) => {
   try {
     const response = await fetch(`${BASE_URL}/faction/?selections=basic&key=${apiKey}`);
     const data = await response.json();
-    
+
     if (data.error) {
       throw new Error(data.error.error || 'Unknown API Error');
     }
@@ -75,7 +75,7 @@ export const fetchFactionById = async (apiKey, factionId) => {
   try {
     const response = await fetch(`${BASE_URL}/faction/${factionId}?selections=basic&key=${apiKey}`);
     const data = await response.json();
-    
+
     if (data.error) {
       throw new Error(data.error.error || 'Unknown API Error');
     }
@@ -103,14 +103,14 @@ export const fetchTornItems = async (apiKey) => {
  */
 export const fetchUserInventoryV2 = async (apiKey) => {
   const categories = [
-    'Medical', 'Drug', 'Temporary', 'Melee', 'Primary', 
+    'Medical', 'Drug', 'Temporary', 'Melee', 'Primary',
     'Secondary', 'Armor', 'Plushie', 'Flower', 'Booster', 'Miscellaneous'
   ];
 
   const allItems = {};
   try {
     const results = await Promise.all(
-      categories.map(cat => 
+      categories.map(cat =>
         fetch(`${BASE_URL}/v2/user/inventory?cat=${cat}&key=${apiKey}&limit=100`)
           .then(res => res.ok ? res.json() : null)
           .catch(() => null)

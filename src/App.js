@@ -214,12 +214,12 @@ function App() {
           localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
         } catch (e) { console.warn("Items cache failed:", e); }
       }
-      
+
       setUserData(prev => prev ? { ...prev, inventory } : { inventory });
       try {
         sessionStorage.setItem('tornagator_inventory_cache', JSON.stringify(inventory));
       } catch (e) { console.warn("Inventory cache failed:", e); }
-      
+
     } catch (err) {
       console.error("Overseas Data Fetch Error:", err);
     }
@@ -265,12 +265,12 @@ function App() {
         hasOverseasSyncRun.current = true;
         loadOverseasData();
       }
-      
+
       interval = setInterval(() => {
         const now = new Date();
         const minutes = now.getMinutes();
         const seconds = now.getSeconds();
-        
+
         // Sync on :00, :05, :10...
         if (minutes % 5 === 0 && seconds < 30) {
           const lastSync = parseInt(sessionStorage.getItem('last_overseas_sync_minute') || '-1');
@@ -446,11 +446,11 @@ function App() {
           ) : activeTab === 'faction' ? (
             <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} />
           ) : (
-            <OverseasStock 
-              itemsData={itemsData} 
-              userData={userData} 
-              cargoCapacity={cargoCapacity} 
-              autoSyncStock={stockAutoSync} 
+            <OverseasStock
+              itemsData={itemsData}
+              userData={userData}
+              cargoCapacity={cargoCapacity}
+              autoSyncStock={stockAutoSync}
               onManualSync={loadOverseasData}
               filter={countryFilter}
               setFilter={setCountryFilter}
