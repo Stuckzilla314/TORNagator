@@ -260,11 +260,26 @@ function App() {
   useEffect(() => {
     let interval;
     if (apiKey && activeTab === 'stock' && stockAutoSync) {
+      // Initial fetch
       if (!hasOverseasSyncRun.current) {
         hasOverseasSyncRun.current = true;
         loadOverseasData();
       }
-      interval = setInterval(loadOverseasData, 30000);
+      
+      interval = setInterval(() => {
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        
+        // Sync on :00, :05, :10...
+        if (minutes % 5 === 0 && seconds < 30) {
+          const lastSync = parseInt(sessionStorage.getItem('last_overseas_sync_minute') || '-1');
+          if (lastSync !== minutes) {
+            loadOverseasData();
+            sessionStorage.setItem('last_overseas_sync_minute', minutes.toString());
+          }
+        }
+      }, 10000);
     } else if (activeTab !== 'stock') {
       hasOverseasSyncRun.current = false;
     }

@@ -111,39 +111,32 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     }
   }, [fetchStockData, onManualSync]);
 
+  // Synchronize market stock on a 5-minute tick ( :00, :05, :10... )
   useEffect(() => {
-    let unsubscribe = null;
+    if (!autoSyncStock) return;
 
-    if (!autoSyncStock) {
-      // If auto-sync is off, we do NOT fetch on mount/refresh anymore.
-      // Data will only be loaded from cache or manual refresh.
-      return;
+    // Initial fetch if cache is empty or on mount
+    if (!yataData) {
+      fetchStockData();
     }
 
-    setLoadingYata(true);
-    unsubscribe = onSnapshot(doc(db, "stock_metadata", "snapshot"),
-      (snap) => {
-        if (snap.exists()) {
-          const data = { stocks: snap.data().stocks || {} };
-          setYataData(data);
-          sessionStorage.setItem('tornagator_yata_cache', JSON.stringify(data));
+    const interval = setInterval(() => {
+      const now = new Date();
+      // Check if we are exactly on a 5-minute mark (within a 5s window to account for drift)
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      if (minutes % 5 === 0 && seconds < 30) {
+        // Only fetch once per 5-minute block
+        const lastSync = parseInt(sessionStorage.getItem('last_market_sync_minute') || '-1');
+        if (lastSync !== minutes) {
+          fetchStockData();
+          sessionStorage.setItem('last_market_sync_minute', minutes.toString());
         }
-        setLoadingYata(false);
-      },
-      (err) => {
-        if (err.code === 'unavailable' || err.message.includes('offline')) {
-          console.warn("Firestore: Snapshot unavailable while offline.");
-        } else {
-          console.error("Firestore snapshot error:", err);
-        }
-        setLoadingYata(false);
       }
-    );
+    }, 10000); // Check every 10 seconds
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [autoSyncStock]);
+    return () => clearInterval(interval);
+  }, [autoSyncStock, fetchStockData, yataData]);
 
   // State for historical data, now managed locally
   const [fullHistory, setFullHistory] = useState([]);
