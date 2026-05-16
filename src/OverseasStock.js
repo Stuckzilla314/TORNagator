@@ -681,9 +681,15 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 if (fullHistory.length < 2) return null;
                 
                 const restocks = [];
+                const sellOuts = [];
                 for (let i = 1; i < fullHistory.length; i++) {
+                  // Detect Restock
                   if (fullHistory[i - 1].stock === 0 && fullHistory[i].stock > 0) {
                     restocks.push(fullHistory[i].timestamp);
+                  }
+                  // Detect Sell-out
+                  if (fullHistory[i - 1].stock > 0 && fullHistory[i].stock === 0) {
+                    sellOuts.push(fullHistory[i].timestamp);
                   }
                 }
 
@@ -706,11 +712,23 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
                 const lastRestock = restocks[restocks.length - 1];
                 const now = Date.now();
-                const timeSinceLast = now - lastRestock;
+                
+                // --- Adaptive Cycle Analysis (ACA) ---
+                // Adjust prediction based on the velocity of the last sell-out
+                let acaAdjustment = 1.0;
+                const lastSellOut = [...sellOuts].reverse().find(s => s >= lastRestock);
+                if (lastSellOut) {
+                  const sellDurationMins = (lastSellOut - lastRestock) / 60000;
+                  if (sellDurationMins < 30) acaAdjustment = 0.5; // High velocity -> Fast restock
+                  else if (sellDurationMins < 60) acaAdjustment = 1.0; // Normal velocity
+                  else acaAdjustment = 1.5; // Low velocity -> Slower restock
+                }
+                const adjustedMedian = median * acaAdjustment;
+                // --------------------------------------
 
                 // --- Tick Alignment Logic ---
                 // Snap the raw prediction to the next 15-minute tick (:00, :15, :30, :45)
-                const rawExpected = lastRestock + median;
+                const rawExpected = lastRestock + adjustedMedian;
                 const expectedDate = new Date(rawExpected);
                 const minutes = expectedDate.getMinutes();
                 const snappedMinutes = Math.ceil(minutes / 15) * 15;
