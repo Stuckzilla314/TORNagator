@@ -48,8 +48,7 @@ const YATA_COUNTRY_CODES = {
 // Flatten the IDs from our map into a Set for O(1) lookups during background recording
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
-const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync }) => {
-  const [filter, setFilter] = useState('All');
+const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync, filter, setFilter }) => {
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
   const [timeScale, setTimeScale] = useState(24); // Default to 24h to save space

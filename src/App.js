@@ -51,7 +51,7 @@ function useLocalStorage(key, initialValue) {
     const ownedKeys = new Set([
       'torn_api_key', 'active_tab', 'show_tab_timer',
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
-      'tornagator_items_cache'
+      'tornagator_items_cache', 'tornagator_country_filter'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -76,7 +76,8 @@ function App() {
       'tornagator_stock_auto_sync',
       'cargo_capacity',
       'manual_override',
-      'tornagator_items_cache'
+      'tornagator_items_cache',
+      'tornagator_country_filter'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -118,6 +119,7 @@ function App() {
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
   const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
+  const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
 
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   // Track travel time for the browser tab title
@@ -429,7 +431,15 @@ function App() {
           ) : activeTab === 'faction' ? (
             <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} />
           ) : (
-            <OverseasStock itemsData={itemsData} userData={userData} cargoCapacity={cargoCapacity} autoSyncStock={stockAutoSync} onManualSync={loadOverseasData} />
+            <OverseasStock 
+              itemsData={itemsData} 
+              userData={userData} 
+              cargoCapacity={cargoCapacity} 
+              autoSyncStock={stockAutoSync} 
+              onManualSync={loadOverseasData}
+              filter={countryFilter}
+              setFilter={setCountryFilter}
+            />
           )}
         </>
       )}
