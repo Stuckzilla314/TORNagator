@@ -679,7 +679,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 // Tick-Aligned Median-Based Probabilistic Model (TA-MBPM)
                 // Always use full 7-day history for maximum prediction accuracy
                 if (fullHistory.length < 2) return null;
-                
+
                 const restocks = [];
                 const sellOuts = [];
                 for (let i = 1; i < fullHistory.length; i++) {
@@ -712,7 +712,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
                 const lastRestock = restocks[restocks.length - 1];
                 const now = Date.now();
-                
+
                 // --- Adaptive Cycle Analysis (ACA) ---
                 // Adjust prediction based on the velocity of the last sell-out
                 let acaAdjustment = 1.0;
@@ -830,7 +830,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     formatter={(value) => [`Stock: ${value.toLocaleString()}`, '']}
                   />
                   <Line
-                    type="stepAfter"
+                    type="monotone"
                     dataKey="stock"
                     stroke="#3498db"
                     strokeWidth={2}
