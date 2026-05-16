@@ -146,21 +146,24 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   }, [autoSyncStock]);
 
   // State for historical data, now managed locally
-  const [historicalData, setHistoricalData] = useState([]);
+  const [fullHistory, setFullHistory] = useState([]);
   const [graphError, setGraphError] = useState(null);
 
   useEffect(() => {
     const loadHistory = async () => {
-      if (!selectedItemForGraph) return;
+      if (!selectedItemForGraph) {
+        setFullHistory([]);
+        return;
+      }
 
       setLoadingHistoricalData(true);
       setGraphError(null);
       const nowMs = Date.now();
-      const windowStart = Math.floor((nowMs - (timeScale * 60 * 60 * 1000)) / 1000);
+      // Always fetch the maximum possible range (7 days) to allow local sliding
+      const maxWindowHours = 168; 
+      const windowStart = Math.floor((nowMs - (maxWindowHours * 60 * 60 * 1000)) / 1000);
 
       try {
-        // 1. Fetch the "Seed Point" (the most recent update BEFORE our time window)
-        // This ensures the graph doesn't start at 0 if no changes happened recently.
         const seedQuery = query(
           collection(db, "stock_history"),
           where("itemId", "==", Number(selectedItemForGraph.id)),
@@ -170,7 +173,6 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           limit(1)
         );
 
-        // 2. Fetch all changes WITHIN our time window
         const windowQuery = query(
           collection(db, "stock_history"),
           where("itemId", "==", Number(selectedItemForGraph.id)),
@@ -185,11 +187,10 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         ]);
 
         let history = windowSnap.docs.map(doc => ({
-          timestamp: doc.data().timestamp * 1000, // Convert to MS for Recharts
+          timestamp: doc.data().timestamp * 1000,
           stock: doc.data().stock
         }));
 
-        // If we found a seed point, inject it at the very start of the graph window
         if (!seedSnap.empty) {
           const seedData = seedSnap.docs[0].data();
           history = [
@@ -202,8 +203,6 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           ];
         }
 
-        // Fallback: If DB is empty for this window/item, use current live stock 
-        // as a starting point so the user sees a line immediately.
         if (history.length === 0 && selectedItemForGraph.stockQuantity !== undefined) {
           history = [
             {
@@ -214,19 +213,9 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           ];
         }
 
-        // Append a point for "Now" so the line draws all the way to the right edge
-        if (history.length > 0) {
-          history.push({
-            timestamp: nowMs,
-            stock: history[history.length - 1].stock,
-            isCurrent: true
-          });
-        }
-
-        setHistoricalData(history);
+        setFullHistory(history);
       } catch (err) {
         console.error("Firestore Query Error:", err.message, err);
-        // Check if it's specifically an index error to give better feedback
         if (err.message?.includes('index')) {
           setGraphError("Database index is building or missing. Check the browser console for the direct creation link.");
         } else {
@@ -238,7 +227,51 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     };
 
     loadHistory();
-  }, [selectedItemForGraph, timeScale]);
+  }, [selectedItemForGraph]);
+
+  // Locally filter and prepare data for the graph based on the current timeScale
+  const historicalData = React.useMemo(() => {
+    if (fullHistory.length === 0) return [];
+    
+    const nowMs = Date.now();
+    const windowStartMs = nowMs - (timeScale * 60 * 60 * 1000);
+    
+    // 1. Find the points within the visible window
+    let visiblePoints = fullHistory.filter(p => p.timestamp >= windowStartMs);
+    
+    // 2. To ensure a continuous line from the left edge, find the last point 
+    // BEFORE the window start and "drag" its value to the window start time.
+    const lastPointBefore = [...fullHistory].reverse().find(p => p.timestamp < windowStartMs);
+    
+    let displayHistory = [...visiblePoints];
+    
+    if (lastPointBefore) {
+      displayHistory.unshift({
+        timestamp: windowStartMs,
+        stock: lastPointBefore.stock,
+        isWindowEdge: true
+      });
+    } else if (displayHistory.length > 0 && displayHistory[0].timestamp > windowStartMs) {
+      // If no points before, but first point is after window start, 
+      // drag first point back to start (fallback)
+      displayHistory.unshift({
+        timestamp: windowStartMs,
+        stock: displayHistory[0].stock,
+        isWindowEdge: true
+      });
+    }
+
+    // 3. Append a point for "Now" so the line draws all the way to the right edge
+    if (displayHistory.length > 0) {
+      displayHistory.push({
+        timestamp: nowMs,
+        stock: displayHistory[displayHistory.length - 1].stock,
+        isCurrent: true
+      });
+    }
+
+    return displayHistory;
+  }, [fullHistory, timeScale]);
 
 
   const headerStyle = {
