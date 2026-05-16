@@ -54,13 +54,18 @@ async function run() {
   const db = getFirestore(app);
 
   console.log("Starting stock sync...");
-  const yataRes = await fetch('https://yata.yt/api/v1/travel/export/');
-  if (!yataRes.ok) {
-    const text = await yataRes.text();
-    console.error(`YATA API Error (${yataRes.status}): ${text.slice(0, 200)}`);
-    process.exit(1);
+  let data;
+  try {
+    const yataRes = await fetch('https://yata.yt/api/v1/travel/export/');
+    if (!yataRes.ok) {
+      console.warn(`[SKIP] YATA API is unavailable (Status: ${yataRes.status}). Skipping this sync cycle.`);
+      process.exit(0);
+    }
+    data = await yataRes.json();
+  } catch (err) {
+    console.warn(`[SKIP] Failed to connect to YATA: ${err.message}. Skipping this sync cycle.`);
+    process.exit(0);
   }
-  const data = await yataRes.json();
   
   // Fetch the latest state summary (1 read instead of 220+)
   const stateRef = doc(db, "stock_metadata", "summary");
