@@ -33,6 +33,23 @@ const YATA_COUNTRY_CODES = {
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
 async function run() {
+  // Validate environment variables
+  const requiredEnv = [
+    'REACT_APP_FIREBASE_API_KEY',
+    'REACT_APP_FIREBASE_AUTH_DOMAIN',
+    'REACT_APP_FIREBASE_PROJECT_ID',
+    'REACT_APP_FIREBASE_STORAGE_BUCKET',
+    'REACT_APP_FIREBASE_MESSAGING_SENDER_ID',
+    'REACT_APP_FIREBASE_APP_ID'
+  ];
+  
+  const missing = requiredEnv.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(`Error: Missing required environment variables: ${missing.join(', ')}`);
+    console.error("Make sure you have added these as Secrets in your GitHub repository.");
+    process.exit(1);
+  }
+
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
