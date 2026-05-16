@@ -160,7 +160,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       setGraphError(null);
       const nowMs = Date.now();
       // Always fetch the maximum possible range (7 days) to allow local sliding
-      const maxWindowHours = 168; 
+      const maxWindowHours = 168;
       const windowStart = Math.floor((nowMs - (maxWindowHours * 60 * 60 * 1000)) / 1000);
 
       try {
@@ -232,19 +232,19 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   // Locally filter and prepare data for the graph based on the current timeScale
   const historicalData = React.useMemo(() => {
     if (fullHistory.length === 0) return [];
-    
+
     const nowMs = Date.now();
     const windowStartMs = nowMs - (timeScale * 60 * 60 * 1000);
-    
+
     // 1. Find the points within the visible window
     let visiblePoints = fullHistory.filter(p => p.timestamp >= windowStartMs);
-    
+
     // 2. To ensure a continuous line from the left edge, find the last point 
     // BEFORE the window start and "drag" its value to the window start time.
     const lastPointBefore = [...fullHistory].reverse().find(p => p.timestamp < windowStartMs);
-    
+
     let displayHistory = [...visiblePoints];
-    
+
     if (lastPointBefore) {
       displayHistory.unshift({
         timestamp: windowStartMs,
@@ -304,7 +304,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
   const processedItems = React.useMemo(() => {
     if (!itemsData) return [];
-    
+
     return Object.entries(COUNTRY_MAP).flatMap(([country, ids]) =>
       ids.map(id => {
         const item = itemsData[id] || {};
@@ -676,84 +676,99 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Stock History: {selectedItemForGraph.name}</span>
               {(() => {
-                // Weighted Probabilistic Trend Analysis (WPTA)
-                if (historicalData.length < 2) return null;
+                // Tick-Aligned Median-Based Probabilistic Model (TA-MBPM)
+                // Always use full 7-day history for maximum prediction accuracy
+                if (fullHistory.length < 2) return null;
                 
                 const restocks = [];
-                for (let i = 1; i < historicalData.length; i++) {
-                  if (historicalData[i-1].stock === 0 && historicalData[i].stock > 0) {
-                    restocks.push(historicalData[i].timestamp);
+                for (let i = 1; i < fullHistory.length; i++) {
+                  if (fullHistory[i - 1].stock === 0 && fullHistory[i].stock > 0) {
+                    restocks.push(fullHistory[i].timestamp);
                   }
                 }
 
-                if (restocks.length < 2) {
-                  // Fallback: If currently 0, check how long it's been
+                if (restocks.length < 3) {
                   if (selectedItemForGraph.stockQuantity === 0) {
-                    return <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#666' }}>Insufficient data for prediction</div>;
+                    return <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#666' }}>Gathering data...</div>;
                   }
                   return null;
                 }
 
                 const intervals = [];
                 for (let i = 1; i < restocks.length; i++) {
-                  intervals.push(restocks[i] - restocks[i-1]);
+                  intervals.push(restocks[i] - restocks[i - 1]);
                 }
 
-                // 1. Filter Outliers using IQR (Interquartile Range)
                 const sorted = [...intervals].sort((a, b) => a - b);
-                const q1 = sorted[Math.floor(sorted.length * 0.25)];
-                const q3 = sorted[Math.floor(sorted.length * 0.75)];
-                const iqr = q3 - q1;
-                const filtered = intervals.filter(x => x >= q1 - 1.5 * iqr && x <= q3 + 1.5 * iqr);
-                
-                if (filtered.length === 0) return null;
-
-                // 2. Weighted Moving Average (giving 2x weight to the last 3 restocks)
-                let weightedSum = 0;
-                let totalWeight = 0;
-                filtered.forEach((val, idx) => {
-                  const weight = idx >= filtered.length - 3 ? 2 : 1;
-                  weightedSum += val * weight;
-                  totalWeight += weight;
-                });
-                const mean = weightedSum / totalWeight;
-
-                // 3. Standard Deviation for Confidence Window
-                const variance = filtered.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / filtered.length;
-                const stdDev = Math.sqrt(variance);
+                const median = sorted[Math.floor(sorted.length / 2)];
+                const p10 = sorted[Math.floor(sorted.length * 0.1)];
+                const p90 = sorted[Math.floor(sorted.length * 0.9)];
 
                 const lastRestock = restocks[restocks.length - 1];
-                const nextExpected = lastRestock + mean;
                 const now = Date.now();
-                const timeLeft = nextExpected - now;
-                
-                // Confidence Label
-                const confidence = filtered.length > 10 ? 'High' : (filtered.length > 5 ? 'Medium' : 'Low');
-                const confidenceColor = confidence === 'High' ? '#2ecc71' : (confidence === 'Medium' ? '#f39c12' : '#e74c3c');
+                const timeSinceLast = now - lastRestock;
 
-                // Determine Status
+                // --- Tick Alignment Logic ---
+                // Snap the raw prediction to the next 15-minute tick (:00, :15, :30, :45)
+                const rawExpected = lastRestock + median;
+                const expectedDate = new Date(rawExpected);
+                const minutes = expectedDate.getMinutes();
+                const snappedMinutes = Math.ceil(minutes / 15) * 15;
+                expectedDate.setMinutes(snappedMinutes);
+                expectedDate.setSeconds(0);
+                expectedDate.setMilliseconds(0);
+                let snappedExpected = expectedDate.getTime();
+
+                // Proactive Tick Shifting: If we have a confirmed 0-stock data point 
+                // AFTER our expected tick, we know that tick was missed. 
+                // Shift forward to the next viable 15-minute tick.
+                const latestZeroPoint = [...historicalData].reverse().find(d => d.stock === 0);
+                if (latestZeroPoint && latestZeroPoint.timestamp >= snappedExpected) {
+                  // Shift to the first 15m tick AFTER the latest confirmed zero
+                  const nextTickDate = new Date(latestZeroPoint.timestamp);
+                  const nextMins = nextTickDate.getMinutes();
+                  const nextSnappedMins = Math.ceil((nextMins + 1) / 15) * 15;
+                  nextTickDate.setMinutes(nextSnappedMins);
+                  nextTickDate.setSeconds(0);
+                  nextTickDate.setMilliseconds(0);
+                  snappedExpected = nextTickDate.getTime();
+                  expectedDate.setTime(snappedExpected); // Update date object for display
+                }
+                // -----------------------------
+
                 let statusText = "";
-                let statusColor = "#2ecc71";
-                
+                let statusColor = "#3498db";
+                const timeLeft = snappedExpected - now;
+
+                const timeDisplay = expectedDate.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
                 if (selectedItemForGraph.stockQuantity > 0) {
-                  statusText = `Next expected: ~${Math.max(1, Math.round(timeLeft / 60000))}m`;
-                  statusColor = "#3498db";
-                } else if (now > lastRestock + mean + stdDev) {
-                  statusText = "Restock Overdue ⏳";
+                  statusText = `Stock Available ✅\nNext cycle: @ ${timeDisplay}`;
+                  statusColor = "#2ecc71";
+                } else if (timeLeft < 0) {
+                  const overdueMins = Math.round(Math.abs(timeLeft) / 60000);
+                  statusText = `Restock Overdue ⏳\nMissed tick: @ ${timeDisplay} (${overdueMins}m ago)`;
                   statusColor = "#e74c3c";
-                } else if (now > lastRestock + mean - stdDev) {
-                  statusText = "Restock Imminent 🔥";
+                } else if (timeLeft <= 300000) { // Within 5 mins of the tick
+                  statusText = `Restock Imminent 🔥\nTarget: @ ${timeDisplay}`;
                   statusColor = "#f1c40f";
                 } else {
-                  statusText = `Expected in ~${Math.max(1, Math.round(timeLeft / 60000))}m`;
-                  statusColor = "#2ecc71";
+                  const minsLeft = Math.round(timeLeft / 60000);
+                  statusText = `Restock in ~${minsLeft}m\nTarget: @ ${timeDisplay}`;
+                  statusColor = "#3498db";
                 }
+
+                const confidence = restocks.length > 20 ? 'High' : (restocks.length > 10 ? 'Medium' : 'Low');
+                const confidenceColor = confidence === 'High' ? '#2ecc71' : (confidence === 'Medium' ? '#f39c12' : '#e74c3c');
 
                 return (
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.85rem', color: statusColor, fontWeight: 'bold' }}>{statusText}</div>
-                    <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '2px' }}>
-                      <span style={{ color: confidenceColor }}>●</span> {confidence} Confidence ({filtered.length} samples)
+                    <div style={{ fontSize: '0.6rem', color: '#888', marginTop: '2px' }}>
+                      Window: {Math.round(p10 / 60000)}m - {Math.round(p90 / 60000)}m
+                    </div>
+                    <div style={{ fontSize: '0.55rem', color: '#555' }}>
+                      <span style={{ color: confidenceColor }}>●</span> {confidence} Confidence ({restocks.length} events)
                     </div>
                   </div>
                 );
@@ -786,9 +801,9 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     stroke="#888"
                     tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   />
-                  <YAxis 
-                    stroke="#888" 
-                    domain={['auto', 'auto']} 
+                  <YAxis
+                    stroke="#888"
+                    domain={['auto', 'auto']}
                     tickFormatter={(tick) => tick?.toLocaleString() || '0'}
                   />
                   <Tooltip
