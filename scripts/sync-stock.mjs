@@ -55,6 +55,11 @@ async function run() {
 
   console.log("Starting stock sync...");
   const yataRes = await fetch('https://yata.yt/api/v1/travel/export/');
+  if (!yataRes.ok) {
+    const text = await yataRes.text();
+    console.error(`YATA API Error (${yataRes.status}): ${text.slice(0, 200)}`);
+    process.exit(1);
+  }
   const data = await yataRes.json();
   
   // Fetch the latest state summary (1 read instead of 220+)
@@ -69,9 +74,21 @@ async function run() {
 
   let itemNames = {};
   if (process.env.TORN_API_KEY) {
+    console.log("Fetching item names from TORN API...");
     const tornRes = await fetch(`https://api.torn.com/torn/?selections=items&key=${process.env.TORN_API_KEY}`);
-    const tornData = await tornRes.json();
-    if (tornData.items) itemNames = tornData.items;
+    if (!tornRes.ok) {
+      const text = await tornRes.text();
+      console.error(`TORN API Error (${tornRes.status}): ${text.slice(0, 200)}`);
+      // We can continue with partial data if TORN is down
+    } else {
+      try {
+        const tornData = await tornRes.json();
+        if (tornData.items) itemNames = tornData.items;
+      } catch (e) {
+        const text = await tornRes.text();
+        console.error("Failed to parse TORN JSON. Response starts with:", text.slice(0, 100));
+      }
+    }
   }
 
   const newState = { ...lastState };
