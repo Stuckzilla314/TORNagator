@@ -676,39 +676,85 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Stock History: {selectedItemForGraph.name}</span>
               {(() => {
-                // Simple restock prediction logic
+                // Weighted Probabilistic Trend Analysis (WPTA)
                 if (historicalData.length < 2) return null;
                 
                 const restocks = [];
                 for (let i = 1; i < historicalData.length; i++) {
-                  // A restock is when stock goes from 0 to > 0
                   if (historicalData[i-1].stock === 0 && historicalData[i].stock > 0) {
                     restocks.push(historicalData[i].timestamp);
                   }
                 }
 
-                if (restocks.length < 2) return null;
+                if (restocks.length < 2) {
+                  // Fallback: If currently 0, check how long it's been
+                  if (selectedItemForGraph.stockQuantity === 0) {
+                    return <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#666' }}>Insufficient data for prediction</div>;
+                  }
+                  return null;
+                }
 
                 const intervals = [];
                 for (let i = 1; i < restocks.length; i++) {
                   intervals.push(restocks[i] - restocks[i-1]);
                 }
 
-                const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                // 1. Filter Outliers using IQR (Interquartile Range)
+                const sorted = [...intervals].sort((a, b) => a - b);
+                const q1 = sorted[Math.floor(sorted.length * 0.25)];
+                const q3 = sorted[Math.floor(sorted.length * 0.75)];
+                const iqr = q3 - q1;
+                const filtered = intervals.filter(x => x >= q1 - 1.5 * iqr && x <= q3 + 1.5 * iqr);
+                
+                if (filtered.length === 0) return null;
+
+                // 2. Weighted Moving Average (giving 2x weight to the last 3 restocks)
+                let weightedSum = 0;
+                let totalWeight = 0;
+                filtered.forEach((val, idx) => {
+                  const weight = idx >= filtered.length - 3 ? 2 : 1;
+                  weightedSum += val * weight;
+                  totalWeight += weight;
+                });
+                const mean = weightedSum / totalWeight;
+
+                // 3. Standard Deviation for Confidence Window
+                const variance = filtered.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / filtered.length;
+                const stdDev = Math.sqrt(variance);
+
                 const lastRestock = restocks[restocks.length - 1];
-                const nextExpected = lastRestock + avgInterval;
-                const timeLeft = nextExpected - Date.now();
+                const nextExpected = lastRestock + mean;
+                const now = Date.now();
+                const timeLeft = nextExpected - now;
+                
+                // Confidence Label
+                const confidence = filtered.length > 10 ? 'High' : (filtered.length > 5 ? 'Medium' : 'Low');
+                const confidenceColor = confidence === 'High' ? '#2ecc71' : (confidence === 'Medium' ? '#f39c12' : '#e74c3c');
 
-                if (timeLeft < 0) return <span style={{ fontSize: '0.8rem', color: '#f39c12' }}>Restock Overdue ⏳</span>;
-
-                const minutes = Math.floor(timeLeft / 60000);
-                const hours = Math.floor(minutes / 60);
-                const displayTime = hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+                // Determine Status
+                let statusText = "";
+                let statusColor = "#2ecc71";
+                
+                if (selectedItemForGraph.stockQuantity > 0) {
+                  statusText = `Next expected: ~${Math.max(1, Math.round(timeLeft / 60000))}m`;
+                  statusColor = "#3498db";
+                } else if (now > lastRestock + mean + stdDev) {
+                  statusText = "Restock Overdue ⏳";
+                  statusColor = "#e74c3c";
+                } else if (now > lastRestock + mean - stdDev) {
+                  statusText = "Restock Imminent 🔥";
+                  statusColor = "#f1c40f";
+                } else {
+                  statusText = `Expected in ~${Math.max(1, Math.round(timeLeft / 60000))}m`;
+                  statusColor = "#2ecc71";
+                }
 
                 return (
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#2ecc71' }}>Expected Restock: ~{displayTime}</div>
-                    <div style={{ fontSize: '0.6rem', color: '#666' }}>Based on {restocks.length} events</div>
+                    <div style={{ fontSize: '0.85rem', color: statusColor, fontWeight: 'bold' }}>{statusText}</div>
+                    <div style={{ fontSize: '0.6rem', color: '#666', marginTop: '2px' }}>
+                      <span style={{ color: confidenceColor }}>●</span> {confidence} Confidence ({filtered.length} samples)
+                    </div>
                   </div>
                 );
               })()}
