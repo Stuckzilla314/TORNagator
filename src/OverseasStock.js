@@ -256,9 +256,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
     // 3. Append a point for "Now" so the line draws all the way to the right edge
     if (displayHistory.length > 0) {
+      const lastKnownStock = displayHistory[displayHistory.length - 1].stock;
+      const liveStock = selectedItemForGraph.stockInfo ? selectedItemForGraph.stockQuantity : undefined;
+      const currentStock = liveStock !== undefined ? liveStock : lastKnownStock;
+
+      if (lastKnownStock !== currentStock) {
+        // Create a vertical step to represent instant restock or sell-out
+        displayHistory.push({
+          timestamp: nowMs - 1000,
+          stock: lastKnownStock,
+          isStepEdge: true
+        });
+      }
+
       displayHistory.push({
         timestamp: nowMs,
-        stock: displayHistory[displayHistory.length - 1].stock,
+        stock: currentStock,
         isCurrent: true
       });
     }
