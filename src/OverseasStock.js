@@ -58,6 +58,14 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [maxRoundTripMinutes, setMaxRoundTripMinutes] = useState('');
   const [maxBagCost, setMaxBagCost] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  // Overrides stock quantities with the freshest value seen from Firestore history fetches.
+  // Keyed as 'country_itemId' -> { quantity, timestamp }
+  const [historyStockOverrides, setHistoryStockOverrides] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('tornagator_stock_overrides');
+      return cached ? JSON.parse(cached) : {};
+    } catch { return {}; }
+  });
 
   // Compute available categories dynamically based on the tracked items
   const availableCategories = React.useMemo(() => {
@@ -70,22 +78,33 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   }, [itemsData]);
 
   // Memoized stocks lookup map for O(1) item lookups
+  // Merges overrides from the most recent history fetches so the Stock column
+  // always reflects the latest Firestore data, not just the YATA snapshot.
   const stocksLookup = React.useMemo(() => {
-    if (!yataData?.stocks) return {};
     const map = {};
-    Object.entries(YATA_COUNTRY_CODES).forEach(([country, code]) => {
-      if (yataData.stocks[code]?.stocks) {
-        yataData.stocks[code].stocks.forEach(s => {
-          map[`${country}_${s.id}`] = {
-            quantity: s.quantity,
-            cost: s.cost,
-            update: yataData.stocks[code].update
-          };
-        });
+    if (yataData?.stocks) {
+      Object.entries(YATA_COUNTRY_CODES).forEach(([country, code]) => {
+        if (yataData.stocks[code]?.stocks) {
+          yataData.stocks[code].stocks.forEach(s => {
+            map[`${country}_${s.id}`] = {
+              quantity: s.quantity,
+              cost: s.cost,
+              update: yataData.stocks[code].update
+            };
+          });
+        }
+      });
+    }
+    // Apply overrides from history fetches (higher priority than stale snapshot)
+    Object.entries(historyStockOverrides).forEach(([key, override]) => {
+      if (map[key]) {
+        map[key] = { ...map[key], quantity: override.quantity };
+      } else {
+        map[key] = { quantity: override.quantity, cost: 0, update: 0 };
       }
     });
     return map;
-  }, [yataData]);
+  }, [yataData, historyStockOverrides]);
 
   // Load cached stock data on mount
   useEffect(() => {
@@ -96,6 +115,13 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       }
     } catch (e) { console.warn("Yata cache restoration failed:", e); }
   }, []);
+
+  // Persist history overrides to sessionStorage whenever they change
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('tornagator_stock_overrides', JSON.stringify(historyStockOverrides));
+    } catch (e) { console.warn("Stock overrides cache write failed:", e); }
+  }, [historyStockOverrides]);
 
   const fetchStockData = useCallback(async () => {
     setLoadingYata(true);
@@ -224,6 +250,16 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         }
 
         setFullHistory(history);
+
+        // Patch the latest known stock back into the table's Stock column
+        if (history.length > 0) {
+          const latestPoint = history[history.length - 1];
+          const key = `${selectedItemForGraph.country}_${selectedItemForGraph.id}`;
+          setHistoryStockOverrides(prev => ({
+            ...prev,
+            [key]: { quantity: latestPoint.stock, timestamp: latestPoint.timestamp }
+          }));
+        }
       } catch (err) {
         console.error("Firestore Query Error:", err.message, err);
         if (err.message?.includes('index')) {
