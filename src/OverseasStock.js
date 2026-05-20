@@ -264,7 +264,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         const prev = baseHistory[i - 1];
         const curr = baseHistory[i];
         const gap = curr.timestamp - prev.timestamp;
-        
+
         // If there is a gap > 5 minutes and the stock changed,
         // it means the stock stayed the same until the last 5-minute interval.
         // We inject a point 5 minutes before the change to keep it flat,
@@ -284,32 +284,32 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     if (displayHistory.length > 0) {
       const lastHistoryPoint = displayHistory[displayHistory.length - 1];
       const lastKnownStock = lastHistoryPoint.stock;
-      
+
       // Get the freshest possible live stock from yataData
       let liveStock = undefined;
       let liveTs = 0;
       if (yataData?.stocks) {
         const countryCode = YATA_COUNTRY_CODES[selectedItemForGraph.country];
         if (countryCode && yataData.stocks[countryCode]) {
-           const stockList = yataData.stocks[countryCode].stocks;
-           const sInfo = stockList?.find(s => Number(s.id) === Number(selectedItemForGraph.id));
-           if (sInfo) {
-              liveStock = sInfo.quantity;
-              liveTs = yataData.stocks[countryCode].update * 1000;
-           }
+          const stockList = yataData.stocks[countryCode].stocks;
+          const sInfo = stockList?.find(s => Number(s.id) === Number(selectedItemForGraph.id));
+          if (sInfo) {
+            liveStock = sInfo.quantity;
+            liveTs = yataData.stocks[countryCode].update * 1000;
+          }
         }
       }
 
       // If we couldn't find it in yataData, fallback to selectedItemForGraph
       if (liveStock === undefined && selectedItemForGraph.stockInfo) {
-         liveStock = selectedItemForGraph.stockQuantity;
-         liveTs = selectedItemForGraph.stockInfo.update * 1000;
+        liveStock = selectedItemForGraph.stockQuantity;
+        liveTs = selectedItemForGraph.stockInfo.update * 1000;
       }
 
       // Only trust the live stock if its update timestamp is >= our last history point.
       // This prevents a stale frontend cache from causing a spike up to an old value.
-      const currentStock = (liveStock !== undefined && liveTs >= lastHistoryPoint.timestamp) 
-        ? liveStock 
+      const currentStock = (liveStock !== undefined && liveTs >= lastHistoryPoint.timestamp)
+        ? liveStock
         : lastKnownStock;
 
       if (lastKnownStock !== currentStock) {
