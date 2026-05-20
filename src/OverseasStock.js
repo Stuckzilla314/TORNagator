@@ -55,6 +55,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [loadingHistoricalData, setLoadingHistoricalData] = useState(false);
   const [selectedItemForGraph, setSelectedItemForGraph] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
+  const [maxRoundTripMinutes, setMaxRoundTripMinutes] = useState('');
+  const [maxBagCost, setMaxBagCost] = useState('');
 
   // Memoized stocks lookup map for O(1) item lookups
   const stocksLookup = React.useMemo(() => {
@@ -407,8 +409,13 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           stockInfo
         };
       }).filter(item => !!item.name)
-    ).filter(item => filter === 'All' || item.country === filter);
-  }, [itemsData, stocksLookup, userData, cargoCapacity, filter, getOwnedCount, getStockInfo]);
+    ).filter(item => {
+      if (filter !== 'All' && item.country !== filter) return false;
+      if (maxRoundTripMinutes !== '' && item.totalRoundTripMinutes > Number(maxRoundTripMinutes)) return false;
+      if (maxBagCost !== '' && (item.buy_price * cargoCapacity) > Number(maxBagCost)) return false;
+      return true;
+    });
+  }, [itemsData, stocksLookup, userData, cargoCapacity, filter, getOwnedCount, getStockInfo, maxRoundTripMinutes, maxBagCost]);
 
   const sortedItems = React.useMemo(() => {
     return [...processedItems].sort((a, b) => {
@@ -540,14 +547,30 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             )}
           </div>
         </div>
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
-        >
-          <option value="All">All Countries</option>
-          {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="number"
+            placeholder="Max RT (mins)"
+            value={maxRoundTripMinutes}
+            onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
+            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '130px' }}
+          />
+          <input
+            type="number"
+            placeholder="Max Bag Cost ($)"
+            value={maxBagCost}
+            onChange={(e) => setMaxBagCost(e.target.value)}
+            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '150px' }}
+          />
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
+          >
+            <option value="All">All Countries</option>
+            {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
       </div>
 
       <div style={{ backgroundColor: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
