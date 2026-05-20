@@ -89,7 +89,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     try {
       const snap = await getDoc(doc(db, "stock_metadata", "snapshot"));
       if (snap.exists()) {
-        const data = { stocks: snap.data().stocks || {} };
+        const snapData = snap.data();
+        const data = { 
+          stocks: snapData.stocks || {},
+          lastUpdated: snapData.lastUpdated ? (typeof snapData.lastUpdated.toMillis === 'function' ? snapData.lastUpdated.toMillis() : snapData.lastUpdated) : null
+        };
         setYataData(data);
         sessionStorage.setItem('tornagator_yata_cache', JSON.stringify(data));
       }
@@ -463,7 +467,17 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {yataData?.stocks && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span style={{ fontSize: '0.6rem', color: '#555', marginLeft: '5px' }}>
-                  Last Sync: {new Date(Object.values(yataData.stocks)[0]?.update * 1000).toLocaleTimeString()}
+                  Last Sync: {
+                    yataData.lastUpdated
+                      ? new Date(yataData.lastUpdated).toLocaleTimeString()
+                      : (() => {
+                          let maxUpdate = 0;
+                          Object.values(yataData.stocks).forEach(c => {
+                            if (c?.update > maxUpdate) maxUpdate = c.update;
+                          });
+                          return maxUpdate ? new Date(maxUpdate * 1000).toLocaleTimeString() : 'Unknown';
+                        })()
+                  }
                 </span>
                 {!navigator.onLine && (
                   <span style={{ fontSize: '0.6rem', color: '#f39c12', fontWeight: 'bold' }}>
