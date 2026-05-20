@@ -401,6 +401,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           bagProfit,
           bagProfitPerHour,
           roundTripDisplay,
+          totalRoundTripMinutes,
           profitPerItem,
           stockQuantity,
           stockInfo
@@ -632,7 +633,10 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   </td>
                   <td style={cellStyle}>
                     <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                    <div 
+                      style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px', cursor: 'help', whiteSpace: 'pre-line' }}
+                      title={`Arrive Time: ${new Date(Date.now() + (item.totalRoundTripMinutes / 2) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nReturn Time: ${new Date(Date.now() + item.totalRoundTripMinutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    >
                       RT: {item.roundTripDisplay}
                     </div>
                   </td>
