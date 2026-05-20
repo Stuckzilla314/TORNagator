@@ -90,7 +90,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       const snap = await getDoc(doc(db, "stock_metadata", "snapshot"));
       if (snap.exists()) {
         const snapData = snap.data();
-        const data = { 
+        const data = {
           stocks: snapData.stocks || {},
           lastUpdated: snapData.lastUpdated ? (typeof snapData.lastUpdated.toMillis === 'function' ? snapData.lastUpdated.toMillis() : snapData.lastUpdated) : null
         };
@@ -240,37 +240,88 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     // BEFORE the window start and "drag" its value to the window start time.
     const lastPointBefore = [...fullHistory].reverse().find(p => p.timestamp < windowStartMs);
 
-    let displayHistory = [...visiblePoints];
+    let baseHistory = [...visiblePoints];
 
     if (lastPointBefore) {
-      displayHistory.unshift({
+      baseHistory.unshift({
         timestamp: windowStartMs,
         stock: lastPointBefore.stock,
         isWindowEdge: true
       });
-    } else if (displayHistory.length > 0 && displayHistory[0].timestamp > windowStartMs) {
+    } else if (baseHistory.length > 0 && baseHistory[0].timestamp > windowStartMs) {
       // If no points before, but first point is after window start, 
       // drag first point back to start (fallback)
-      displayHistory.unshift({
+      baseHistory.unshift({
         timestamp: windowStartMs,
-        stock: displayHistory[0].stock,
+        stock: baseHistory[0].stock,
         isWindowEdge: true
       });
     }
 
+    let displayHistory = [];
+    for (let i = 0; i < baseHistory.length; i++) {
+      if (i > 0) {
+        const prev = baseHistory[i - 1];
+        const curr = baseHistory[i];
+        const gap = curr.timestamp - prev.timestamp;
+        
+        // If there is a gap > 5 minutes and the stock changed,
+        // it means the stock stayed the same until the last 5-minute interval.
+        // We inject a point 5 minutes before the change to keep it flat,
+        // allowing a smooth curve in the last 5 minutes.
+        if (gap > 5 * 60 * 1000 && curr.stock !== prev.stock) {
+          displayHistory.push({
+            timestamp: curr.timestamp - 5 * 60 * 1000,
+            stock: prev.stock,
+            isInterpolatedEdge: true
+          });
+        }
+      }
+      displayHistory.push(baseHistory[i]);
+    }
+
     // 3. Append a point for "Now" so the line draws all the way to the right edge
     if (displayHistory.length > 0) {
-      const lastKnownStock = displayHistory[displayHistory.length - 1].stock;
-      const liveStock = selectedItemForGraph.stockInfo ? selectedItemForGraph.stockQuantity : undefined;
-      const currentStock = liveStock !== undefined ? liveStock : lastKnownStock;
+      const lastHistoryPoint = displayHistory[displayHistory.length - 1];
+      const lastKnownStock = lastHistoryPoint.stock;
+      
+      // Get the freshest possible live stock from yataData
+      let liveStock = undefined;
+      let liveTs = 0;
+      if (yataData?.stocks) {
+        const countryCode = YATA_COUNTRY_CODES[selectedItemForGraph.country];
+        if (countryCode && yataData.stocks[countryCode]) {
+           const stockList = yataData.stocks[countryCode].stocks;
+           const sInfo = stockList?.find(s => Number(s.id) === Number(selectedItemForGraph.id));
+           if (sInfo) {
+              liveStock = sInfo.quantity;
+              liveTs = yataData.stocks[countryCode].update * 1000;
+           }
+        }
+      }
+
+      // If we couldn't find it in yataData, fallback to selectedItemForGraph
+      if (liveStock === undefined && selectedItemForGraph.stockInfo) {
+         liveStock = selectedItemForGraph.stockQuantity;
+         liveTs = selectedItemForGraph.stockInfo.update * 1000;
+      }
+
+      // Only trust the live stock if its update timestamp is >= our last history point.
+      // This prevents a stale frontend cache from causing a spike up to an old value.
+      const currentStock = (liveStock !== undefined && liveTs >= lastHistoryPoint.timestamp) 
+        ? liveStock 
+        : lastKnownStock;
 
       if (lastKnownStock !== currentStock) {
-        // Create a vertical step to represent instant restock or sell-out
-        displayHistory.push({
-          timestamp: nowMs - 1000,
-          stock: lastKnownStock,
-          isStepEdge: true
-        });
+        // Create a 5-minute edge to represent the interval instead of an instant 1s drop
+        const gap = nowMs - lastHistoryPoint.timestamp;
+        if (gap > 5 * 60 * 1000) {
+          displayHistory.push({
+            timestamp: nowMs - 5 * 60 * 1000,
+            stock: lastKnownStock,
+            isInterpolatedEdge: true
+          });
+        }
       }
 
       displayHistory.push({
@@ -471,12 +522,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     yataData.lastUpdated
                       ? new Date(yataData.lastUpdated).toLocaleTimeString()
                       : (() => {
-                          let maxUpdate = 0;
-                          Object.values(yataData.stocks).forEach(c => {
-                            if (c?.update > maxUpdate) maxUpdate = c.update;
-                          });
-                          return maxUpdate ? new Date(maxUpdate * 1000).toLocaleTimeString() : 'Unknown';
-                        })()
+                        let maxUpdate = 0;
+                        Object.values(yataData.stocks).forEach(c => {
+                          if (c?.update > maxUpdate) maxUpdate = c.update;
+                        });
+                        return maxUpdate ? new Date(maxUpdate * 1000).toLocaleTimeString() : 'Unknown';
+                      })()
                   }
                 </span>
                 {!navigator.onLine && (
