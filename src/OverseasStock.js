@@ -57,6 +57,17 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [sortConfig, setSortConfig] = useState({ key: 'bagProfit', direction: 'desc' });
   const [maxRoundTripMinutes, setMaxRoundTripMinutes] = useState('');
   const [maxBagCost, setMaxBagCost] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+
+  // Compute available categories dynamically based on the tracked items
+  const availableCategories = React.useMemo(() => {
+    if (!itemsData) return [];
+    const types = new Set();
+    Object.values(COUNTRY_MAP).flat().forEach(id => {
+      if (itemsData[id]?.type) types.add(itemsData[id].type);
+    });
+    return Array.from(types).sort();
+  }, [itemsData]);
 
   // Memoized stocks lookup map for O(1) item lookups
   const stocksLookup = React.useMemo(() => {
@@ -411,11 +422,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       }).filter(item => !!item.name)
     ).filter(item => {
       if (filter !== 'All' && item.country !== filter) return false;
+      if (categoryFilter !== 'All' && item.type !== categoryFilter) return false;
       if (maxRoundTripMinutes !== '' && item.totalRoundTripMinutes > Number(maxRoundTripMinutes)) return false;
       if (maxBagCost !== '' && (item.buy_price * cargoCapacity) > Number(maxBagCost)) return false;
       return true;
     });
-  }, [itemsData, stocksLookup, userData, cargoCapacity, filter, getOwnedCount, getStockInfo, maxRoundTripMinutes, maxBagCost]);
+  }, [itemsData, stocksLookup, userData, cargoCapacity, filter, categoryFilter, getOwnedCount, getStockInfo, maxRoundTripMinutes, maxBagCost]);
 
   const sortedItems = React.useMemo(() => {
     return [...processedItems].sort((a, b) => {
@@ -548,20 +560,6 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <input
-            type="number"
-            placeholder="Max RT (mins)"
-            value={maxRoundTripMinutes}
-            onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
-            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '130px' }}
-          />
-          <input
-            type="number"
-            placeholder="Max Bag Cost ($)"
-            value={maxBagCost}
-            onChange={(e) => setMaxBagCost(e.target.value)}
-            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '150px' }}
-          />
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -570,6 +568,28 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             <option value="All">All Countries</option>
             {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
+          >
+            <option value="All">All Categories</option>
+            {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+          <input
+            type="number"
+            placeholder="Max Bag Cost ($)"
+            value={maxBagCost}
+            onChange={(e) => setMaxBagCost(e.target.value)}
+            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '150px' }}
+          />
+          <input
+            type="number"
+            placeholder="Max RT (mins)"
+            value={maxRoundTripMinutes}
+            onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
+            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '130px' }}
+          />
         </div>
       </div>
 
