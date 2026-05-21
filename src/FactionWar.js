@@ -566,4 +566,5 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   );
 };
 
-export default FactionWar;
+// ⚡ Bolt: Wrapped with React.memo() to prevent deep tree re-renders of faction member profiles when other App state changes
+export default React.memo(FactionWar);
