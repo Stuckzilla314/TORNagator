@@ -538,6 +538,7 @@ function App() {
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
+                cargoCapacity={cargoCapacity}
               />
             ) : (
               <OverseasStock

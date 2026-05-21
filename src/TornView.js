@@ -101,7 +101,7 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 );
 
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
 
@@ -309,6 +309,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         try {
           const marketValues = ${JSON.stringify(itemsMarketValues)};
           const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
+          const cargoCapacity = ${cargoCapacity || 5};
 
           // 1. Find and update header cells
           const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
@@ -356,6 +357,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             const originalHeaderCells = Array.from(headerRow.children);
             const costHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('cost'));
             const nameHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('name'));
+            const stockHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('stock'));
             if (costHeaderIdx === -1 || nameHeaderIdx === -1) continue;
 
             const originalRowCells = Array.from(row.children);
@@ -403,6 +405,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               const type = (inp.getAttribute('type') || 'text').toLowerCase();
               return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
             });
+
+            let stock = Infinity;
+            if (stockHeaderIdx !== -1) {
+              const stockCell = originalRowCells[stockHeaderIdx];
+              if (stockCell) {
+                const stockText = stockCell.textContent.replace(/[^0-9]/g, '');
+                if (stockText) {
+                  stock = parseInt(stockText, 10);
+                }
+              }
+            }
+
+            if (input && !input.dataset.hasDefaultedCargo) {
+              input.dataset.hasDefaultedCargo = 'true';
+              input.value = Math.min(cargoCapacity, stock);
+              // Trigger input events for Torn's page logic to register the value
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             
             const updateRowProfit = () => {
               if (!input) return;
@@ -453,7 +474,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }, 1000);
 
     return () => clearInterval(profitInterval);
-  }, [isActive, itemsData]);
+  }, [isActive, itemsData, cargoCapacity]);
 
   return (
     <webview
@@ -470,7 +491,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData }) => {
+const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -636,6 +657,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
+                cargoCapacity={cargoCapacity}
               />
             ))}
           </div>
