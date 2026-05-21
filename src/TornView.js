@@ -266,10 +266,10 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  padding: '8px 16px', 
+                  padding: '4px 12px', 
                   backgroundColor: activeTabId === tab.id ? '#2c2c2c' : 'transparent',
-                  borderTopLeftRadius: '8px',
-                  borderTopRightRadius: '8px',
+                  borderTopLeftRadius: '6px',
+                  borderTopRightRadius: '6px',
                   cursor: 'pointer',
                   minWidth: '120px',
                   maxWidth: '200px',
@@ -277,7 +277,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
                   borderTop: activeTabId === tab.id ? '2px solid #e74c3c' : '2px solid transparent'
                 }}
               >
-                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.85rem', color: activeTabId === tab.id ? '#fff' : '#aaa' }}>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem', color: activeTabId === tab.id ? '#fff' : '#aaa' }}>
                   {tab.title || 'Torn'}
                 </span>
                 <button 
@@ -288,7 +288,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
             ))}
             <button 
               onClick={handleNewTab}
-              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px 16px', fontSize: '1.2rem' }}
+              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px 12px', fontSize: '1rem' }}
             >+</button>
           </div>
 
