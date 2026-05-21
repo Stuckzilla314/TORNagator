@@ -306,71 +306,81 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
     const script = `
       (() => {
-        const marketValues = ${JSON.stringify(itemsMarketValues)};
-        const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
+        try {
+          const marketValues = ${JSON.stringify(itemsMarketValues)};
+          const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
 
-        // 1. Find and inject header cells
-        const headers = Array.from(document.querySelectorAll('li, tr, div')).filter(el => {
-          const text = el.textContent || '';
-          return text.includes('Cost') && text.includes('Stock') && text.includes('Amount') && text.includes('Buy') && el.children.length >= 5 && el.children.length <= 12;
-        });
-
-        for (const headerRow of headers) {
-          if (headerRow.querySelector('.injected-profit-header') || headerRow.textContent.includes('Profit')) {
-            continue;
-          }
-
-          const cells = Array.from(headerRow.children);
-          const costHeaderCell = cells.find(cell => cell.textContent.trim().toLowerCase() === 'cost' && !cell.classList.contains('injected-profit-header'));
-          if (!costHeaderCell) continue;
-
-          const profitHeader = document.createElement(costHeaderCell.tagName);
-          profitHeader.className = costHeaderCell.className + ' injected-profit-header';
-          profitHeader.textContent = 'Profit';
-          profitHeader.style.cssText = costHeaderCell.style.cssText;
-          
-          costHeaderCell.after(profitHeader);
-        }
-
-        // 2. Find and update item rows
-        const rows = Array.from(document.querySelectorAll('li, tr, div')).filter(row => {
-          const hasInput = Array.from(row.querySelectorAll('input')).some(inp => {
-            const type = (inp.getAttribute('type') || 'text').toLowerCase();
-            return type !== 'button' && type !== 'submit' && type !== 'image';
+          // 1. Find and update header cells
+          const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
+            const text = el.textContent || '';
+            return text.includes('Cost') && text.includes('Stock');
           });
-          const hasButton = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
-          const text = row.textContent || '';
-          const isHeader = text.includes('Cost') && text.includes('Stock');
-          return hasInput && hasButton && !isHeader && row.children.length >= 5 && row.children.length <= 15;
-        });
 
-        for (const row of rows) {
-          const cells = Array.from(row.children);
-          const costCell = cells.find(cell => 
-            cell.textContent.includes('$') && 
-            !cell.classList.contains('injected-profit-cell') && 
-            !cell.querySelector('.injected-market-price') && 
-            !/[a-z]/i.test(cell.textContent)
-          );
-          if (!costCell) continue;
+          for (const headerRow of headers) {
+            const cells = Array.from(headerRow.children);
+            const costHeaderCell = cells.find(cell => cell.textContent.trim().toLowerCase().includes('cost'));
+            if (!costHeaderCell) continue;
 
-          // Search name only in cells before the cost cell
-          const costIdx = cells.indexOf(costCell);
-          const nameSearchText = cells.slice(0, costIdx).map(c => c.textContent.toLowerCase()).join(' ');
-
-          let marketValue = 0;
-          let matchedName = '';
-          for (const name of sortedNames) {
-            if (nameSearchText.includes(name)) {
-              marketValue = marketValues[name];
-              matchedName = name;
-              break;
+            const costBtn = costHeaderCell.querySelector('button');
+            if (costBtn && !costBtn.querySelector('.injected-profit-header-span')) {
+              const profitHeaderSpan = document.createElement('span');
+              profitHeaderSpan.className = 'injected-profit-header-span';
+              profitHeaderSpan.textContent = ' (Profit)';
+              profitHeaderSpan.style.color = '#888888';
+              profitHeaderSpan.style.fontWeight = 'normal';
+              profitHeaderSpan.style.fontSize = '0.85em';
+              profitHeaderSpan.style.marginLeft = '4px';
+              costBtn.appendChild(profitHeaderSpan);
             }
           }
 
-          if (matchedName) {
-            const nameCell = cells.slice(0, costIdx).find(cell => cell.textContent.toLowerCase().includes(matchedName));
-            if (nameCell) {
+          // Cleanup any previously injected profit columns/headers if they exist in DOM
+          document.querySelectorAll('.injected-profit-header, .injected-profit-cell').forEach(el => el.remove());
+
+          // 2. Find and update item rows
+          const rows = Array.from(document.querySelectorAll('[class*="row___"]')).filter(row => {
+            const hasInput = Array.from(row.querySelectorAll('input')).some(inp => {
+              const type = (inp.getAttribute('type') || 'text').toLowerCase();
+              return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
+            });
+            const hasButton = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
+            return hasInput && hasButton && row.children.length >= 5;
+          });
+
+          for (const row of rows) {
+            // Find header row for this item row
+            const tableWrapper = row.closest('[class*="stockTableWrapper___"]') || row.parentElement?.parentElement;
+            const headerRow = tableWrapper ? tableWrapper.querySelector('[class*="itemsHeader___"]') : null;
+            if (!headerRow) continue;
+
+            const originalHeaderCells = Array.from(headerRow.children);
+            const costHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('cost'));
+            const nameHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('name'));
+            if (costHeaderIdx === -1 || nameHeaderIdx === -1) continue;
+
+            const originalRowCells = Array.from(row.children);
+            const costCell = originalRowCells[costHeaderIdx];
+            const nameCell = originalRowCells[nameHeaderIdx];
+            if (!costCell || !nameCell) continue;
+
+            const nameSpan = nameCell.querySelector('.injected-market-price');
+            let itemName = nameCell.textContent;
+            if (nameSpan) {
+              itemName = itemName.replace(nameSpan.textContent, '');
+            }
+            itemName = itemName.trim().toLowerCase();
+
+            let marketValue = 0;
+            let matchedName = '';
+            for (const name of sortedNames) {
+              if (itemName.includes(name)) {
+                marketValue = marketValues[name];
+                matchedName = name;
+                break;
+              }
+            }
+
+            if (matchedName) {
               let priceSpan = nameCell.querySelector('.injected-market-price');
               if (!priceSpan) {
                 priceSpan = document.createElement('span');
@@ -382,52 +392,58 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               }
               priceSpan.textContent = marketValue > 0 ? '($' + marketValue.toLocaleString() + ')' : '(N/A)';
             }
-          }
 
-          const costText = costCell.textContent.replace(/[^0-9]/g, '');
-          const cost = parseInt(costText, 10) || 0;
-          const profitPerItem = marketValue - cost;
+            const neededSpaceSpan = costCell.querySelector('[class*="neededSpace___"]');
+            const costText = (neededSpaceSpan || costCell).textContent.replace(/[^0-9]/g, '');
+            const cost = parseInt(costText, 10) || 0;
+            const profitPerItem = marketValue - cost;
 
-          // Exclude submit, button, and image inputs to target the text/number Qty input specifically
-          const input = Array.from(row.querySelectorAll('input')).find(inp => {
-            const type = (inp.getAttribute('type') || 'text').toLowerCase();
-            return type !== 'button' && type !== 'submit' && type !== 'image';
-          });
-          
-          const updateRowProfit = () => {
-            if (!input) return;
-            let profitCell = row.querySelector('.injected-profit-cell');
-            if (!profitCell) {
-              profitCell = document.createElement(costCell.tagName);
-              profitCell.className = costCell.className + ' injected-profit-cell';
-              profitCell.style.cssText = costCell.style.cssText;
-              costCell.after(profitCell);
-            }
-
-            const qtyVal = input.value.trim();
-            const qty = qtyVal ? (parseInt(qtyVal, 10) || 0) : 0;
-            const totalProfit = profitPerItem * qty;
+            // Exclude submit, button, and image inputs to target the text/number Qty input specifically
+            const input = Array.from(row.querySelectorAll('input')).find(inp => {
+              const type = (inp.getAttribute('type') || 'text').toLowerCase();
+              return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
+            });
             
-            if (marketValue === 0) {
-              profitCell.textContent = 'N/A';
-              profitCell.style.color = '#888888';
-            } else if (qty === 0) {
-              profitCell.textContent = '$0';
-              profitCell.style.color = '#888888';
-            } else {
-              profitCell.textContent = (totalProfit < 0 ? '-' : '') + '$' + Math.abs(totalProfit).toLocaleString();
-              profitCell.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+            const updateRowProfit = () => {
+              if (!input) return;
+              
+              let priceSpan = costCell.querySelector('[class*="displayPrice___"]') || costCell;
+              let profitSpan = priceSpan.querySelector('.injected-profit-span');
+              if (!profitSpan) {
+                profitSpan = document.createElement('span');
+                profitSpan.className = 'injected-profit-span';
+                profitSpan.style.marginLeft = '6px';
+                profitSpan.style.fontWeight = 'bold';
+                profitSpan.style.fontSize = '0.9em';
+                priceSpan.appendChild(profitSpan);
+              }
+
+              const qtyVal = input.value.trim();
+              const qty = qtyVal ? (parseInt(qtyVal, 10) || 0) : 0;
+              const totalProfit = profitPerItem * qty;
+              
+              if (marketValue === 0) {
+                profitSpan.textContent = ' (N/A)';
+                profitSpan.style.color = '#888888';
+              } else if (qty === 0) {
+                profitSpan.textContent = ' (+$0)';
+                profitSpan.style.color = '#888888';
+              } else {
+                profitSpan.textContent = ' (' + (totalProfit < 0 ? '-' : '+') + '$' + Math.abs(totalProfit).toLocaleString() + ')';
+                profitSpan.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+              }
+            };
+
+            updateRowProfit();
+
+            if (input && !input.dataset.hasProfitListener) {
+              input.dataset.hasProfitListener = 'true';
+              input.addEventListener('input', updateRowProfit);
+              input.addEventListener('change', updateRowProfit);
             }
-            profitCell.style.fontWeight = 'bold';
-          };
-
-          updateRowProfit();
-
-          if (input && !input.dataset.hasProfitListener) {
-            input.dataset.hasProfitListener = 'true';
-            input.addEventListener('input', updateRowProfit);
-            input.addEventListener('change', updateRowProfit);
           }
+        } catch (e) {
+          console.error("Profit injection error:", e);
         }
       })()
     `;
