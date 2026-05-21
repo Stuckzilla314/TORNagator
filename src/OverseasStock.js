@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from 'recharts';
-import { db } from './firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, limit, Timestamp, startAfter, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db, getDoc, getDocs } from './firebase';
+import { collection, addDoc, query, where, orderBy, limit, Timestamp, startAfter, doc, onSnapshot } from "firebase/firestore";
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],

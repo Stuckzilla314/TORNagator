@@ -6,6 +6,7 @@ import OverseasStock from './OverseasStock';
 import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
+import ApiLogsView from './ApiLogsView';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
@@ -53,7 +54,8 @@ function useLocalStorage(key, initialValue) {
     const ownedKeys = new Set([
       'torn_api_key', 'active_tab', 'show_tab_timer',
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
-      'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url'
+      'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
+      'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -80,7 +82,10 @@ function App() {
       'manual_override',
       'tornagator_items_cache',
       'tornagator_country_filter',
-      'torn_view_url'
+      'torn_view_url',
+      'tornagator_lifetime_torn',
+      'tornagator_lifetime_yata',
+      'tornagator_lifetime_firebase'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -536,6 +541,14 @@ function App() {
               <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
               <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
               <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
+              <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+                API Monitor
+              </div>
             </nav>
 
             {activeTab === 'dashboard' ? (
@@ -553,6 +566,8 @@ function App() {
                 itemsData={itemsData}
                 cargoCapacity={cargoCapacity}
               />
+            ) : activeTab === 'apilogs' ? (
+              <ApiLogsView />
             ) : (
               <OverseasStock
                 itemsData={itemsData}

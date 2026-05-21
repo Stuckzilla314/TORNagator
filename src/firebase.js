@@ -1,5 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
+import { 
+  initializeFirestore, 
+  enableMultiTabIndexedDbPersistence,
+  getDoc as originalGetDoc,
+  getDocs as originalGetDocs
+} from "firebase/firestore";
+import { logApiCall } from "./apiLogger";
 
 // Fallback for missing environment variables to prevent // in paths
 const firebaseConfig = {
@@ -27,3 +33,43 @@ enableMultiTabIndexedDbPersistence(db).catch((err) => {
         console.warn("Firestore persistence is not supported in this browser.");
     }
 });
+
+// Wrapped firestore methods for tracking and logging API calls
+export const getDoc = async (docRef) => {
+  const startTime = Date.now();
+  const path = docRef?.path || "unknown";
+  try {
+    const result = await originalGetDoc(docRef);
+    const duration = Date.now() - startTime;
+    logApiCall("Firebase", `getDoc: ${path}`, "SUCCESS", duration);
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logApiCall("Firebase", `getDoc: ${path}`, "ERROR", duration, error.message);
+    throw error;
+  }
+};
+
+export const getDocs = async (queryRef) => {
+  const startTime = Date.now();
+  let path = "unknown";
+  if (queryRef) {
+    if (typeof queryRef.path === "string") {
+      path = queryRef.path;
+    } else if (queryRef._query && queryRef._query.path && typeof queryRef._query.path.toString === "function") {
+      path = queryRef._query.path.toString();
+    } else {
+      path = "stock_history";
+    }
+  }
+  try {
+    const result = await originalGetDocs(queryRef);
+    const duration = Date.now() - startTime;
+    logApiCall("Firebase", `getDocs: ${path} (returned ${result?.size || 0} docs)`, "SUCCESS", duration);
+    return result;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logApiCall("Firebase", `getDocs: ${path}`, "ERROR", duration, error.message);
+    throw error;
+  }
+};
