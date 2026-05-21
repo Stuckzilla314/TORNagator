@@ -48,7 +48,7 @@ const YATA_COUNTRY_CODES = {
 // Flatten the IDs from our map into a Set for O(1) lookups during background recording
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
-const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync, filter, setFilter }) => {
+const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync, filter, setFilter, onOpenInTorn }) => {
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
   const [timeScale, setTimeScale] = useState(24); // Default to 24h to save space
@@ -531,7 +531,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       if (!confirmed) return;
     }
 
-    window.open('https://www.torn.com/travelagency.php', '_blank');
+    if (onOpenInTorn) {
+      onOpenInTorn('https://www.torn.com/travelagency.php');
+    } else {
+      window.open('https://www.torn.com/travelagency.php', '_blank');
+    }
   };
 
   const renderSortIndicator = (key) => {
