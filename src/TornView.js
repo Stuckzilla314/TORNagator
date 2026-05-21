@@ -498,6 +498,59 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  const defaultQuickActions = [
+    { label: '⚔️ Attack',  href: 'https://www.torn.com/loader.php?sid=attack' },
+    { label: '⚡ Crimes',  href: 'https://www.torn.com/crimes.php' },
+    { label: '📈 Market',  href: 'https://www.torn.com/imarket.php' },
+    { label: '✈️ Travel',  href: 'https://www.torn.com/travelagency.php' },
+    { label: '🎯 Events',  href: 'https://www.torn.com/events.php' },
+    { label: '🏪 Bazaar',  href: 'https://www.torn.com/bazaar.php' },
+  ];
+  const [quickActions, setQuickActions] = useLocalStorage('torn_quick_actions', defaultQuickActions);
+  const [isEditingQuick, setIsEditingQuick] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newUrl, setNewUrl] = useState('');
+
+  const PRESET_QUICK_ACTIONS = [
+    { label: '🏠 Home',     href: 'https://www.torn.com/index.php' },
+    { label: '⚔️ Attack',   href: 'https://www.torn.com/loader.php?sid=attack' },
+    { label: '⚡ Crimes',   href: 'https://www.torn.com/crimes.php' },
+    { label: '🏋️ Gym',      href: 'https://www.torn.com/gym.php' },
+    { label: '🏥 Hospital', href: 'https://www.torn.com/hospital.php' },
+    { label: '🏛️ City',     href: 'https://www.torn.com/city.php' },
+    { label: '🏪 Bazaar',   href: 'https://www.torn.com/bazaar.php' },
+    { label: '📈 Market',   href: 'https://www.torn.com/imarket.php' },
+    { label: '🏦 Bank',     href: 'https://www.torn.com/bank.php' },
+    { label: '✈️ Travel',   href: 'https://www.torn.com/travelagency.php' },
+    { label: '🗂️ Faction',  href: 'https://www.torn.com/factions.php' },
+    { label: '🎯 Events',   href: 'https://www.torn.com/events.php' },
+  ];
+
+  const handleMoveAction = (index, direction) => {
+    setQuickActions(prev => {
+      const newActions = [...prev];
+      const targetIndex = index + direction;
+      if (targetIndex >= 0 && targetIndex < newActions.length) {
+        const temp = newActions[index];
+        newActions[index] = newActions[targetIndex];
+        newActions[targetIndex] = temp;
+      }
+      return newActions;
+    });
+  };
+
+  const handleRemoveAction = (index) => {
+    setQuickActions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveNewAction = () => {
+    if (!newLabel.trim() || !newUrl.trim()) return;
+    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: newUrl.trim() }]);
+    setNewLabel('');
+    setNewUrl('');
+    setIsAddingNew(false);
+  };
 
   useEffect(() => {
     if (requestedUrl) {
@@ -763,24 +816,206 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
               {/* Quick links */}
               <div className="torn-sidebar-section">
-                <div className="torn-sidebar-section-title">Quick Actions</div>
+                <div className="torn-sidebar-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span>Quick Actions</span>
+                  <button 
+                    onClick={() => {
+                      setIsEditingQuick(!isEditingQuick);
+                      setIsAddingNew(false);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#3498db',
+                      fontSize: '0.7rem',
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {isEditingQuick ? 'Done' : 'Edit'}
+                  </button>
+                </div>
+                
                 <div className="torn-sidebar-quicklinks">
-                  {[
-                    { label: '⚔️ Attack',  href: 'https://www.torn.com/loader.php?sid=attack' },
-                    { label: '⚡ Crimes',  href: 'https://www.torn.com/crimes.php' },
-                    { label: '📈 Market',  href: 'https://www.torn.com/imarket.php' },
-                    { label: '✈️ Travel',  href: 'https://www.torn.com/travelagency.php' },
-                    { label: '🎯 Events',  href: 'https://www.torn.com/events.php' },
-                    { label: '🏪 Bazaar',  href: 'https://www.torn.com/bazaar.php' },
-                  ].map(({ label, href }) => (
-                    <button
-                      key={href}
-                      className="torn-sidebar-quicklink-btn"
-                      onClick={() => navigateTo(href)}
-                    >
-                      {label}
-                    </button>
+                  {quickActions.map((action, index) => (
+                    isEditingQuick ? (
+                      <div 
+                        key={index}
+                        style={{
+                          position: 'relative',
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px solid #333',
+                          borderRadius: '7px',
+                          padding: '16px 4px 6px 4px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleRemoveAction(index)}
+                          style={{
+                            position: 'absolute',
+                            top: '2px',
+                            right: '4px',
+                            background: 'none',
+                            border: 'none',
+                            color: '#e74c3c',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            padding: 0,
+                            lineHeight: '1'
+                          }}
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+
+                        <span style={{ fontSize: '0.7rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                          {action.label}
+                        </span>
+
+                        {/* Rearrange arrows */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                          <button
+                            onClick={() => handleMoveAction(index, -1)}
+                            disabled={index === 0}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: index === 0 ? '#444' : '#3498db',
+                              fontSize: '0.7rem',
+                              cursor: index === 0 ? 'default' : 'pointer',
+                              padding: '0 4px'
+                            }}
+                          >
+                            ◀
+                          </button>
+                          <button
+                            onClick={() => handleMoveAction(index, 1)}
+                            disabled={index === quickActions.length - 1}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: index === quickActions.length - 1 ? '#444' : '#3498db',
+                              fontSize: '0.7rem',
+                              cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
+                              padding: '0 4px'
+                            }}
+                          >
+                            ▶
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        key={action.href}
+                        className="torn-sidebar-quicklink-btn"
+                        onClick={() => navigateTo(action.href)}
+                      >
+                        {action.label}
+                      </button>
+                    )
                   ))}
+
+                  {isEditingQuick && (
+                    <>
+                      {isAddingNew ? (
+                        <div style={{
+                          gridColumn: 'span 2',
+                          padding: '8px',
+                          backgroundColor: '#161616',
+                          border: '1px solid #333',
+                          borderRadius: '6px',
+                          marginTop: '6px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <input 
+                            type="text" 
+                            placeholder="Label (e.g. 🏋️ Gym)" 
+                            value={newLabel}
+                            onChange={e => setNewLabel(e.target.value)}
+                            style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
+                          />
+                          <input 
+                            type="text" 
+                            placeholder="URL (e.g. https://www.torn.com/...)" 
+                            value={newUrl}
+                            onChange={e => setNewUrl(e.target.value)}
+                            style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
+                            <button 
+                              onClick={() => setIsAddingNew(false)}
+                              style={{ backgroundColor: 'transparent', border: 'none', color: '#aaa', fontSize: '0.7rem', cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                            <button 
+                              onClick={handleSaveNewAction}
+                              style={{ backgroundColor: '#3498db', border: 'none', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setIsAddingNew(true)}
+                          style={{
+                            gridColumn: 'span 2',
+                            background: 'none',
+                            border: '1px dashed #444',
+                            borderRadius: '7px',
+                            color: '#888',
+                            fontSize: '0.7rem',
+                            padding: '6px',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            marginTop: '4px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          + Add Custom Action
+                        </button>
+                      )}
+
+                      {/* Presets suggestions */}
+                      {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).length > 0 && (
+                        <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                          <span style={{ fontSize: '0.65rem', color: '#666' }}>Suggestions:</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).slice(0, 6).map(preset => (
+                              <button
+                                key={preset.href}
+                                onClick={() => {
+                                  setQuickActions(prev => [...prev, preset]);
+                                }}
+                                style={{
+                                  backgroundColor: 'rgba(255,255,255,0.03)',
+                                  border: '1px solid #222',
+                                  borderRadius: '4px',
+                                  color: '#aaa',
+                                  fontSize: '0.65rem',
+                                  padding: '2px 5px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
