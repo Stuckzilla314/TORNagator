@@ -236,7 +236,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   });
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
           <a 

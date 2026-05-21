@@ -125,7 +125,7 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   const happyTime = useBarTimer(userData.happy);
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
