@@ -221,7 +221,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
     : null;
 
   return (
-    <div className="torn-view-root">
+    <div className="torn-view-root" style={{ height: '100%', flex: 1, minHeight: 0 }}>
       {/* ── Quick Nav Bar ─────────────────────────────────────────────── */}
       <div className="torn-quicknav">
         <div className="torn-quicknav-brand">

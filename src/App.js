@@ -137,6 +137,8 @@ function App() {
       : 0
   );
 
+  const isElectron = typeof window !== 'undefined' && window.process && window.process.versions && window.process.versions.electron;
+
   useEffect(() => {
     if (showTabTimer && travelTimeLeft) {
       document.title = `TORNagator | ${travelTimeLeft}`;
@@ -393,9 +395,67 @@ function App() {
   });
 
   return (
-    <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', padding: activeTab === 'torn' ? '0' : '20px', color: '#e0e0e0', lineHeight: '1.6', overflow: activeTab === 'torn' ? 'hidden' : undefined }}>
+    <div style={{
+      backgroundColor: '#0f0f0f',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      color: '#e0e0e0',
+      lineHeight: '1.6',
+      overflow: 'hidden',
+      boxSizing: 'border-box'
+    }}>
+      {isElectron && (
+        <div style={{
+          height: '40px',
+          backgroundColor: '#161616',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 16px',
+          borderBottom: '1px solid #222',
+          userSelect: 'none',
+          WebkitAppRegion: 'drag',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.1rem' }}>🐊</span>
+            <span style={{ fontWeight: 'bold', letterSpacing: '0.5px', color: '#ffffff', fontSize: '0.9rem' }}>TORNagator</span>
+            {showTabTimer && travelTimeLeft && (
+              <span style={{
+                marginLeft: '12px',
+                padding: '2px 8px',
+                backgroundColor: userData?.status?.state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
+                                 userData?.status?.state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
+                                 userData?.status?.state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                border: `1px solid ${
+                                 userData?.status?.state === 'Traveling' ? '#3498db' :
+                                 userData?.status?.state === 'Hospital' ? '#e74c3c' :
+                                 userData?.status?.state === 'Jail' ? '#f39c12' : '#888'
+                }`,
+                borderRadius: '4px',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                color: userData?.status?.state === 'Traveling' ? '#3498db' :
+                       userData?.status?.state === 'Hospital' ? '#e74c3c' :
+                       userData?.status?.state === 'Jail' ? '#f39c12' : '#e0e0e0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span>
+                  {userData?.status?.state === 'Traveling' ? '✈️' :
+                   userData?.status?.state === 'Hospital' ? '🏥' :
+                   userData?.status?.state === 'Jail' ? '⚖️' : '⏱️'}
+                </span>
+                <span>{travelTimeLeft}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {apiKey && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
+        <div style={{ position: 'fixed', top: isElectron ? '50px' : '20px', right: '20px', zIndex: 1000 }}>
           <div
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             style={{
@@ -432,51 +492,61 @@ function App() {
         </div>
       )}
 
-      {!apiKey && <LoginForm onLogin={setApiKey} />}
+      <div style={{
+        flex: 1,
+        overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        padding: activeTab === 'torn' ? '0' : '20px',
+        boxSizing: 'border-box'
+      }}>
+        {!apiKey && <LoginForm onLogin={setApiKey} />}
 
-      {apiKey && userData && (
-        <>
-          <nav style={{
-            display: 'flex',
-            gap: '10px',
-            marginBottom: activeTab === 'torn' ? '0' : '30px',
-            borderBottom: '1px solid #333',
-            maxWidth: activeTab === 'torn' ? '100%' : '1200px',
-            margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
-            padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
-            position: activeTab === 'torn' ? 'relative' : undefined,
-            zIndex: activeTab === 'torn' ? 10 : undefined
-          }}>
-            <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
-            <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
-            <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-            <div style={navItemStyle('torn')} onClick={() => setActiveTab('torn')}>🎮 TORN</div>
-          </nav>
+        {apiKey && userData && (
+          <>
+            <nav style={{
+              display: 'flex',
+              gap: '10px',
+              marginBottom: activeTab === 'torn' ? '0' : '30px',
+              borderBottom: '1px solid #333',
+              maxWidth: activeTab === 'torn' ? '100%' : '1200px',
+              margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
+              padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
+              position: activeTab === 'torn' ? 'relative' : undefined,
+              zIndex: activeTab === 'torn' ? 10 : undefined
+            }}>
+              <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
+              <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
+              <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
+              <div style={navItemStyle('torn')} onClick={() => setActiveTab('torn')}>🎮 TORN</div>
+            </nav>
 
-          {activeTab === 'dashboard' ? (
-            <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
-          ) : activeTab === 'faction' ? (
-            <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
-          ) : activeTab === 'torn' ? (
-            <TornView userData={userData} apiKey={apiKey} requestedUrl={requestedUrl} setRequestedUrl={setRequestedUrl} />
-          ) : (
-            <OverseasStock
-              itemsData={itemsData}
-              userData={userData}
-              cargoCapacity={cargoCapacity}
-              autoSyncStock={stockAutoSync}
-              onManualSync={loadOverseasData}
-              filter={countryFilter}
-              setFilter={setCountryFilter}
-              onOpenInTorn={handleOpenInTorn}
-            />
-          )}
-        </>
-      )}
+            {activeTab === 'dashboard' ? (
+              <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
+            ) : activeTab === 'faction' ? (
+              <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
+            ) : activeTab === 'torn' ? (
+              <TornView userData={userData} apiKey={apiKey} requestedUrl={requestedUrl} setRequestedUrl={setRequestedUrl} />
+            ) : (
+              <OverseasStock
+                itemsData={itemsData}
+                userData={userData}
+                cargoCapacity={cargoCapacity}
+                autoSyncStock={stockAutoSync}
+                onManualSync={loadOverseasData}
+                filter={countryFilter}
+                setFilter={setCountryFilter}
+                onOpenInTorn={handleOpenInTorn}
+              />
+            )}
+          </>
+        )}
 
-      {loading && !userData && <p style={{ textAlign: 'center' }}>Loading TORN data...</p>}
-      {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
-      {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
+        {loading && !userData && <p style={{ textAlign: 'center' }}>Loading TORN data...</p>}
+        {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
+        {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
+      </div>
     </div>
   );
 }

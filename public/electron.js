@@ -6,6 +6,12 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#161616',
+      symbolColor: '#e0e0e0',
+      height: 40
+    },
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -13,6 +19,9 @@ function createWindow() {
       webviewTag: true // Allow use of <webview> instead of <iframe> to fix cookie/SameSite issues
     }
   });
+
+  // Remove menu bar
+  win.setMenu(null);
 
   // Strip X-Frame-Options and Content-Security-Policy to allow embedding Torn.com
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
