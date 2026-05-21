@@ -8,7 +8,7 @@ import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
-import { IconCrocodile, IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
+import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
 
 function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -421,7 +421,11 @@ function App() {
           flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <IconCrocodile size={22} color="#2ecc71" />
+            <img
+              src={`${process.env.PUBLIC_URL}/alligator.png`}
+              alt="TORNagator"
+              style={{ width: '22px', height: '22px', objectFit: 'contain', imageRendering: 'auto' }}
+            />
             <span style={{ fontWeight: 'bold', letterSpacing: '0.5px', color: '#ffffff', fontSize: '0.9rem' }}>TORNagator</span>
             {showTabTimer && travelTimeLeft && (
               <span style={{
