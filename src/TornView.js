@@ -101,9 +101,104 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 );
 
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
-const WebviewTab = ({ tab, isActive, onUpdate }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
+
+  const trySelectCountry = useCallback((attempt = 1) => {
+    const wv = webviewRef.current;
+    if (!wv || !targetCountry) return;
+
+    let currentUrl = '';
+    try {
+      currentUrl = wv.getURL() || '';
+    } catch (e) {
+      return;
+    }
+
+    if (!currentUrl.includes('travelagency.php') && !currentUrl.includes('sid=travel')) return;
+
+    console.log(`TORNagator: Triggering selectCountry (attempt ${attempt}) for:`, targetCountry);
+    const script = `
+      (() => {
+        const countryName = ${JSON.stringify(targetCountry)};
+        const targetNormalized = countryName.toLowerCase();
+        
+        const codes = {
+          "mexico": ["mex", "mexico"],
+          "cayman islands": ["cay", "cayman", "cayman islands"],
+          "canada": ["can", "canada"],
+          "hawaii": ["haw", "hawaii"],
+          "united kingdom": ["uni", "united kingdom", "uk", "great britain", "london"],
+          "argentina": ["arg", "argentina"],
+          "switzerland": ["swi", "switzerland"],
+          "japan": ["jap", "japan", "tokyo"],
+          "china": ["chi", "china", "beijing"],
+          "uae": ["uae", "united arab emirates", "dubai", "abu dhabi"],
+          "south africa": ["sou", "south africa", "johannesburg", "capetown", "cape town"]
+        };
+
+        let matchedKey = targetNormalized;
+        for (const [canonical, aliases] of Object.entries(codes)) {
+          if (canonical === targetNormalized || aliases.includes(targetNormalized)) {
+            matchedKey = canonical;
+            break;
+          }
+        }
+
+        const radios = document.querySelectorAll('input[type="radio"][name="destination"]');
+        for (const r of radios) {
+          const label = (r.getAttribute('aria-label') || '').toLowerCase();
+          if (label.includes(matchedKey) || matchedKey.includes(label)) {
+            r.click();
+            r.dispatchEvent(new Event('change', { bubbles: true }));
+            r.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            if (r.nextElementSibling && r.nextElementSibling.classList.contains('pin___kahDJ')) {
+              r.nextElementSibling.click();
+              r.nextElementSibling.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            }
+            return true;
+          }
+        }
+
+        const clickables = document.querySelectorAll('.pin___kahDJ, [class*="pin___" i], [class*="destination" i], button, a');
+        for (const el of clickables) {
+          const text = (el.textContent || '').toLowerCase().trim();
+          const bg = (el.style.backgroundImage || '').toLowerCase();
+          const className = (el.className || '').toLowerCase();
+          
+          if (text.includes(matchedKey) || bg.includes(matchedKey) || className.includes(matchedKey)) {
+            el.click();
+            el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            return true;
+          }
+        }
+
+        return false;
+      })()
+    `;
+
+    wv.executeJavaScript(script)
+      .then(result => {
+        console.log("TORNagator: executeJavaScript selectCountry result:", result);
+        if (result) {
+          setTargetCountry(null);
+        } else if (attempt < 15) {
+          setTimeout(() => {
+            trySelectCountry(attempt + 1);
+          }, 400);
+        }
+      })
+      .catch(err => {
+        console.error("TORNagator: executeJavaScript failed:", err);
+        if (attempt < 15) {
+          setTimeout(() => {
+            trySelectCountry(attempt + 1);
+          }, 400);
+        }
+      });
+  }, [targetCountry, setTargetCountry]);
 
   useEffect(() => {
     const wv = webviewRef.current;
@@ -128,6 +223,35 @@ const WebviewTab = ({ tab, isActive, onUpdate }) => {
     };
   }, [tab.id, onUpdate]);
 
+  useEffect(() => {
+    if (isActive && targetCountry) {
+      const timer = setTimeout(() => {
+        trySelectCountry();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, targetCountry, trySelectCountry]);
+
+
+
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv) return;
+
+    const handleDomReady = () => {
+      if (isActive && targetCountry) {
+        setTimeout(() => {
+          trySelectCountry();
+        }, 500);
+      }
+    };
+
+    wv.addEventListener('dom-ready', handleDomReady);
+    return () => {
+      wv.removeEventListener('dom-ready', handleDomReady);
+    };
+  }, [isActive, targetCountry, trySelectCountry]);
+
   return (
     <webview
       ref={webviewRef}
@@ -143,7 +267,7 @@ const WebviewTab = ({ tab, isActive, onUpdate }) => {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
+const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -301,7 +425,14 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
 
           <div style={{ flex: 1, position: 'relative' }}>
             {tabs.map(tab => (
-              <WebviewTab key={tab.id} tab={tab} isActive={activeTabId === tab.id} onUpdate={handleTabUpdate} />
+              <WebviewTab 
+                key={tab.id} 
+                tab={tab} 
+                isActive={activeTabId === tab.id} 
+                onUpdate={handleTabUpdate} 
+                targetCountry={targetCountry}
+                setTargetCountry={setTargetCountry}
+              />
             ))}
           </div>
         </div>

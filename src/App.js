@@ -118,9 +118,11 @@ function App() {
   const [activeTab, setActiveTab] = useLocalStorage('active_tab', 'dashboard');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [requestedUrl, setRequestedUrl] = useState(null);
+  const [targetCountry, setTargetCountry] = useState(null);
 
-  const handleOpenInTorn = useCallback((url) => {
+  const handleOpenInTorn = useCallback((url, country = null) => {
     setRequestedUrl(url);
+    setTargetCountry(country);
     setActiveTab('torn');
   }, [setActiveTab]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
@@ -528,7 +530,14 @@ function App() {
             ) : activeTab === 'faction' ? (
               <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
             ) : activeTab === 'torn' ? (
-              <TornView userData={userData} apiKey={apiKey} requestedUrl={requestedUrl} setRequestedUrl={setRequestedUrl} />
+              <TornView 
+                userData={userData} 
+                apiKey={apiKey} 
+                requestedUrl={requestedUrl} 
+                setRequestedUrl={setRequestedUrl}
+                targetCountry={targetCountry}
+                setTargetCountry={setTargetCountry}
+              />
             ) : (
               <OverseasStock
                 itemsData={itemsData}

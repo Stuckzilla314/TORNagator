@@ -532,7 +532,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     }
 
     if (onOpenInTorn) {
-      onOpenInTorn('https://www.torn.com/travelagency.php');
+      onOpenInTorn('https://www.torn.com/travelagency.php', item.country);
     } else {
       window.open('https://www.torn.com/travelagency.php', '_blank');
     }
