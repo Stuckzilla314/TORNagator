@@ -70,6 +70,38 @@
   overflow: hidden;
 }
 
+/* ── Settings Gear Button ──────────────────────────────────── */
+.settings-gear-btn {
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  color: #888888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  box-sizing: border-box;
+}
+
+.settings-gear-btn:hover {
+  border-color: #3498db;
+  background-color: #222;
+  color: #3498db;
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+}
+
+.settings-gear-btn.active {
+  border-color: #3498db;
+  background-color: rgba(52, 152, 219, 0.15);
+  color: #3498db;
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
 /* ── iFrame Panel ──────────────────────────────────────────── */
 .torn-iframe-panel {
   flex: 1;
