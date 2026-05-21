@@ -255,6 +255,29 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }
     if (!wv) return;
 
     const handleDomReady = () => {
+      wv.insertCSS(`
+        [class*="swiper-slide"][class*="slide___"] {
+          width: 60px !important;
+        }
+        [class*="mobileLink___"] span {
+          font-size: 9px !important;
+          color: #d1d5db !important;
+          text-transform: uppercase !important;
+          font-weight: bold !important;
+          overflow: visible !important;
+          white-space: nowrap !important;
+        }
+        [class*="mobileLink___"]:hover span {
+          color: #ffffff !important;
+        }
+        [class*="active___"] [class*="mobileLink___"] span {
+          color: #ffffff !important;
+          text-shadow: 0 0 3px rgba(255, 255, 255, 0.4) !important;
+        }
+      `).catch(err => {
+        console.error("TORNagator: Failed to insert CSS:", err);
+      });
+
       if (isActive && targetCountry) {
         setTimeout(() => {
           trySelectCountry();
