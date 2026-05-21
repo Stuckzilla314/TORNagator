@@ -232,16 +232,39 @@ function App() {
   // Always recurring dashboard fetch (user data only)
   useEffect(() => {
     let interval;
+    let lastFetchTime = Date.now();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (Date.now() - lastFetchTime >= 29000) {
+          loadDashboardData(false);
+          lastFetchTime = Date.now();
+        }
+      }
+    };
+
     if (apiKey) {
       if (!hasInitialSyncRun.current) {
         hasInitialSyncRun.current = true;
         loadDashboardData(true);
+        lastFetchTime = Date.now();
       }
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
       interval = setInterval(() => {
-        loadDashboardData(false);
+        if (document.visibilityState === 'visible') {
+          if (Date.now() - lastFetchTime >= 29000) {
+            loadDashboardData(false);
+            lastFetchTime = Date.now();
+          }
+        }
       }, 30000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [apiKey, loadDashboardData]);
 
   // Fetch faction data whenever the faction tab is activated
@@ -259,6 +282,28 @@ function App() {
   // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {
     let interval;
+
+    const checkOverseasSync = () => {
+      const now = new Date();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+
+      // Sync on :00, :05, :10...
+      if (minutes % 5 === 0 && seconds < 30) {
+        const lastSync = parseInt(sessionStorage.getItem('last_overseas_sync_minute') || '-1');
+        if (lastSync !== minutes) {
+          loadOverseasData();
+          sessionStorage.setItem('last_overseas_sync_minute', minutes.toString());
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkOverseasSync();
+      }
+    };
+
     if (apiKey && activeTab === 'stock' && stockAutoSync) {
       // Initial fetch
       if (!hasOverseasSyncRun.current) {
@@ -266,18 +311,11 @@ function App() {
         loadOverseasData();
       }
 
-      interval = setInterval(() => {
-        const now = new Date();
-        const minutes = now.getMinutes();
-        const seconds = now.getSeconds();
+      document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // Sync on :00, :05, :10...
-        if (minutes % 5 === 0 && seconds < 30) {
-          const lastSync = parseInt(sessionStorage.getItem('last_overseas_sync_minute') || '-1');
-          if (lastSync !== minutes) {
-            loadOverseasData();
-            sessionStorage.setItem('last_overseas_sync_minute', minutes.toString());
-          }
+      interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          checkOverseasSync();
         }
       }, 10000);
     } else if (activeTab !== 'stock') {
@@ -285,6 +323,7 @@ function App() {
     }
     return () => {
       if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [apiKey, activeTab, stockAutoSync, loadOverseasData]);
 
