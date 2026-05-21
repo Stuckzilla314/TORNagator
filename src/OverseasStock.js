@@ -824,6 +824,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 cursor: 'pointer',
                 lineHeight: 1
               }}
+              aria-label="Close stock history"
             >
               ×
             </button>

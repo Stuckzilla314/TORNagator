@@ -126,6 +126,7 @@ const SettingsMenu = ({
                   alignItems: 'center'
                 }}
                 title="Force Refresh"
+                aria-label="Force Refresh"
               >
                 🔄
               </button>
