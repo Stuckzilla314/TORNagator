@@ -158,6 +158,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }
               r.nextElementSibling.click();
               r.nextElementSibling.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
             }
+
+            setTimeout(() => {
+              window.scrollTo(0, document.body.scrollHeight);
+              if (document.documentElement) {
+                document.documentElement.scrollTop = document.documentElement.scrollHeight;
+              }
+            }, 150);
+
             return true;
           }
         }
@@ -171,6 +179,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }
           if (text.includes(matchedKey) || bg.includes(matchedKey) || className.includes(matchedKey)) {
             el.click();
             el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+            setTimeout(() => {
+              window.scrollTo(0, document.body.scrollHeight);
+              if (document.documentElement) {
+                document.documentElement.scrollTop = document.documentElement.scrollHeight;
+              }
+            }, 150);
+
             return true;
           }
         }
