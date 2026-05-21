@@ -712,7 +712,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   </td>
                   <td style={cellStyle}>
                     <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
-                    <div 
+                    <div
                       style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px', cursor: 'help', whiteSpace: 'pre-line' }}
                       title={`Arrive Time: ${new Date(Date.now() + (item.totalRoundTripMinutes / 2) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nReturn Time: ${new Date(Date.now() + item.totalRoundTripMinutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                     >
@@ -847,8 +847,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   }
                 }
 
+                const liveStockQuantity = historicalData.length > 0 
+                  ? historicalData[historicalData.length - 1].stock 
+                  : (selectedItemForGraph.stockQuantity || 0);
+
                 if (restocks.length < 3) {
-                  if (selectedItemForGraph.stockQuantity === 0) {
+                  if (liveStockQuantity === 0) {
                     return <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#666' }}>Gathering data...</div>;
                   }
                   return null;
@@ -914,8 +918,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
                 const timeDisplay = expectedDate.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
-                if (selectedItemForGraph.stockQuantity > 0) {
-                  statusText = `Stock Available ✅\nNext cycle: @ ${timeDisplay}`;
+                if (liveStockQuantity > 0) {
+                  statusText = `Stock Available ${liveStockQuantity} ✅\nNext cycle: @ ${timeDisplay}`;
                   statusColor = "#2ecc71";
                 } else if (timeLeft < 0) {
                   const overdueMins = Math.round(Math.abs(timeLeft) / 60000);
