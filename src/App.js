@@ -420,13 +420,13 @@ function App() {
           WebkitAppRegion: 'drag',
           flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img
               src={`${process.env.PUBLIC_URL}/alligator.png`}
               alt="TORNagator"
-              style={{ width: '22px', height: '22px', objectFit: 'contain', imageRendering: 'auto' }}
+              style={{ width: '28px', height: '28px', objectFit: 'contain', imageRendering: 'auto' }}
             />
-            <span style={{ fontWeight: 'bold', letterSpacing: '0.5px', color: '#ffffff', fontSize: '0.9rem' }}>TORNagator</span>
+            <span style={{ fontWeight: 'bold', letterSpacing: '0.5px', color: '#ffffff', fontSize: '0.95rem' }}>TORNagator</span>
             {showTabTimer && travelTimeLeft && (
               <span style={{
                 marginLeft: '12px',
