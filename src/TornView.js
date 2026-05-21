@@ -610,6 +610,26 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [newUrl, setNewUrl] = useState('');
+  const [dismissedWarnings, setDismissedWarnings] = useState({});
+
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  const isGymPage = activeTab?.url?.includes('gym.php');
+  const energyValue = userData?.energy?.current || 0;
+  const isStacking = energyValue > 100;
+  const showStackingWarning = isGymPage && isStacking && !dismissedWarnings[activeTabId];
+
+  useEffect(() => {
+    if (!isGymPage && activeTabId) {
+      setDismissedWarnings(prev => {
+        if (prev[activeTabId]) {
+          const next = { ...prev };
+          delete next[activeTabId];
+          return next;
+        }
+        return prev;
+      });
+    }
+  }, [isGymPage, activeTabId]);
 
   const PRESET_QUICK_ACTIONS = [
     { label: '🏠 Home',     href: 'https://www.torn.com/index.php' },
@@ -805,6 +825,24 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
           </div>
 
           <div style={{ flex: 1, position: 'relative' }}>
+            {showStackingWarning && (
+              <div className="stacking-warning-banner">
+                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                <div>
+                  <span className="stacking-warning-title">Stacking Warning</span>
+                  <span className="stacking-warning-desc">
+                    Your energy is {energyValue}/100. You might be stacking and may not want to train in the gym.
+                  </span>
+                </div>
+                <button 
+                  className="stacking-warning-close" 
+                  onClick={() => setDismissedWarnings(prev => ({ ...prev, [activeTabId]: true }))}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {tabs.map(tab => (
               <WebviewTab 
                 key={tab.id} 
