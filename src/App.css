@@ -479,14 +479,18 @@
   color: #bbb;
   font-size: 0.71rem;
   font-weight: 500;
-  padding: 7px 6px;
+  padding: 8px 6px 6px 6px;
   cursor: pointer;
   text-align: center;
   transition: all 0.18s ease;
   font-family: inherit;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .torn-sidebar-quicklink-btn:hover {

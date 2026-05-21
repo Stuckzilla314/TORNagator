@@ -8,6 +8,7 @@ import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
+import { IconCrocodile, IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
 
 function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -420,7 +421,7 @@ function App() {
           flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.1rem' }}>🐊</span>
+            <IconCrocodile size={22} color="#2ecc71" />
             <span style={{ fontWeight: 'bold', letterSpacing: '0.5px', color: '#ffffff', fontSize: '0.9rem' }}>TORNagator</span>
             {showTabTimer && travelTimeLeft && (
               <span style={{
@@ -444,10 +445,10 @@ function App() {
                 alignItems: 'center',
                 gap: '6px'
               }}>
-                <span>
-                  {userData?.status?.state === 'Traveling' ? '✈️' :
-                   userData?.status?.state === 'Hospital' ? '🏥' :
-                   userData?.status?.state === 'Jail' ? '⚖️' : '⏱️'}
+                <span style={{ display: 'flex', alignItems: 'center' }}>
+                  {userData?.status?.state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
+                   userData?.status?.state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
+                   userData?.status?.state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> : <IconClock size={13} color={"#aaa"} />}
                 </span>
                 <span>{travelTimeLeft}</span>
               </span>
@@ -530,7 +531,7 @@ function App() {
               <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
               <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
               <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-              <div style={navItemStyle('torn')} onClick={() => setActiveTab('torn')}>🎮 TORN</div>
+              <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
             </nav>
 
             {activeTab === 'dashboard' ? (

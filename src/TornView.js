@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
+import {
+  IconBolt, IconDot, IconSmile, IconHeart,
+  IconPlane, IconHospital, IconScales,
+  IconCoin, IconWarning, IconChevronRight,
+  getQuickActionIcon
+} from './Icons';
 
 function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -45,9 +51,9 @@ const SidebarStatBar = ({ label, current, max, color, timeRemaining, href, onNav
       style={{ cursor: href ? 'pointer' : 'default' }}
     >
       <div className="torn-stat-bar-header">
-        <span className="torn-stat-bar-label" style={{ color }}>
+        <span className="torn-stat-bar-label" style={{ color, display: 'flex', alignItems: 'center', gap: '5px' }}>
           {label}
-          {href && <span className="torn-stat-bar-arrow">↗</span>}
+          {href && <IconChevronRight size={11} color={color} style={{ opacity: 0.7 }} />}
         </span>
         <span className="torn-stat-bar-value">
           {current ?? '—'} / {max ?? '—'}
@@ -598,12 +604,12 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const defaultQuickActions = [
-    { label: '⚔️ Attack',  href: 'https://www.torn.com/loader.php?sid=attack' },
-    { label: '⚡ Crimes',  href: 'https://www.torn.com/crimes.php' },
-    { label: '📈 Market',  href: 'https://www.torn.com/imarket.php' },
-    { label: '✈️ Travel',  href: 'https://www.torn.com/travelagency.php' },
-    { label: '🎯 Events',  href: 'https://www.torn.com/events.php' },
-    { label: '🏪 Bazaar',  href: 'https://www.torn.com/bazaar.php' },
+    { label: 'Attack',  href: 'https://www.torn.com/loader.php?sid=attack' },
+    { label: 'Crimes',  href: 'https://www.torn.com/crimes.php' },
+    { label: 'Market',  href: 'https://www.torn.com/imarket.php' },
+    { label: 'Travel',  href: 'https://www.torn.com/travelagency.php' },
+    { label: 'Events',  href: 'https://www.torn.com/events.php' },
+    { label: 'Bazaar',  href: 'https://www.torn.com/bazaar.php' },
   ];
   const [quickActions, setQuickActions] = useLocalStorage('torn_quick_actions', defaultQuickActions);
   const [isEditingQuick, setIsEditingQuick] = useState(false);
@@ -632,18 +638,18 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   }, [isGymPage, activeTabId]);
 
   const PRESET_QUICK_ACTIONS = [
-    { label: '🏠 Home',     href: 'https://www.torn.com/index.php' },
-    { label: '⚔️ Attack',   href: 'https://www.torn.com/loader.php?sid=attack' },
-    { label: '⚡ Crimes',   href: 'https://www.torn.com/crimes.php' },
-    { label: '🏋️ Gym',      href: 'https://www.torn.com/gym.php' },
-    { label: '🏥 Hospital', href: 'https://www.torn.com/hospital.php' },
-    { label: '🏛️ City',     href: 'https://www.torn.com/city.php' },
-    { label: '🏪 Bazaar',   href: 'https://www.torn.com/bazaar.php' },
-    { label: '📈 Market',   href: 'https://www.torn.com/imarket.php' },
-    { label: '🏦 Bank',     href: 'https://www.torn.com/bank.php' },
-    { label: '✈️ Travel',   href: 'https://www.torn.com/travelagency.php' },
-    { label: '🗂️ Faction',  href: 'https://www.torn.com/factions.php' },
-    { label: '🎯 Events',   href: 'https://www.torn.com/events.php' },
+    { label: 'Home',     href: 'https://www.torn.com/index.php' },
+    { label: 'Attack',   href: 'https://www.torn.com/loader.php?sid=attack' },
+    { label: 'Crimes',   href: 'https://www.torn.com/crimes.php' },
+    { label: 'Gym',      href: 'https://www.torn.com/gym.php' },
+    { label: 'Hospital', href: 'https://www.torn.com/hospital.php' },
+    { label: 'City',     href: 'https://www.torn.com/city.php' },
+    { label: 'Bazaar',   href: 'https://www.torn.com/bazaar.php' },
+    { label: 'Market',   href: 'https://www.torn.com/imarket.php' },
+    { label: 'Bank',     href: 'https://www.torn.com/bank.php' },
+    { label: 'Travel',   href: 'https://www.torn.com/travelagency.php' },
+    { label: 'Faction',  href: 'https://www.torn.com/factions.php' },
+    { label: 'Events',   href: 'https://www.torn.com/events.php' },
   ];
 
   const handleMoveAction = (index, direction) => {
@@ -827,7 +833,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
           <div style={{ flex: 1, position: 'relative' }}>
             {showStackingWarning && (
               <div className="stacking-warning-banner">
-                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                <IconWarning size={20} color="#fff" />
                 <div>
                   <span className="stacking-warning-title">Stacking Warning</span>
                   <span className="stacking-warning-desc">
@@ -897,7 +903,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 <div className="torn-sidebar-section">
                   {isTraveling && (
                     <StatusCard
-                      icon="✈️"
+                      icon={<IconPlane size={15} color="#3498db" />}
                       title="Traveling"
                       description={userData.status?.description}
                       timeLeft={travelTimeLeft}
@@ -907,7 +913,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   )}
                   {isHospitalized && (
                     <StatusCard
-                      icon="🏥"
+                      icon={<IconHospital size={15} color="#e74c3c" />}
                       title="Hospitalized"
                       description={userData.status?.description}
                       detail={userData.status?.details}
@@ -918,7 +924,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   )}
                   {isJailed && (
                     <StatusCard
-                      icon="⚖️"
+                      icon={<IconScales size={15} color="#f39c12" />}
                       title="Jailed"
                       description={userData.status?.description}
                       timeLeft={statusTimeLeft}
@@ -933,7 +939,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
               <div className="torn-sidebar-section">
                 <div className="torn-sidebar-section-title">Live Stats</div>
                 <SidebarStatBar
-                  label="⚡ Energy"
+                  label={<><IconBolt size={12} color="#f1c40f" /> Energy</>}
                   current={userData?.energy?.current}
                   max={userData?.energy?.maximum}
                   color="#f1c40f"
@@ -942,7 +948,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   onNavigate={navigateTo}
                 />
                 <SidebarStatBar
-                  label="🔴 Nerve"
+                  label={<><IconDot size={10} color="#e74c3c" /> Nerve</>}
                   current={userData?.nerve?.current}
                   max={userData?.nerve?.maximum}
                   color="#e74c3c"
@@ -951,7 +957,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   onNavigate={navigateTo}
                 />
                 <SidebarStatBar
-                  label="😊 Happy"
+                  label={<><IconSmile size={12} color="#3498db" /> Happy</>}
                   current={userData?.happy?.current}
                   max={userData?.happy?.maximum}
                   color="#3498db"
@@ -960,7 +966,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   onNavigate={navigateTo}
                 />
                 <SidebarStatBar
-                  label="💚 Life"
+                  label={<><IconHeart size={12} color="#2ecc71" /> Life</>}
                   current={userData?.life?.current}
                   max={userData?.life?.maximum}
                   color="#2ecc71"
@@ -979,7 +985,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                     onClick={() => navigateTo('https://www.torn.com/bank.php')}
                     title="Open Bank"
                   >
-                    <span className="torn-money-label">💰 Cash on Hand</span>
+                    <span className="torn-money-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><IconCoin size={13} color="#f1c40f" /> Cash on Hand</span>
                     <span className="torn-money-value">{moneyFormatted}</span>
                   </div>
                 </div>
@@ -1071,6 +1077,8 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                           ×
                         </button>
 
+                        {(() => { const Icon = getQuickActionIcon(action.href); return <Icon size={16} color="#888" />; })()}
+
                         <input
                           type="text"
                           value={action.label}
@@ -1131,7 +1139,8 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                         className="torn-sidebar-quicklink-btn"
                         onClick={() => navigateTo(action.href)}
                       >
-                        {action.label}
+                        {(() => { const Icon = getQuickActionIcon(action.href); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
+                        <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1 }}>{action.label}</span>
                       </button>
                     )
                   ))}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
+import { IconPlane, IconHospital, IconScales, IconChevronRight } from './Icons';
 
 // Helper to decode HTML entities like &#039;
 const decodeHtml = (html) => {
@@ -46,7 +47,7 @@ const StatBar = ({ label, current, max, color, timeRemaining, link, onOpenInTorn
           transition: 'color 0.2s ease'
         }}>
           {label}
-          {link && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>}
+          {link && <IconChevronRight size={12} color="#888" style={{ opacity: 0.6 }} />}
         </span>
         <span style={{ fontSize: '0.85rem', color: '#fff' }}>
           {current || 0} / {max || 0}
@@ -170,7 +171,7 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
                 borderRadius: '4px'
               }}
             >
-              TORN Home ↗
+              TORN Home <IconChevronRight size={12} color="#888" style={{ opacity: 0.7 }} />
             </a>
           </div>
         </div>
@@ -243,9 +244,9 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
           <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #3498db', background: 'linear-gradient(145deg, #1e1e1e, #1a2a3a)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  ✈️ Travel Manifest
-                </h3>
+                  <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <IconPlane size={18} color="#3498db" /> Travel Manifest
+                  </h3>
                 <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -285,9 +286,9 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
           <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #e74c3c', background: 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  🏥 Medical Report
-                </h3>
+                  <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <IconHospital size={18} color="#e74c3c" /> Medical Report
+                  </h3>
                 <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
                 {userData.status?.details && <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#aaa' }}>{userData.status.details}</p>}
               </div>
@@ -328,9 +329,9 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
           <div style={{ ...cardStyle, marginBottom: '2rem', border: '1px solid #f39c12', background: 'linear-gradient(145deg, #1e1e1e, #2c241a)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ marginTop: 0, color: '#f39c12', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  ⚖️ Incarceration Status
-                </h3>
+                  <h3 style={{ marginTop: 0, color: '#f39c12', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <IconScales size={18} color="#f39c12" /> Incarceration Status
+                  </h3>
                 <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
