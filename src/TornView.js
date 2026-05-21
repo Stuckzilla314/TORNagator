@@ -934,9 +934,27 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                           ×
                         </button>
 
-                        <span style={{ fontSize: '0.7rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                          {action.label}
-                        </span>
+                        <input
+                          type="text"
+                          value={action.label}
+                          onChange={(e) => {
+                            const newLabel = e.target.value;
+                            setQuickActions(prev => prev.map((qa, i) => i === index ? { ...qa, label: newLabel } : qa));
+                          }}
+                          style={{
+                            width: '90%',
+                            fontSize: '0.68rem',
+                            backgroundColor: '#111',
+                            border: '1px solid #444',
+                            color: '#fff',
+                            borderRadius: '4px',
+                            padding: '2px 4px',
+                            textAlign: 'center',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit'
+                          }}
+                          placeholder="Label"
+                        />
 
                         {/* Rearrange arrows */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
