@@ -552,6 +552,39 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
     setIsAddingNew(false);
   };
 
+  const [contextMenu, setContextMenu] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleTabContextMenu = (e, tab) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      tab
+    });
+  };
+
+  const handleCopyUrl = (url, tabId) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(tabId);
+      setTimeout(() => {
+        setCopiedId(null);
+        setContextMenu(null);
+      }, 1000);
+    });
+  };
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener('click', closeMenu);
+    window.addEventListener('contextmenu', closeMenu);
+    return () => {
+      window.removeEventListener('click', closeMenu);
+      window.removeEventListener('contextmenu', closeMenu);
+    };
+  }, []);
+
   useEffect(() => {
     if (requestedUrl) {
       const newTabId = `tab-${Date.now()}`;
@@ -638,10 +671,11 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
           
           {/* Tab Bar UI */}
           <div className="torn-tab-bar" style={{ display: 'flex', backgroundColor: '#1a1a1a', borderBottom: '1px solid #333', padding: '0 8px', overflowX: 'auto' }}>
-            {tabs.map(tab => (
+             {tabs.map(tab => (
               <div 
                 key={tab.id} 
                 onClick={() => setActiveTabId(tab.id)}
+                onContextMenu={(e) => handleTabContextMenu(e, tab)}
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -818,25 +852,49 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
               <div className="torn-sidebar-section">
                 <div className="torn-sidebar-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span>Quick Actions</span>
-                  <button 
-                    onClick={() => {
-                      setIsEditingQuick(!isEditingQuick);
-                      setIsAddingNew(false);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#3498db',
-                      fontSize: '0.7rem',
-                      cursor: 'pointer',
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {isEditingQuick ? 'Done' : 'Edit'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button 
+                      onClick={() => {
+                        const activeTab = tabs.find(t => t.id === activeTabId);
+                        if (activeTab) {
+                          setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
+                        }
+                      }}
+                      title="Add current tab to quick actions"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#2ecc71',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      + Add Current
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setIsEditingQuick(!isEditingQuick);
+                        setIsAddingNew(false);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#3498db',
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {isEditingQuick ? 'Done' : 'Edit'}
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="torn-sidebar-quicklinks">
@@ -967,24 +1025,47 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                           </div>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => setIsAddingNew(true)}
-                          style={{
-                            gridColumn: 'span 2',
-                            background: 'none',
-                            border: '1px dashed #444',
-                            borderRadius: '7px',
-                            color: '#888',
-                            fontSize: '0.7rem',
-                            padding: '6px',
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            marginTop: '4px',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          + Add Custom Action
-                        </button>
+                        <div style={{ gridColumn: 'span 2', display: 'flex', gap: '6px', marginTop: '4px' }}>
+                          <button
+                            onClick={() => {
+                              const activeTab = tabs.find(t => t.id === activeTabId);
+                              if (activeTab) {
+                                setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              background: 'none',
+                              border: '1px dashed #2ecc71',
+                              borderRadius: '7px',
+                              color: '#2ecc71',
+                              fontSize: '0.7rem',
+                              padding: '6px',
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            + Add Current
+                          </button>
+                          <button
+                            onClick={() => setIsAddingNew(true)}
+                            style={{
+                              flex: 1,
+                              background: 'none',
+                              border: '1px dashed #444',
+                              borderRadius: '7px',
+                              color: '#888',
+                              fontSize: '0.7rem',
+                              padding: '6px',
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            + Custom Action
+                          </button>
+                        </div>
                       )}
 
                       {/* Presets suggestions */}
@@ -1027,6 +1108,44 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
           )}
         </aside>
       </div>
+
+      {contextMenu && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            backgroundColor: '#161616',
+            border: '1px solid #333',
+            borderRadius: '6px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            zIndex: 10000,
+            padding: '4px 0',
+            minWidth: '130px',
+            boxSizing: 'border-box'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            onClick={() => handleCopyUrl(contextMenu.tab.url, contextMenu.tab.id)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.75rem',
+              color: '#eee',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background-color 0.2s',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={e => e.target.style.backgroundColor = '#3498db'}
+            onMouseLeave={e => e.target.style.backgroundColor = 'transparent'}
+          >
+            {copiedId === contextMenu.tab.id ? '✅ Copied!' : '📋 Copy URL'}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
