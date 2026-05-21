@@ -27,20 +27,6 @@ function useLocalStorage(key, initialValue) {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const QUICK_NAV = [
-  { label: '🏠 Home',     href: 'https://www.torn.com/index.php' },
-  { label: '⚔️ Attack',   href: 'https://www.torn.com/loader.php?sid=attack' },
-  { label: '⚡ Crimes',   href: 'https://www.torn.com/crimes.php' },
-  { label: '🏋️ Gym',      href: 'https://www.torn.com/gym.php' },
-  { label: '🏥 Hospital', href: 'https://www.torn.com/hospital.php' },
-  { label: '🏛️ City',     href: 'https://www.torn.com/city.php' },
-  { label: '🏪 Bazaar',   href: 'https://www.torn.com/bazaar.php' },
-  { label: '📈 Market',   href: 'https://www.torn.com/imarket.php' },
-  { label: '🏦 Bank',     href: 'https://www.torn.com/bank.php' },
-  { label: '✈️ Travel',   href: 'https://www.torn.com/travelagency.php' },
-  { label: '🗂️ Faction',  href: 'https://www.torn.com/factions.php' },
-  { label: '🎯 Events',   href: 'https://www.torn.com/events.php' },
-];
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -512,7 +498,6 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const activeTabUrl = tabs.find(t => t.id === activeTabId)?.url || 'https://www.torn.com/index.php';
 
   useEffect(() => {
     if (requestedUrl) {
@@ -591,34 +576,6 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   return (
     <div className="torn-view-root" style={{ height: '100%', flex: 1, minHeight: 0 }}>
-      {/* ── Quick Nav Bar ─────────────────────────────────────────────── */}
-      <div className="torn-quicknav">
-        <div className="torn-quicknav-brand">
-          <span className="torn-quicknav-dot" />
-          TORN Overlay
-        </div>
-        <div className="torn-quicknav-links">
-          {QUICK_NAV.map(({ label, href }) => (
-            <button
-              key={href}
-              className={`torn-quicknav-btn${activeTabUrl.includes(href) ? ' active' : ''}`}
-              onClick={() => navigateTo(href)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="torn-quicknav-open">
-          <a
-            href={activeTabUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="torn-open-btn"
-          >
-            Open in Tab ↗
-          </a>
-        </div>
-      </div>
 
       {/* ── Main Layout ──────────────────────────────────────────────── */}
       <div className="torn-main-layout">
