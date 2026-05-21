@@ -142,14 +142,14 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeNavHref, setActiveNavHref] = useState('https://www.torn.com/index.php');
+
+  const activeTabUrl = tabs.find(t => t.id === activeTabId)?.url || 'https://www.torn.com/index.php';
 
   useEffect(() => {
     if (requestedUrl) {
       const newTabId = `tab-${Date.now()}`;
       setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
       setActiveTabId(newTabId);
-      setActiveNavHref(requestedUrl);
       setRequestedUrl(null);
     }
   }, [requestedUrl, setTabs, setActiveTabId, setRequestedUrl]);
@@ -173,9 +173,9 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
     });
   };
 
-  const handleNewTab = () => {
+  const handleNewTab = (initialUrl = 'https://www.torn.com/index.php') => {
     const id = `tab-${Date.now()}`;
-    setTabs(prev => [...prev, { id, url: 'https://www.torn.com/index.php', title: 'New Tab' }]);
+    setTabs(prev => [...prev, { id, url: initialUrl, title: 'New Tab' }]);
     setActiveTabId(id);
   };
 
@@ -207,9 +207,10 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
-    setActiveNavHref(href);
-    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, url: href } : t));
-  }, [activeTabId, setTabs]);
+    const id = `tab-${Date.now()}`;
+    setTabs(prev => [...prev, { id, url: href, title: 'Loading...' }]);
+    setActiveTabId(id);
+  }, [setTabs, setActiveTabId]);
 
   // Iframe block detection removed: assuming user uses extension to bypass X-Frame-Options
 
@@ -231,7 +232,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
           {QUICK_NAV.map(({ label, href }) => (
             <button
               key={href}
-              className={`torn-quicknav-btn${activeNavHref === href ? ' active' : ''}`}
+              className={`torn-quicknav-btn${activeTabUrl.includes(href) ? ' active' : ''}`}
               onClick={() => navigateTo(href)}
             >
               {label}
@@ -240,7 +241,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
         </div>
         <div className="torn-quicknav-open">
           <a
-            href={activeNavHref}
+            href={activeTabUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="torn-open-btn"
