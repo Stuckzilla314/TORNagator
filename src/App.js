@@ -537,6 +537,7 @@ function App() {
                 setRequestedUrl={setRequestedUrl}
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
+                itemsData={itemsData}
               />
             ) : (
               <OverseasStock

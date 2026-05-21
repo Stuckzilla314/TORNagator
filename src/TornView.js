@@ -101,7 +101,7 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 );
 
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
 
@@ -254,6 +254,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }
     const wv = webviewRef.current;
     if (!wv) return;
 
+
     const handleDomReady = () => {
       wv.insertCSS(`
         [class*="swiper-slide"][class*="slide___"] {
@@ -291,6 +292,153 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }
     };
   }, [isActive, targetCountry, trySelectCountry]);
 
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv || !isActive || !itemsData) return;
+
+    // Map item names to their market values from the database
+    const itemsMarketValues = {};
+    Object.values(itemsData).forEach(item => {
+      if (item.name && item.market_value) {
+        itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+      }
+    });
+
+    const script = `
+      (() => {
+        const marketValues = ${JSON.stringify(itemsMarketValues)};
+        const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
+
+        // 1. Find and inject header cells
+        const headers = Array.from(document.querySelectorAll('li, tr, div')).filter(el => {
+          const text = el.textContent || '';
+          return text.includes('Cost') && text.includes('Stock') && text.includes('Amount') && text.includes('Buy') && el.children.length >= 5 && el.children.length <= 12;
+        });
+
+        for (const headerRow of headers) {
+          if (headerRow.querySelector('.injected-profit-header') || headerRow.textContent.includes('Profit')) {
+            continue;
+          }
+
+          const cells = Array.from(headerRow.children);
+          const costHeaderCell = cells.find(cell => cell.textContent.trim().toLowerCase() === 'cost' && !cell.classList.contains('injected-profit-header'));
+          if (!costHeaderCell) continue;
+
+          const profitHeader = document.createElement(costHeaderCell.tagName);
+          profitHeader.className = costHeaderCell.className + ' injected-profit-header';
+          profitHeader.textContent = 'Profit';
+          profitHeader.style.cssText = costHeaderCell.style.cssText;
+          
+          costHeaderCell.after(profitHeader);
+        }
+
+        // 2. Find and update item rows
+        const rows = Array.from(document.querySelectorAll('li, tr, div')).filter(row => {
+          const hasInput = Array.from(row.querySelectorAll('input')).some(inp => {
+            const type = (inp.getAttribute('type') || 'text').toLowerCase();
+            return type !== 'button' && type !== 'submit' && type !== 'image';
+          });
+          const hasButton = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
+          const text = row.textContent || '';
+          const isHeader = text.includes('Cost') && text.includes('Stock');
+          return hasInput && hasButton && !isHeader && row.children.length >= 5 && row.children.length <= 15;
+        });
+
+        for (const row of rows) {
+          const cells = Array.from(row.children);
+          const costCell = cells.find(cell => 
+            cell.textContent.includes('$') && 
+            !cell.classList.contains('injected-profit-cell') && 
+            !cell.querySelector('.injected-market-price') && 
+            !/[a-z]/i.test(cell.textContent)
+          );
+          if (!costCell) continue;
+
+          // Search name only in cells before the cost cell
+          const costIdx = cells.indexOf(costCell);
+          const nameSearchText = cells.slice(0, costIdx).map(c => c.textContent.toLowerCase()).join(' ');
+
+          let marketValue = 0;
+          let matchedName = '';
+          for (const name of sortedNames) {
+            if (nameSearchText.includes(name)) {
+              marketValue = marketValues[name];
+              matchedName = name;
+              break;
+            }
+          }
+
+          if (matchedName) {
+            const nameCell = cells.slice(0, costIdx).find(cell => cell.textContent.toLowerCase().includes(matchedName));
+            if (nameCell) {
+              let priceSpan = nameCell.querySelector('.injected-market-price');
+              if (!priceSpan) {
+                priceSpan = document.createElement('span');
+                priceSpan.className = 'injected-market-price';
+                priceSpan.style.color = '#888888';
+                priceSpan.style.fontSize = '0.8em';
+                priceSpan.style.marginLeft = '8px';
+                nameCell.appendChild(priceSpan);
+              }
+              priceSpan.textContent = marketValue > 0 ? '($' + marketValue.toLocaleString() + ')' : '(N/A)';
+            }
+          }
+
+          const costText = costCell.textContent.replace(/[^0-9]/g, '');
+          const cost = parseInt(costText, 10) || 0;
+          const profitPerItem = marketValue - cost;
+
+          // Exclude submit, button, and image inputs to target the text/number Qty input specifically
+          const input = Array.from(row.querySelectorAll('input')).find(inp => {
+            const type = (inp.getAttribute('type') || 'text').toLowerCase();
+            return type !== 'button' && type !== 'submit' && type !== 'image';
+          });
+          
+          const updateRowProfit = () => {
+            if (!input) return;
+            let profitCell = row.querySelector('.injected-profit-cell');
+            if (!profitCell) {
+              profitCell = document.createElement(costCell.tagName);
+              profitCell.className = costCell.className + ' injected-profit-cell';
+              profitCell.style.cssText = costCell.style.cssText;
+              costCell.after(profitCell);
+            }
+
+            const qtyVal = input.value.trim();
+            const qty = qtyVal ? (parseInt(qtyVal, 10) || 0) : 0;
+            const totalProfit = profitPerItem * qty;
+            
+            if (marketValue === 0) {
+              profitCell.textContent = 'N/A';
+              profitCell.style.color = '#888888';
+            } else if (qty === 0) {
+              profitCell.textContent = '$0';
+              profitCell.style.color = '#888888';
+            } else {
+              profitCell.textContent = (totalProfit < 0 ? '-' : '') + '$' + Math.abs(totalProfit).toLocaleString();
+              profitCell.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+            }
+            profitCell.style.fontWeight = 'bold';
+          };
+
+          updateRowProfit();
+
+          if (input && !input.dataset.hasProfitListener) {
+            input.dataset.hasProfitListener = 'true';
+            input.addEventListener('input', updateRowProfit);
+            input.addEventListener('change', updateRowProfit);
+          }
+        }
+      })()
+    `;
+
+    const profitInterval = setInterval(() => {
+      wv.executeJavaScript(script).catch(() => {});
+    }, 1000);
+
+    return () => clearInterval(profitInterval);
+  }, [isActive, itemsData]);
+
   return (
     <webview
       ref={webviewRef}
@@ -306,7 +454,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry }) => {
+const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -471,6 +619,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 onUpdate={handleTabUpdate} 
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
+                itemsData={itemsData}
               />
             ))}
           </div>
