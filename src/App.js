@@ -117,6 +117,12 @@ function App() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useLocalStorage('active_tab', 'dashboard');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [requestedUrl, setRequestedUrl] = useState(null);
+
+  const handleOpenInTorn = useCallback((url) => {
+    setRequestedUrl(url);
+    setActiveTab('torn');
+  }, [setActiveTab]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
@@ -448,11 +454,11 @@ function App() {
           </nav>
 
           {activeTab === 'dashboard' ? (
-            <UserDashboard userData={userData} onLogout={handleLogout} />
+            <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
           ) : activeTab === 'faction' ? (
-            <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} />
+            <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
           ) : activeTab === 'torn' ? (
-            <TornView userData={userData} apiKey={apiKey} />
+            <TornView userData={userData} apiKey={apiKey} requestedUrl={requestedUrl} setRequestedUrl={setRequestedUrl} />
           ) : (
             <OverseasStock
               itemsData={itemsData}
@@ -462,6 +468,7 @@ function App() {
               onManualSync={loadOverseasData}
               filter={countryFilter}
               setFilter={setCountryFilter}
+              onOpenInTorn={handleOpenInTorn}
             />
           )}
         </>

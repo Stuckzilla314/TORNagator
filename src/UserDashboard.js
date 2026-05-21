@@ -32,7 +32,7 @@ const valueStyle = {
   color: '#fff'
 };
 
-const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
+const StatBar = ({ label, current, max, color, timeRemaining, link, onOpenInTorn }) => {
   const content = (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
@@ -69,8 +69,12 @@ const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
     return (
       <a 
         href={link} 
-        target="_blank" 
-        rel="noopener noreferrer" 
+        onClick={(e) => {
+          if (onOpenInTorn) {
+            e.preventDefault();
+            onOpenInTorn(link);
+          }
+        }}
         className="dashboard-card-link"
         style={{ 
           flex: '1 1 200px', 
@@ -93,7 +97,7 @@ const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
   );
 };
 
-const UserDashboard = ({ userData, onLogout }) => {
+const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
 
   const statusColor = userData.status?.color === 'blue' ? '#3498db' : 
                       userData.status?.color === 'red' ? '#e74c3c' : '#2ecc71';
@@ -127,8 +131,12 @@ const UserDashboard = ({ userData, onLogout }) => {
           <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
             {userData.name} <a 
               href={`https://www.torn.com/profiles.php?XID=${userData.player_id}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
+              onClick={(e) => {
+                if (onOpenInTorn) {
+                  e.preventDefault();
+                  onOpenInTorn(`https://www.torn.com/profiles.php?XID=${userData.player_id}`);
+                }
+              }}
               className="text-link"
               style={{ color: '#666', fontSize: '1.5rem', textDecoration: 'none' }}
             >[{userData.player_id}]</a>
@@ -142,8 +150,12 @@ const UserDashboard = ({ userData, onLogout }) => {
             </span>
             <a 
               href="https://www.torn.com/index.php" 
-              target="_blank" 
-              rel="noopener noreferrer"
+              onClick={(e) => {
+                if (onOpenInTorn) {
+                  e.preventDefault();
+                  onOpenInTorn("https://www.torn.com/index.php");
+                }
+              }}
               className="header-link"
               style={{ 
                 marginLeft: '10px', 
@@ -179,6 +191,7 @@ const UserDashboard = ({ userData, onLogout }) => {
           color="#2ecc71" 
           timeRemaining={lifeTime} 
           link="https://www.torn.com/hospital.php"
+          onOpenInTorn={onOpenInTorn}
         />
         <StatBar 
           label="Energy" 
@@ -187,6 +200,7 @@ const UserDashboard = ({ userData, onLogout }) => {
           color="#f1c40f" 
           timeRemaining={energyTime} 
           link="https://www.torn.com/gym.php"
+          onOpenInTorn={onOpenInTorn}
         />
         <StatBar 
           label="Nerve" 
@@ -195,6 +209,7 @@ const UserDashboard = ({ userData, onLogout }) => {
           color="#e74c3c" 
           timeRemaining={nerveTime} 
           link="https://www.torn.com/crimes.php"
+          onOpenInTorn={onOpenInTorn}
         />
         <StatBar 
           label="Happy" 
@@ -203,6 +218,7 @@ const UserDashboard = ({ userData, onLogout }) => {
           color="#3498db" 
           timeRemaining={happyTime} 
           link="https://www.torn.com/properties.php"
+          onOpenInTorn={onOpenInTorn}
         />
       </div>
 
@@ -210,8 +226,12 @@ const UserDashboard = ({ userData, onLogout }) => {
       {isTraveling && (
         <a 
           href="https://www.torn.com/index.php" 
-          target="_blank" 
-          rel="noopener noreferrer"
+          onClick={(e) => {
+            if (onOpenInTorn) {
+              e.preventDefault();
+              onOpenInTorn("https://www.torn.com/index.php");
+            }
+          }}
           className="dashboard-card-link"
           style={{ 
             textDecoration: 'none', 
@@ -248,8 +268,12 @@ const UserDashboard = ({ userData, onLogout }) => {
       {isHospitalized && (
         <a 
           href="https://www.torn.com/hospital.php" 
-          target="_blank" 
-          rel="noopener noreferrer"
+          onClick={(e) => {
+            if (onOpenInTorn) {
+              e.preventDefault();
+              onOpenInTorn("https://www.torn.com/hospital.php");
+            }
+          }}
           className="dashboard-card-link"
           style={{ 
             textDecoration: 'none', 
@@ -287,8 +311,12 @@ const UserDashboard = ({ userData, onLogout }) => {
       {isJailed && (
         <a 
           href="https://www.torn.com/jailview.php" 
-          target="_blank" 
-          rel="noopener noreferrer"
+          onClick={(e) => {
+            if (onOpenInTorn) {
+              e.preventDefault();
+              onOpenInTorn("https://www.torn.com/jailview.php");
+            }
+          }}
           className="dashboard-card-link"
           style={{ 
             textDecoration: 'none', 
@@ -331,8 +359,12 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={valueStyle}>
               <a 
                 href="https://www.torn.com/properties.php" 
-                target="_blank" 
-                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn("https://www.torn.com/properties.php");
+                  }
+                }}
                 className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
@@ -351,8 +383,12 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={valueStyle}>
               <a 
                 href={userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php"} 
-                target="_blank" 
-                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn(userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php");
+                  }
+                }}
                 className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
@@ -365,8 +401,12 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={valueStyle}>
               <a 
                 href={`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn(`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`);
+                  }
+                }}
                 className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
@@ -380,8 +420,12 @@ const UserDashboard = ({ userData, onLogout }) => {
               {userData.married?.spouse_id ? (
                 <a 
                   href={`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    if (onOpenInTorn) {
+                      e.preventDefault();
+                      onOpenInTorn(`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`);
+                    }
+                  }}
                   className="text-link"
                   style={{ color: 'inherit', textDecoration: 'none' }}
                 >

@@ -2,6 +2,29 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
 
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
+
+  const setValue = value => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  return [storedValue, setValue];
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const QUICK_NAV = [
@@ -77,13 +100,84 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
   </div>
 );
 
+// ─── WebviewTab Component ────────────────────────────────────────────────────────
+const WebviewTab = ({ tab, isActive, onUpdate }) => {
+  const webviewRef = useRef(null);
+
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv) return;
+
+    const handleNavigate = (e) => onUpdate(tab.id, { url: e.url });
+    const handleTitle = (e) => onUpdate(tab.id, { title: e.title });
+
+    wv.addEventListener('did-navigate', handleNavigate);
+    wv.addEventListener('did-navigate-in-page', handleNavigate);
+    wv.addEventListener('page-title-updated', handleTitle);
+
+    return () => {
+      wv.removeEventListener('did-navigate', handleNavigate);
+      wv.removeEventListener('did-navigate-in-page', handleNavigate);
+      wv.removeEventListener('page-title-updated', handleTitle);
+    };
+  }, [tab.id, onUpdate]);
+
+  return (
+    <webview
+      ref={webviewRef}
+      src={tab.url}
+      title={tab.title}
+      className="torn-iframe"
+      allowpopups="true"
+      style={{ display: isActive ? 'flex' : 'none', flex: 1, height: '100%', width: '100%' }}
+    />
+  );
+};
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-const TornView = ({ userData }) => {
-  const [iframeUrl, setIframeUrl] = useState('https://www.torn.com/index.php');
+const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
+  const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
+  const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
+  const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeNavHref, setActiveNavHref] = useState('https://www.torn.com/index.php');
-  const iframeRef = useRef(null);
+
+  useEffect(() => {
+    if (requestedUrl) {
+      const newTabId = `tab-${Date.now()}`;
+      setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
+      setActiveTabId(newTabId);
+      setActiveNavHref(requestedUrl);
+      setRequestedUrl(null);
+    }
+  }, [requestedUrl, setTabs, setActiveTabId, setRequestedUrl]);
+
+  const handleTabUpdate = useCallback((id, updates) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, [setTabs]);
+
+  const handleCloseTab = (e, id) => {
+    e.stopPropagation();
+    setTabs(prev => {
+      const idx = prev.findIndex(t => t.id === id);
+      const newTabs = prev.filter(t => t.id !== id);
+      if (newTabs.length === 0) return [defaultTab];
+      if (activeTabId === id) {
+        // Switch to the adjacent tab
+        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
+        setActiveTabId(nextTab.id);
+      }
+      return newTabs;
+    });
+  };
+
+  const handleNewTab = () => {
+    const id = `tab-${Date.now()}`;
+    setTabs(prev => [...prev, { id, url: 'https://www.torn.com/index.php', title: 'New Tab' }]);
+    setActiveTabId(id);
+  };
 
   // ── Stat timers
   const lifeTimer    = useBarTimer(userData?.life);
@@ -114,8 +208,8 @@ const TornView = ({ userData }) => {
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
     setActiveNavHref(href);
-    setIframeUrl(href);
-  }, []);
+    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, url: href } : t));
+  }, [activeTabId, setTabs]);
 
   // Iframe block detection removed: assuming user uses extension to bypass X-Frame-Options
 
@@ -160,14 +254,48 @@ const TornView = ({ userData }) => {
       <div className="torn-main-layout">
 
         {/* ── iframe Panel ─────────────────────────────────────────── */}
-        <div className={`torn-iframe-panel${sidebarCollapsed ? ' sidebar-hidden' : ''}`}>
-          <webview
-            ref={iframeRef}
-            src={iframeUrl}
-            title="TORN.com"
-            className="torn-iframe"
-            allowpopups="true"
-          />
+        <div className={`torn-iframe-panel${sidebarCollapsed ? ' sidebar-hidden' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
+          
+          {/* Tab Bar UI */}
+          <div className="torn-tab-bar" style={{ display: 'flex', backgroundColor: '#1a1a1a', borderBottom: '1px solid #333', padding: '0 8px', overflowX: 'auto' }}>
+            {tabs.map(tab => (
+              <div 
+                key={tab.id} 
+                onClick={() => setActiveTabId(tab.id)}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  padding: '8px 16px', 
+                  backgroundColor: activeTabId === tab.id ? '#2c2c2c' : 'transparent',
+                  borderTopLeftRadius: '8px',
+                  borderTopRightRadius: '8px',
+                  cursor: 'pointer',
+                  minWidth: '120px',
+                  maxWidth: '200px',
+                  borderRight: '1px solid #333',
+                  borderTop: activeTabId === tab.id ? '2px solid #e74c3c' : '2px solid transparent'
+                }}
+              >
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.85rem', color: activeTabId === tab.id ? '#fff' : '#aaa' }}>
+                  {tab.title || 'Torn'}
+                </span>
+                <button 
+                  onClick={(e) => handleCloseTab(e, tab.id)}
+                  style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
+                >×</button>
+              </div>
+            ))}
+            <button 
+              onClick={handleNewTab}
+              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '8px 16px', fontSize: '1.2rem' }}
+            >+</button>
+          </div>
+
+          <div style={{ flex: 1, position: 'relative' }}>
+            {tabs.map(tab => (
+              <WebviewTab key={tab.id} tab={tab} isActive={activeTabId === tab.id} onUpdate={handleTabUpdate} />
+            ))}
+          </div>
         </div>
 
         {/* ── Sidebar ──────────────────────────────────────────────── */}

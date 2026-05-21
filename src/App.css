@@ -200,6 +200,14 @@
   background: #111;
 }
 
+.torn-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+.torn-tab-bar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* ── iFrame Blocked Fallback ───────────────────────────────── */
 .torn-iframe-blocked {
   position: absolute;
