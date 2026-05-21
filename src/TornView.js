@@ -270,6 +270,105 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           trySelectCountry();
         }, 500);
       }
+
+      const redirScript = `
+        (() => {
+          const handleStatsClicks = () => {
+            const energySelectors = [
+              '[class*="energyContainer___"]',
+              '[class*="energy___"]',
+              '[id*="energy"]',
+              '[aria-label*="Energy" i]',
+              'div[class*="sidebar"] [class*="energy" i]',
+            ];
+            
+            const nerveSelectors = [
+              '[class*="nerveContainer___"]',
+              '[class*="nerve___"]',
+              '[id*="nerve"]',
+              '[aria-label*="Nerve" i]',
+              'div[class*="sidebar"] [class*="nerve" i]',
+            ];
+
+            let energyEl = null;
+            for (const selector of energySelectors) {
+              const found = document.querySelector(selector);
+              if (found) {
+                energyEl = found;
+                break;
+              }
+            }
+
+            let nerveEl = null;
+            for (const selector of nerveSelectors) {
+              const found = document.querySelector(selector);
+              if (found) {
+                nerveEl = found;
+                break;
+              }
+            }
+
+            if (!energyEl) {
+              const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
+              energyEl = allElements.find(el => {
+                const text = (el.textContent || '').trim();
+                return text.startsWith('Energy:') && el.children.length < 8;
+              });
+            }
+
+            if (!nerveEl) {
+              const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
+              nerveEl = allElements.find(el => {
+                const text = (el.textContent || '').trim();
+                return text.startsWith('Nerve:') && el.children.length < 8;
+              });
+            }
+
+            if (energyEl && !energyEl.dataset.redirBound) {
+              energyEl.dataset.redirBound = 'true';
+              energyEl.style.cursor = 'pointer';
+              energyEl.title = 'Go to Gym';
+              energyEl.addEventListener('mouseenter', () => {
+                energyEl.style.filter = 'brightness(1.2)';
+              });
+              energyEl.addEventListener('mouseleave', () => {
+                energyEl.style.filter = 'none';
+              });
+              energyEl.style.transition = 'filter 0.2s';
+              energyEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = 'https://www.torn.com/gym.php';
+              });
+            }
+
+            if (nerveEl && !nerveEl.dataset.redirBound) {
+              nerveEl.dataset.redirBound = 'true';
+              nerveEl.style.cursor = 'pointer';
+              nerveEl.title = 'Go to Crimes';
+              nerveEl.addEventListener('mouseenter', () => {
+                nerveEl.style.filter = 'brightness(1.2)';
+              });
+              nerveEl.addEventListener('mouseleave', () => {
+                nerveEl.style.filter = 'none';
+              });
+              nerveEl.style.transition = 'filter 0.2s';
+              nerveEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = 'https://www.torn.com/crimes.php';
+              });
+            }
+          };
+
+          handleStatsClicks();
+          const obs = new MutationObserver(handleStatsClicks);
+          obs.observe(document.body, { childList: true, subtree: true });
+        })()
+      `;
+      wv.executeJavaScript(redirScript).catch(err => {
+        console.error("TORNagator: Failed to inject stats redir script:", err);
+      });
     };
 
     wv.addEventListener('dom-ready', handleDomReady);
