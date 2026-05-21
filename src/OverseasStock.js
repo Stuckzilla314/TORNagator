@@ -813,6 +813,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           }} onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setSelectedItemForGraph(null)}
+              aria-label="Close graph"
               style={{
                 position: 'absolute',
                 top: '15px',

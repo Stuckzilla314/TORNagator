@@ -282,12 +282,14 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
                 </span>
                 <button 
                   onClick={(e) => handleCloseTab(e, tab.id)}
+                  aria-label="Close tab"
                   style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
                 >×</button>
               </div>
             ))}
             <button 
               onClick={handleNewTab}
+              aria-label="New tab"
               style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px 12px', fontSize: '1rem' }}
             >+</button>
           </div>
@@ -306,6 +308,8 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl }) => {
             className="torn-sidebar-toggle"
             onClick={() => setSidebarCollapsed(c => !c)}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!sidebarCollapsed}
           >
             {sidebarCollapsed ? '◀' : '▶'}
           </button>
