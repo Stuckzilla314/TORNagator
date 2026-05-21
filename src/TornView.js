@@ -442,6 +442,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               const qtyVal = input.value.trim();
               const qty = qtyVal ? (parseInt(qtyVal, 10) || 0) : 0;
               
+              // Update display cost based on quantity (default to 1 if quantity is 0)
+              const displayQty = qty === 0 ? 1 : qty;
+              const totalCost = cost * displayQty;
+              let textNode = Array.from(priceSpan.childNodes).find(n => n.nodeType === 3);
+              const costDisplayString = '$' + totalCost.toLocaleString();
+              if (textNode) {
+                textNode.nodeValue = costDisplayString;
+              } else {
+                priceSpan.insertBefore(document.createTextNode(costDisplayString), priceSpan.firstChild);
+              }
+
               // Calculate profit based on qty, but if stock is 0, base it on cargoCapacity
               const calcQty = (stock === 0) ? cargoCapacity : qty;
               const totalProfit = profitPerItem * calcQty;
