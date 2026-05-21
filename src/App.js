@@ -4,6 +4,7 @@ import UserDashboard from './UserDashboard';
 import './App.css';
 import OverseasStock from './OverseasStock';
 import FactionWar from './FactionWar';
+import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
@@ -51,7 +52,7 @@ function useLocalStorage(key, initialValue) {
     const ownedKeys = new Set([
       'torn_api_key', 'active_tab', 'show_tab_timer',
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
-      'tornagator_items_cache', 'tornagator_country_filter'
+      'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -77,7 +78,8 @@ function App() {
       'cargo_capacity',
       'manual_override',
       'tornagator_items_cache',
-      'tornagator_country_filter'
+      'tornagator_country_filter',
+      'torn_view_url'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -385,7 +387,7 @@ function App() {
   });
 
   return (
-    <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', padding: '20px', color: '#e0e0e0', lineHeight: '1.6' }}>
+    <div style={{ backgroundColor: '#0f0f0f', minHeight: '100vh', padding: activeTab === 'torn' ? '0' : '20px', color: '#e0e0e0', lineHeight: '1.6', overflow: activeTab === 'torn' ? 'hidden' : undefined }}>
       {apiKey && (
         <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
           <div
@@ -431,20 +433,26 @@ function App() {
           <nav style={{
             display: 'flex',
             gap: '10px',
-            marginBottom: '30px',
+            marginBottom: activeTab === 'torn' ? '0' : '30px',
             borderBottom: '1px solid #333',
-            maxWidth: '1200px',
-            margin: '0 auto 30px auto'
+            maxWidth: activeTab === 'torn' ? '100%' : '1200px',
+            margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
+            padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
+            position: activeTab === 'torn' ? 'relative' : undefined,
+            zIndex: activeTab === 'torn' ? 10 : undefined
           }}>
             <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
             <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
             <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
+            <div style={navItemStyle('torn')} onClick={() => setActiveTab('torn')}>🎮 TORN</div>
           </nav>
 
           {activeTab === 'dashboard' ? (
             <UserDashboard userData={userData} onLogout={handleLogout} />
           ) : activeTab === 'faction' ? (
             <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} />
+          ) : activeTab === 'torn' ? (
+            <TornView userData={userData} apiKey={apiKey} />
           ) : (
             <OverseasStock
               itemsData={itemsData}
