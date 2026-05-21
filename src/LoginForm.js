@@ -29,8 +29,8 @@ const LoginForm = ({ onLogin }) => {
           Access API
         </button>
       </form>
-      <p style={{ fontSize: '0.8rem', marginTop: '1rem', color: '#888' }}>
-        Your key is only used to fetch data and is not stored on any external server.
+      <p style={{ fontSize: '0.78rem', marginTop: '1.5rem', color: '#aaa', maxWidth: '300px', margin: '1.5rem auto 0 auto', lineHeight: '1.4' }}>
+        <strong>Torn API ToS Compliance:</strong> This application runs entirely locally on your system. Your API key and data are saved only in your local storage and are never shared or transmitted to any external server.
       </p>
     </div>
   );
