@@ -103,12 +103,18 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
 const WebviewTab = ({ tab, isActive, onUpdate }) => {
   const webviewRef = useRef(null);
+  const initialUrlRef = useRef(tab.url);
 
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv) return;
 
-    const handleNavigate = (e) => onUpdate(tab.id, { url: e.url });
+    const handleNavigate = (e) => {
+      if (e.url.includes('__cf_chl_') || e.url.includes('/cdn-cgi/')) {
+        return;
+      }
+      onUpdate(tab.id, { url: e.url });
+    };
     const handleTitle = (e) => onUpdate(tab.id, { title: e.title });
 
     wv.addEventListener('did-navigate', handleNavigate);
@@ -125,7 +131,8 @@ const WebviewTab = ({ tab, isActive, onUpdate }) => {
   return (
     <webview
       ref={webviewRef}
-      src={tab.url}
+      src={initialUrlRef.current}
+      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
       title={tab.title}
       className="torn-iframe"
       allowpopups="true"
