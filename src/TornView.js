@@ -441,12 +441,15 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
               const qtyVal = input.value.trim();
               const qty = qtyVal ? (parseInt(qtyVal, 10) || 0) : 0;
-              const totalProfit = profitPerItem * qty;
+              
+              // Calculate profit based on qty, but if stock is 0, base it on cargoCapacity
+              const calcQty = (stock === 0) ? cargoCapacity : qty;
+              const totalProfit = profitPerItem * calcQty;
               
               if (marketValue === 0) {
                 profitSpan.textContent = ' (N/A)';
                 profitSpan.style.color = '#888888';
-              } else if (qty === 0) {
+              } else if (calcQty === 0) {
                 profitSpan.textContent = ' (+$0)';
                 profitSpan.style.color = '#888888';
               } else {
