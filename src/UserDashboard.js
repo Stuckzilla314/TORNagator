@@ -450,4 +450,5 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   );
 };
 
-export default UserDashboard;
+// Wrapped in React.memo() to prevent unnecessary re-renders when parent App.js re-renders due to timers or unrelated state changes.
+export default React.memo(UserDashboard);

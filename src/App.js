@@ -306,12 +306,12 @@ function App() {
     };
   }, [apiKey, activeTab, stockAutoSync, loadOverseasData]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setApiKey('');
     setUserData(null);
     localStorage.removeItem('torn_api_key');
     loadedApiKeyRef.current = null; // Reset the ref on logout
-  };
+  }, []);
 
   const calculateCapacity = (data) => {
     // 1. Base capacity check based on method or property setup
