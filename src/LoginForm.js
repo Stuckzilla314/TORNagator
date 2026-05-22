@@ -17,11 +17,16 @@ const LoginForm = ({ onLogin }) => {
       <h2>Torn Buddy Login</h2>
       <p>Enter your Private API Key to continue</p>
       <form onSubmit={handleSubmit}>
+        <label htmlFor="api_key" className="sr-only" style={{ position: 'absolute', width: '1px', height: '1px', margin: '-1px', padding: '0', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', border: '0' }}>
+          TORN API Key
+        </label>
         <input
+          id="api_key"
           type="password"
           value={key}
           onChange={(e) => setKey(e.target.value)}
           placeholder="16 Character API Key"
+          required
           style={{ padding: '0.5rem', width: '250px', marginBottom: '1rem', color: '#000' }}
         />
         <br />
