@@ -450,4 +450,4 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   );
 };
 
-export default UserDashboard;
+export default React.memo(UserDashboard);

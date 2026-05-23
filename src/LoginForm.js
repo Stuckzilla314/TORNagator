@@ -36,4 +36,4 @@ const LoginForm = ({ onLogin }) => {
   );
 };
 
-export default LoginForm;
+export default React.memo(LoginForm);

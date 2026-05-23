@@ -451,4 +451,4 @@ const ApiLogsView = () => {
   );
 };
 
-export default ApiLogsView;
+export default React.memo(ApiLogsView);

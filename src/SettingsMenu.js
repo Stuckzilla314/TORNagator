@@ -137,4 +137,4 @@ const SettingsMenu = ({
   );
 };
 
-export default SettingsMenu;
+export default React.memo(SettingsMenu);

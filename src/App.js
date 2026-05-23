@@ -306,14 +306,14 @@ function App() {
     };
   }, [apiKey, activeTab, stockAutoSync, loadOverseasData]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setApiKey('');
     setUserData(null);
     localStorage.removeItem('torn_api_key');
     loadedApiKeyRef.current = null; // Reset the ref on logout
-  };
+  }, []);
 
-  const calculateCapacity = (data) => {
+  const calculateCapacity = useCallback((data) => {
     // 1. Base capacity check based on method or property setup
     const method = data.travel?.method || "";
     const base15Methods = ["Airstrip", "Private", "Business", "Pilot", "WLT Block"];
@@ -366,9 +366,9 @@ function App() {
     });
 
     return total;
-  };
+  }, []);
 
-  const syncTravelData = async () => {
+  const syncTravelData = useCallback(async () => {
     if (!apiKey) return;
     try {
       // Fetch travel, categorized perks, and properties via a combined V2 selection
@@ -391,16 +391,16 @@ function App() {
     } catch (err) {
       console.error("Travel sync failed:", err);
     }
-  };
+  }, [apiKey, manualOverride, calculateCapacity, setCargoCapacity, setUserData]);
 
-  const navItemStyle = (tab) => ({
+  const navItemStyle = useCallback((tab) => ({
     padding: '10px 20px',
     cursor: 'pointer',
     borderBottom: activeTab === tab ? '2px solid #3498db' : '2px solid transparent',
     color: activeTab === tab ? '#3498db' : '#888',
     fontWeight: 'bold',
     transition: 'all 0.3s ease'
-  });
+  }), [activeTab]);
 
   return (
     <div style={{

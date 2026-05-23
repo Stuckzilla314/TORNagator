@@ -568,4 +568,4 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   );
 };
 
-export default FactionWar;
+export default React.memo(FactionWar);

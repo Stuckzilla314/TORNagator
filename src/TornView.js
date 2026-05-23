@@ -1314,4 +1314,4 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   );
 };
 
-export default TornView;
+export default React.memo(TornView);

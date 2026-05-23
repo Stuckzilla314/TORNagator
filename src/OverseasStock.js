@@ -1048,4 +1048,4 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   );
 };
 
-export default OverseasStock;
+export default React.memo(OverseasStock);
