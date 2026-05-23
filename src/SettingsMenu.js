@@ -14,7 +14,7 @@ const SettingsMenu = ({
 }) => {  
 
   return (
-    <div style={{
+    <div id="settings-menu" style={{
       position: 'absolute',
       top: '45px',
       right: '0',
@@ -126,6 +126,7 @@ const SettingsMenu = ({
                   alignItems: 'center'
                 }}
                 title="Force Refresh"
+                aria-label="Force refresh capacity"
               >
                 🔄
               </button>
