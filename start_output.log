@@ -1,0 +1,39 @@
+
+> tornagator@0.1.0 start /app
+> react-scripts start
+
+(node:29084) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:29084) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+
+Compiled with warnings.
+
+[eslint]
+src/OverseasStock.js
+  Line 1:51:   'useRef' is defined but never used                                                                                                                                                                                                                               no-unused-vars
+  Line 2:86:   'Label' is defined but never used                                                                                                                                                                                                                                no-unused-vars
+  Line 4:22:   'addDoc' is defined but never used                                                                                                                                                                                                                               no-unused-vars
+  Line 4:60:   'Timestamp' is defined but never used                                                                                                                                                                                                                            no-unused-vars
+  Line 4:71:   'startAfter' is defined but never used                                                                                                                                                                                                                           no-unused-vars
+  Line 4:88:   'onSnapshot' is defined but never used                                                                                                                                                                                                                           no-unused-vars
+  Line 49:7:   'TRACKED_ITEM_IDS' is assigned a value but never used                                                                                                                                                                                                            no-unused-vars
+  Line 384:6:  React Hook React.useMemo has missing dependencies: 'selectedItemForGraph.country', 'selectedItemForGraph.id', 'selectedItemForGraph.stockInfo', 'selectedItemForGraph.stockQuantity', and 'yataData.stocks'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 466:6:  React Hook React.useMemo has an unnecessary dependency: 'stocksLookup'. Either exclude it or remove the dependency array                                                                                                                                         react-hooks/exhaustive-deps
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint]
+src/OverseasStock.js
+  Line 1:51:   'useRef' is defined but never used                                                                                                                                                                                                                               no-unused-vars
+  Line 2:86:   'Label' is defined but never used                                                                                                                                                                                                                                no-unused-vars
+  Line 4:22:   'addDoc' is defined but never used                                                                                                                                                                                                                               no-unused-vars
+  Line 4:60:   'Timestamp' is defined but never used                                                                                                                                                                                                                            no-unused-vars
+  Line 4:71:   'startAfter' is defined but never used                                                                                                                                                                                                                           no-unused-vars
+  Line 4:88:   'onSnapshot' is defined but never used                                                                                                                                                                                                                           no-unused-vars
+  Line 49:7:   'TRACKED_ITEM_IDS' is assigned a value but never used                                                                                                                                                                                                            no-unused-vars
+  Line 384:6:  React Hook React.useMemo has missing dependencies: 'selectedItemForGraph.country', 'selectedItemForGraph.id', 'selectedItemForGraph.stockInfo', 'selectedItemForGraph.stockQuantity', and 'yataData.stocks'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 466:6:  React Hook React.useMemo has an unnecessary dependency: 'stocksLookup'. Either exclude it or remove the dependency array                                                                                                                                         react-hooks/exhaustive-deps
+
+webpack compiled with 1 warning
