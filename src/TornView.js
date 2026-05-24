@@ -671,7 +671,19 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const handleSaveNewAction = () => {
     if (!newLabel.trim() || !newUrl.trim()) return;
-    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: newUrl.trim() }]);
+
+    // 🛡️ Sentinel: Prevent DOM-based XSS by restricting URL schemes
+    let safeUrl = newUrl.trim();
+    const scheme = safeUrl.split(':')[0].toLowerCase();
+    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+      alert('Invalid URL scheme for security reasons.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(safeUrl)) {
+      safeUrl = 'https://' + safeUrl;
+    }
+
+    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: safeUrl }]);
     setNewLabel('');
     setNewUrl('');
     setIsAddingNew(false);
@@ -772,8 +784,19 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
+    // 🛡️ Sentinel: Defense-in-depth against DOM XSS in webview src
+    let safeHref = href || '';
+    const scheme = safeHref.split(':')[0].toLowerCase();
+    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+      console.warn('Blocked navigation to unsafe URL scheme');
+      return;
+    }
+    if (!/^https?:\/\//i.test(safeHref) && safeHref.trim() !== '') {
+      safeHref = 'https://' + safeHref;
+    }
+
     const id = `tab-${Date.now()}`;
-    setTabs(prev => [...prev, { id, url: href, title: 'Loading...' }]);
+    setTabs(prev => [...prev, { id, url: safeHref, title: 'Loading...' }]);
     setActiveTabId(id);
   }, [setTabs, setActiveTabId]);
 
