@@ -31,6 +31,27 @@ function useLocalStorage(key, initialValue) {
   return [storedValue, setValue];
 }
 
+// ─── Security Utilities ───────────────────────────────────────────────────────
+const sanitizeUrl = (url) => {
+  if (!url) return 'about:blank';
+  const trimmed = url.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+    return 'about:blank';
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return 'about:blank';
+    }
+    return parsed.href;
+  } catch (e) {
+    return `https://${trimmed}`;
+  }
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 
@@ -671,7 +692,9 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const handleSaveNewAction = () => {
     if (!newLabel.trim() || !newUrl.trim()) return;
-    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: newUrl.trim() }]);
+    const safeUrl = sanitizeUrl(newUrl.trim());
+    if (safeUrl === 'about:blank') return; // Prevent XSS
+    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: safeUrl }]);
     setNewLabel('');
     setNewUrl('');
     setIsAddingNew(false);
@@ -739,8 +762,9 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   };
 
   const handleNewTab = (initialUrl = 'https://www.torn.com/index.php') => {
+    const safeUrl = sanitizeUrl(initialUrl);
     const id = `tab-${Date.now()}`;
-    setTabs(prev => [...prev, { id, url: initialUrl, title: 'New Tab' }]);
+    setTabs(prev => [...prev, { id, url: safeUrl, title: 'New Tab' }]);
     setActiveTabId(id);
   };
 
@@ -772,8 +796,9 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
+    const safeUrl = sanitizeUrl(href);
     const id = `tab-${Date.now()}`;
-    setTabs(prev => [...prev, { id, url: href, title: 'Loading...' }]);
+    setTabs(prev => [...prev, { id, url: safeUrl, title: 'Loading...' }]);
     setActiveTabId(id);
   }, [setTabs, setActiveTabId]);
 
