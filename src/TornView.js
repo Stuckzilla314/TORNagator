@@ -821,12 +821,16 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 <button 
                   onClick={(e) => handleCloseTab(e, tab.id)}
                   style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
+                  aria-label={`Close tab ${tab.title || 'Torn'}`}
+                  title="Close tab"
                 >×</button>
               </div>
             ))}
             <button 
               onClick={handleNewTab}
               style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px 12px', fontSize: '1rem' }}
+              aria-label="New tab"
+              title="New tab"
             >+</button>
           </div>
 
@@ -843,6 +847,8 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 <button 
                   className="stacking-warning-close" 
                   onClick={() => setDismissedWarnings(prev => ({ ...prev, [activeTabId]: true }))}
+                  aria-label="Dismiss stacking warning"
+                  title="Dismiss warning"
                 >
                   ×
                 </button>
@@ -871,6 +877,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
             className="torn-sidebar-toggle"
             onClick={() => setSidebarCollapsed(c => !c)}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {sidebarCollapsed ? '◀' : '▶'}
           </button>
