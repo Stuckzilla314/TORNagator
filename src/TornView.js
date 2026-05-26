@@ -1314,4 +1314,5 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   );
 };
 
-export default TornView;
+// Memoized to prevent deep tree re-renders
+export default React.memo(TornView);

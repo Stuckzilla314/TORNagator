@@ -137,4 +137,5 @@ const SettingsMenu = ({
   );
 };
 
-export default SettingsMenu;
+// Memoized to prevent deep tree re-renders
+export default React.memo(SettingsMenu);

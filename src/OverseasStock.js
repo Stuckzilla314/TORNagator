@@ -1048,4 +1048,5 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   );
 };
 
-export default OverseasStock;
+// Memoized to prevent deep tree re-renders
+export default React.memo(OverseasStock);

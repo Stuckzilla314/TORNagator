@@ -568,4 +568,5 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   );
 };
 
-export default FactionWar;
+// Memoized to prevent deep tree re-renders
+export default React.memo(FactionWar);

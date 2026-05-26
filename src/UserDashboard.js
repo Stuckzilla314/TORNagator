@@ -450,4 +450,5 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   );
 };
 
-export default UserDashboard;
+// Memoized to prevent deep tree re-renders
+export default React.memo(UserDashboard);
