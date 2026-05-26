@@ -31,6 +31,29 @@ function useLocalStorage(key, initialValue) {
   return [storedValue, setValue];
 }
 
+// ─── Security Helpers ────────────────────────────────────────────────────────
+
+const sanitizeWebviewUrl = (url) => {
+  if (!url) return 'about:blank';
+  const trimmed = url.trim();
+  const lowerUrl = trimmed.toLowerCase();
+
+  // Prevent DOM-based XSS via malicious URL schemes
+  if (lowerUrl.startsWith('javascript:') ||
+      lowerUrl.startsWith('data:') ||
+      lowerUrl.startsWith('vbscript:')) {
+    console.error('🛡️ Sentinel: Blocked execution of malicious URL scheme in webview.');
+    return 'about:blank';
+  }
+
+  // Enforce HTTP/HTTPS scheme if missing
+  if (!/^https?:\/\//i.test(trimmed) && trimmed !== 'about:blank') {
+    return 'https://' + trimmed;
+  }
+
+  return trimmed;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 
@@ -584,7 +607,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   return (
     <webview
       ref={webviewRef}
-      src={initialUrlRef.current}
+      src={sanitizeWebviewUrl(initialUrlRef.current)}
       useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
       title={tab.title}
       className="torn-iframe"
@@ -671,7 +694,14 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const handleSaveNewAction = () => {
     if (!newLabel.trim() || !newUrl.trim()) return;
-    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: newUrl.trim() }]);
+
+    const sanitizedUrl = sanitizeWebviewUrl(newUrl.trim());
+    if (sanitizedUrl === 'about:blank') {
+      alert('Invalid URL scheme. Only http:// and https:// are allowed.');
+      return;
+    }
+
+    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: sanitizedUrl }]);
     setNewLabel('');
     setNewUrl('');
     setIsAddingNew(false);
@@ -712,9 +742,12 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   useEffect(() => {
     if (requestedUrl) {
-      const newTabId = `tab-${Date.now()}`;
-      setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
-      setActiveTabId(newTabId);
+      const safeUrl = sanitizeWebviewUrl(requestedUrl);
+      if (safeUrl !== 'about:blank') {
+        const newTabId = `tab-${Date.now()}`;
+        setTabs(prev => [...prev, { id: newTabId, url: safeUrl, title: 'Torn' }]);
+        setActiveTabId(newTabId);
+      }
       setRequestedUrl(null);
     }
   }, [requestedUrl, setTabs, setActiveTabId, setRequestedUrl]);
@@ -772,8 +805,10 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
+    const safeUrl = sanitizeWebviewUrl(href);
+    if (safeUrl === 'about:blank') return;
     const id = `tab-${Date.now()}`;
-    setTabs(prev => [...prev, { id, url: href, title: 'Loading...' }]);
+    setTabs(prev => [...prev, { id, url: safeUrl, title: 'Loading...' }]);
     setActiveTabId(id);
   }, [setTabs, setActiveTabId]);
 
