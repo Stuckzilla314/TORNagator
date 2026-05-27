@@ -1,7 +1,5 @@
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
-
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -47,11 +45,7 @@ function createWindow() {
   });
 
   // Load the React app
-  win.loadURL(
-    isDev
-      ? 'http://localhost:3000'
-      : `file://${path.join(__dirname, '../build/index.html')}`
-  );
+  win.loadFile(path.join(__dirname, '../build/index.html'));
 }
 
 app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
