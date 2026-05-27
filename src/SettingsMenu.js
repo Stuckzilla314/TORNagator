@@ -104,6 +104,7 @@ const SettingsMenu = ({
           disabled={!manualOverride}
           onChange={(e) => setCargoCapacity(parseInt(e.target.value))}
           style={{ width: '100%', cursor: manualOverride ? 'pointer' : 'not-allowed', accentColor: manualOverride ? '#3498db' : '#555', opacity: manualOverride ? 1 : 0.6 }}
+          aria-label="Cargo Capacity"
         />
         <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px', textAlign: 'center' }}>
           {manualOverride ? "⚠ Manual override active" : (
@@ -127,6 +128,7 @@ const SettingsMenu = ({
                   alignItems: 'center'
                 }}
                 title="Force Refresh"
+                aria-label="Force Refresh Capacity Sync"
               >
                 🔄
               </button>

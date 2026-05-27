@@ -822,6 +822,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   onClick={(e) => handleCloseTab(e, tab.id)}
                   aria-label="Close tab"
                   style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
+                  aria-label={`Close ${tab.title || 'tab'}`}
                 >×</button>
               </div>
             ))}
@@ -829,6 +830,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
               onClick={handleNewTab}
               aria-label="New tab"
               style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px 12px', fontSize: '1rem' }}
+              aria-label="New tab"
             >+</button>
           </div>
 
