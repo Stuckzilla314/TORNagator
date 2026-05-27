@@ -31,6 +31,21 @@ function useLocalStorage(key, initialValue) {
   return [storedValue, setValue];
 }
 
+const areUrlsEqual = (url1, url2) => {
+  if (!url1 || !url2) return false;
+  const normalize = (u) => {
+    try {
+      let normalized = u.trim().toLowerCase();
+      if (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+      if (normalized.endsWith('#')) normalized = normalized.slice(0, -1);
+      return normalized;
+    } catch (e) {
+      return u;
+    }
+  };
+  return normalize(url1) === normalize(url2);
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 
@@ -724,12 +739,17 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   useEffect(() => {
     if (requestedUrl) {
-      const newTabId = `tab-${Date.now()}`;
-      setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
-      setActiveTabId(newTabId);
+      const existingTab = tabs.find(t => areUrlsEqual(t.url, requestedUrl));
+      if (existingTab) {
+        setActiveTabId(existingTab.id);
+      } else {
+        const newTabId = `tab-${Date.now()}`;
+        setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
+        setActiveTabId(newTabId);
+      }
       setRequestedUrl(null);
     }
-  }, [requestedUrl, setTabs, setActiveTabId, setRequestedUrl]);
+  }, [requestedUrl, tabs, setTabs, setActiveTabId, setRequestedUrl]);
 
   const handleTabUpdate = useCallback((id, updates) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
@@ -795,10 +815,16 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
       safeHref = 'https://' + safeHref;
     }
 
+    const existingTab = tabs.find(t => areUrlsEqual(t.url, safeHref));
+    if (existingTab) {
+      setActiveTabId(existingTab.id);
+      return;
+    }
+
     const id = `tab-${Date.now()}`;
     setTabs(prev => [...prev, { id, url: safeHref, title: 'Loading...' }]);
     setActiveTabId(id);
-  }, [setTabs, setActiveTabId]);
+  }, [tabs, setTabs, setActiveTabId]);
 
   // Iframe block detection removed: assuming user uses extension to bypass X-Frame-Options
 
@@ -843,7 +869,6 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 </span>
                 <button
                   onClick={(e) => handleCloseTab(e, tab.id)}
-                  aria-label="Close tab"
                   style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
                   aria-label={`Close ${tab.title || 'tab'}`}
                 >×</button>
@@ -851,7 +876,6 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
             ))}
             <button
               onClick={handleNewTab}
-              aria-label="New tab"
               style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px 12px', fontSize: '1rem' }}
               aria-label="New tab"
             >+</button>

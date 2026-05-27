@@ -117,7 +117,6 @@ const SettingsMenu = ({
                   e.stopPropagation();
                   if (onSyncTravel) onSyncTravel();
                 }}
-                aria-label="Force Refresh Travel"
                 style={{
                   background: 'none',
                   border: 'none',
