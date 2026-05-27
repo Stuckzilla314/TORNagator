@@ -163,7 +163,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       fetchStockData();
     }
 
-    const interval = setInterval(() => {
+    const checkMarketSync = () => {
       const now = new Date();
       // Check if we are exactly on a 5-minute mark (within a 5s window to account for drift)
       const minutes = now.getMinutes();
@@ -176,9 +176,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           sessionStorage.setItem('last_market_sync_minute', minutes.toString());
         }
       }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkMarketSync();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkMarketSync();
+      }
     }, 10000); // Check every 10 seconds
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [autoSyncStock, fetchStockData, yataData]);
 
   // State for historical data, now managed locally
