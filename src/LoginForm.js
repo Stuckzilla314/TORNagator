@@ -12,12 +12,16 @@ const LoginForm = ({ onLogin }) => {
     }
   };
 
+  const isKeyValid = key.trim().length === 16;
+
   return (
     <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#222', color: '#fff', borderRadius: '8px' }}>
       <h2>Torn Buddy Login</h2>
       <p>Enter your Private API Key to continue</p>
       <form onSubmit={handleSubmit}>
+        <label htmlFor="apiKey" className="sr-only" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>API Key</label>
         <input
+          id="apiKey"
           type="password"
           value={key}
           onChange={(e) => setKey(e.target.value)}
@@ -25,7 +29,19 @@ const LoginForm = ({ onLogin }) => {
           style={{ padding: '0.5rem', width: '250px', marginBottom: '1rem', color: '#000' }}
         />
         <br />
-        <button type="submit" style={{ padding: '0.5rem 2rem', cursor: 'pointer', backgroundColor: '#444', color: '#fff', border: 'none' }}>
+        <button
+          type="submit"
+          disabled={!isKeyValid}
+          style={{
+            padding: '0.5rem 2rem',
+            cursor: isKeyValid ? 'pointer' : 'not-allowed',
+            backgroundColor: isKeyValid ? '#3498db' : '#444',
+            color: isKeyValid ? '#fff' : '#888',
+            border: 'none',
+            borderRadius: '4px',
+            transition: 'background-color 0.2s'
+          }}
+        >
           Access API
         </button>
       </form>
