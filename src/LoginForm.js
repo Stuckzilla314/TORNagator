@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 
 const LoginForm = ({ onLogin }) => {
   const [key, setKey] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (key.trim().length === 16) {
+      setError('');
       onLogin(key.trim());
     } else {
-      alert('Please enter a valid 16-character TORN API key.');
+      setError('Please enter a valid 16-character TORN API key.');
     }
   };
 
@@ -20,10 +22,20 @@ const LoginForm = ({ onLogin }) => {
         <input
           type="password"
           value={key}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(e) => {
+            setKey(e.target.value);
+            if (error) setError('');
+          }}
           placeholder="16 Character API Key"
-          style={{ padding: '0.5rem', width: '250px', marginBottom: '1rem', color: '#000' }}
+          aria-invalid={!!error}
+          aria-describedby={error ? "api-key-error" : undefined}
+          style={{ padding: '0.5rem', width: '250px', marginBottom: '0.5rem', color: '#000', borderColor: error ? '#ff4444' : undefined }}
         />
+        {error && (
+          <div id="api-key-error" role="alert" style={{ color: '#ff4444', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            {error}
+          </div>
+        )}
         <br />
         <button type="submit" style={{ padding: '0.5rem 2rem', cursor: 'pointer', backgroundColor: '#444', color: '#fff', border: 'none' }}>
           Access API
