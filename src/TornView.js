@@ -34,62 +34,132 @@ function useLocalStorage(key, initialValue) {
 const getTornPageCategory = (url) => {
   if (!url) return null;
   const lower = url.toLowerCase();
-  
-  if (lower.includes('crimes.php') || lower.includes('sid=crimes')) {
-    return 'crimes';
+
+  // Exclude profile pages and faction profiles to ensure they match exactly by URL/ID
+  if (lower.includes('profiles.php') || lower.includes('xid=')) {
+    return null;
   }
-  if (lower.includes('gym.php') || lower.includes('sid=gym')) {
-    return 'gym';
+  if (lower.includes('step=profile')) {
+    return null;
   }
-  if (lower.includes('travelagency.php') || lower.includes('sid=travel')) {
-    return 'travel';
+
+  try {
+    // 1. Try to extract sid parameter
+    const sidMatch = lower.match(/[?&]sid=([a-z0-9_-]+)/);
+    let key = null;
+    if (sidMatch) {
+      key = sidMatch[1];
+    } else {
+      // 2. Try to extract php filename
+      const phpMatch = lower.match(/\/([a-z0-9_-]+)\.php/);
+      if (phpMatch) {
+        const file = phpMatch[1];
+        // Skip generic page/loader templates
+        if (file !== 'page' && file !== 'loader') {
+          key = file;
+        }
+      }
+    }
+
+    if (!key) return null;
+
+    // 3. Define known categories and their synonyms
+    const SYNONYMS = {
+      'imarket': 'market',
+      'itemmarket': 'market',
+      'market': 'market',
+
+      'hospitalview': 'hospital',
+      'hospital': 'hospital',
+
+      'travelagency': 'travel',
+      'travel': 'travel',
+
+      'factions': 'faction',
+      'faction': 'faction',
+
+      'jailview': 'jail',
+      'jail': 'jail',
+
+      'index': 'home',
+      'home': 'home',
+
+      'companies': 'company',
+      'company': 'company',
+
+      'gym': 'gym',
+      'crimes': 'crimes',
+      'bazaar': 'bazaar',
+      'events': 'events',
+      'properties': 'properties',
+      'job': 'job',
+      'attack': 'attack',
+      'city': 'city',
+      'bank': 'bank',
+    };
+
+    const category = SYNONYMS[key];
+    return category || null;
+  } catch (e) {
+    return null;
   }
-  if (lower.includes('hospitalview.php') || lower.includes('hospital.php') || lower.includes('sid=hospital')) {
-    return 'hospital';
+};
+
+const isGenericMainPage = (url) => {
+  if (!url) return false;
+  try {
+    const category = getTornPageCategory(url);
+    if (!category) return false;
+
+    // Check if hash has a deep path
+    const hashIndex = url.indexOf('#');
+    if (hashIndex !== -1) {
+      const hash = url.substring(hashIndex).trim();
+      const lowerHash = hash.toLowerCase();
+      // If hash contains more than just '/' or empty, it's a specific route
+      if (
+        hash !== '#' &&
+        hash !== '#/' &&
+        lowerHash !== '#/home' &&
+        lowerHash !== '#/crimes' &&
+        hash.length > 2
+      ) {
+        return false;
+      }
+    }
+
+    // Check query parameters
+    const urlObj = new URL(url.startsWith('http') ? url : 'https://' + url);
+    const searchParams = urlObj.searchParams;
+    for (const key of searchParams.keys()) {
+      if (key.toLowerCase() !== 'sid') {
+        return false;
+      }
+    }
+
+    return true;
+  } catch (e) {
+    return false;
   }
-  if (lower.includes('bank.php') || lower.includes('sid=bank')) {
-    return 'bank';
-  }
-  if (lower.includes('factions.php') || lower.includes('faction.php') || lower.includes('sid=faction')) {
-    return 'faction';
-  }
-  if (lower.includes('imarket.php') || lower.includes('sid=market') || lower.includes('sid=imarket')) {
-    return 'market';
-  }
-  if (lower.includes('bazaar.php') || lower.includes('sid=bazaar')) {
-    return 'bazaar';
-  }
-  if (lower.includes('events.php') || lower.includes('sid=events')) {
-    return 'events';
-  }
-  if (lower.includes('index.php') || lower.includes('home.php') || lower.includes('sid=home')) {
-    return 'home';
-  }
-  if (lower.includes('loader.php?sid=attack') || lower.includes('sid=attack')) {
-    return 'attack';
-  }
-  if (lower.includes('city.php') || lower.includes('sid=city')) {
-    return 'city';
-  }
-  
-  return null;
 };
 
 const areUrlsEqual = (url1, url2) => {
   if (!url1 || !url2) return false;
-  
-  const cat1 = getTornPageCategory(url1);
-  const cat2 = getTornPageCategory(url2);
-  
-  if (cat1 && cat2 && cat1 === cat2) {
-    return true;
+
+  // If the target URL (url2) is a generic main page, we can match by category
+  if (isGenericMainPage(url2)) {
+    const cat1 = getTornPageCategory(url1);
+    const cat2 = getTornPageCategory(url2);
+    if (cat1 && cat2 && cat1 === cat2) {
+      return true;
+    }
   }
-  
+
   const normalize = (u) => {
     try {
-      let base = u.split('#')[0];
-      let normalized = base.trim().toLowerCase();
+      let normalized = u.trim().toLowerCase();
       if (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
+      if (normalized.endsWith('#')) normalized = normalized.slice(0, -1);
       return normalized;
     } catch (e) {
       return u;
@@ -671,7 +741,6 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const defaultQuickActions = [
-    { label: 'Attack', href: 'https://www.torn.com/loader.php?sid=attack' },
     { label: 'Crimes', href: 'https://www.torn.com/crimes.php' },
     { label: 'Market', href: 'https://www.torn.com/imarket.php' },
     { label: 'Travel', href: 'https://www.torn.com/travelagency.php' },
@@ -706,7 +775,6 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const PRESET_QUICK_ACTIONS = [
     { label: 'Home', href: 'https://www.torn.com/index.php' },
-    { label: 'Attack', href: 'https://www.torn.com/loader.php?sid=attack' },
     { label: 'Crimes', href: 'https://www.torn.com/crimes.php' },
     { label: 'Gym', href: 'https://www.torn.com/gym.php' },
     { label: 'Hospital', href: 'https://www.torn.com/hospitalview.php' },
