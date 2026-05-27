@@ -450,4 +450,5 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   );
 };
 
-export default UserDashboard;
+// ⚡ Bolt: Wrapped with React.memo() to prevent unnecessary re-renders when parent state updates but dashboard props haven't changed
+export default React.memo(UserDashboard);

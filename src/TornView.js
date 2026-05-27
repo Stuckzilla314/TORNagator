@@ -1318,4 +1318,5 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   );
 };
 
-export default TornView;
+// ⚡ Bolt: Wrapped with React.memo() to prevent iframe remounts and state resets when unrelated parent state changes
+export default React.memo(TornView);

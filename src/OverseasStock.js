@@ -1049,4 +1049,5 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   );
 };
 
-export default OverseasStock;
+// ⚡ Bolt: Wrapped with React.memo() to prevent expensive chart and table re-renders when parent state updates but stock props remain unchanged
+export default React.memo(OverseasStock);
