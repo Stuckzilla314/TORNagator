@@ -93,9 +93,21 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 );
 
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
+const getSafeUrl = (urlStr) => {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return urlStr;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return 'about:blank'; // Fallback for unsafe or invalid URLs
+};
+
 const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
   const webviewRef = useRef(null);
-  const initialUrlRef = useRef(tab.url);
+  const initialUrlRef = useRef(getSafeUrl(tab.url));
 
   const trySelectCountry = useCallback((attempt = 1) => {
     const wv = webviewRef.current;
@@ -670,8 +682,22 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   };
 
   const handleSaveNewAction = () => {
-    if (!newLabel.trim() || !newUrl.trim()) return;
-    setQuickActions(prev => [...prev, { label: newLabel.trim(), href: newUrl.trim() }]);
+    const trimmedLabel = newLabel.trim();
+    const trimmedUrl = newUrl.trim();
+    if (!trimmedLabel || !trimmedUrl) return;
+
+    try {
+      const parsedUrl = new URL(trimmedUrl);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        console.error("TORNagator Security: Blocked attempt to add quick action with unsafe URL scheme.");
+        return;
+      }
+    } catch (e) {
+      console.error("TORNagator Security: Blocked attempt to add quick action with invalid URL.");
+      return;
+    }
+
+    setQuickActions(prev => [...prev, { label: trimmedLabel, href: trimmedUrl }]);
     setNewLabel('');
     setNewUrl('');
     setIsAddingNew(false);
@@ -772,6 +798,17 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
+    try {
+      const parsedUrl = new URL(href);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        console.error("TORNagator Security: Blocked navigation to unsafe URL scheme.");
+        return;
+      }
+    } catch (e) {
+      console.error("TORNagator Security: Blocked navigation to invalid URL.");
+      return;
+    }
+
     const id = `tab-${Date.now()}`;
     setTabs(prev => [...prev, { id, url: href, title: 'Loading...' }]);
     setActiveTabId(id);

@@ -1,0 +1,4 @@
+## 2026-05-27 - DOM-based XSS via Webview URL Schemes
+**Vulnerability:** A DOM-based Cross-Site Scripting (XSS) vulnerability was found where user-controlled URLs (such as custom quick actions and LocalStorage saved tabs) were passed directly to the `<webview>` component's `src` attribute.
+**Learning:** In Electron applications with `nodeIntegration: true` and `contextIsolation: false`, navigating a webview to a `javascript:` scheme can result in XSS, which often easily escalates to Remote Code Execution (RCE). The lack of URL scheme validation allowed malicious scripts to be executed.
+**Prevention:** Always parse and validate user-supplied URLs to ensure they use a secure scheme (`http:` or `https:`) before assigning them to sensitive DOM attributes like `webview.src` or calling navigation methods.
