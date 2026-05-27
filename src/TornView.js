@@ -575,7 +575,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     `;
 
     const profitInterval = setInterval(() => {
-      wv.executeJavaScript(script).catch(() => {});
+      wv.executeJavaScript(script).catch(() => { });
     }, 1000);
 
     return () => clearInterval(profitInterval);
@@ -604,12 +604,12 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const defaultQuickActions = [
-    { label: 'Attack',  href: 'https://www.torn.com/loader.php?sid=attack' },
-    { label: 'Crimes',  href: 'https://www.torn.com/crimes.php' },
-    { label: 'Market',  href: 'https://www.torn.com/imarket.php' },
-    { label: 'Travel',  href: 'https://www.torn.com/travelagency.php' },
-    { label: 'Events',  href: 'https://www.torn.com/events.php' },
-    { label: 'Bazaar',  href: 'https://www.torn.com/bazaar.php' },
+    { label: 'Attack', href: 'https://www.torn.com/loader.php?sid=attack' },
+    { label: 'Crimes', href: 'https://www.torn.com/crimes.php' },
+    { label: 'Market', href: 'https://www.torn.com/imarket.php' },
+    { label: 'Travel', href: 'https://www.torn.com/travelagency.php' },
+    { label: 'Events', href: 'https://www.torn.com/events.php' },
+    { label: 'Bazaar', href: 'https://www.torn.com/bazaar.php' },
   ];
   const [quickActions, setQuickActions] = useLocalStorage('torn_quick_actions', defaultQuickActions);
   const [isEditingQuick, setIsEditingQuick] = useState(false);
@@ -638,18 +638,18 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   }, [isGymPage, activeTabId]);
 
   const PRESET_QUICK_ACTIONS = [
-    { label: 'Home',     href: 'https://www.torn.com/index.php' },
-    { label: 'Attack',   href: 'https://www.torn.com/loader.php?sid=attack' },
-    { label: 'Crimes',   href: 'https://www.torn.com/crimes.php' },
-    { label: 'Gym',      href: 'https://www.torn.com/gym.php' },
-    { label: 'Hospital', href: 'https://www.torn.com/hospital.php' },
-    { label: 'City',     href: 'https://www.torn.com/city.php' },
-    { label: 'Bazaar',   href: 'https://www.torn.com/bazaar.php' },
-    { label: 'Market',   href: 'https://www.torn.com/imarket.php' },
-    { label: 'Bank',     href: 'https://www.torn.com/bank.php' },
-    { label: 'Travel',   href: 'https://www.torn.com/travelagency.php' },
-    { label: 'Faction',  href: 'https://www.torn.com/factions.php' },
-    { label: 'Events',   href: 'https://www.torn.com/events.php' },
+    { label: 'Home', href: 'https://www.torn.com/index.php' },
+    { label: 'Attack', href: 'https://www.torn.com/loader.php?sid=attack' },
+    { label: 'Crimes', href: 'https://www.torn.com/crimes.php' },
+    { label: 'Gym', href: 'https://www.torn.com/gym.php' },
+    { label: 'Hospital', href: 'https://www.torn.com/hospitalview.php' },
+    { label: 'City', href: 'https://www.torn.com/city.php' },
+    { label: 'Bazaar', href: 'https://www.torn.com/bazaar.php' },
+    { label: 'Market', href: 'https://www.torn.com/imarket.php' },
+    { label: 'Bank', href: 'https://www.torn.com/bank.php' },
+    { label: 'Travel', href: 'https://www.torn.com/travelagency.php' },
+    { label: 'Faction', href: 'https://www.torn.com/factions.php' },
+    { label: 'Events', href: 'https://www.torn.com/events.php' },
   ];
 
   const handleMoveAction = (index, direction) => {
@@ -757,18 +757,18 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   };
 
   // ── Stat timers
-  const lifeTimer    = useBarTimer(userData?.life);
-  const energyTimer  = useBarTimer(userData?.energy);
-  const nerveTimer   = useBarTimer(userData?.nerve);
-  const happyTimer   = useBarTimer(userData?.happy);
+  const lifeTimer = useBarTimer(userData?.life);
+  const energyTimer = useBarTimer(userData?.energy);
+  const nerveTimer = useBarTimer(userData?.nerve);
+  const happyTimer = useBarTimer(userData?.happy);
 
-  const isTraveling    = userData?.status?.state === 'Traveling';
+  const isTraveling = userData?.status?.state === 'Traveling';
   const isHospitalized = userData?.status?.state === 'Hospital';
-  const isJailed       = userData?.status?.state === 'Jail';
+  const isJailed = userData?.status?.state === 'Jail';
   const hasSpecialStatus = isTraveling || isHospitalized || isJailed;
 
-  const landingUntil  = userData?.travel?.timestamp || userData?.status?.until;
-  const statusUntil   = userData?.status?.until;
+  const landingUntil = userData?.travel?.timestamp || userData?.status?.until;
+  const statusUntil = userData?.status?.until;
   const travelTimeLeft = useTravelTimer(isTraveling ? landingUntil : 0);
   const statusTimeLeft = useTravelTimer((isHospitalized || isJailed) ? statusUntil : 0);
 
@@ -780,7 +780,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
   const statusColor =
     userData?.status?.color === 'blue' ? '#3498db' :
-    userData?.status?.color === 'red'  ? '#e74c3c' : '#2ecc71';
+      userData?.status?.color === 'red' ? '#e74c3c' : '#2ecc71';
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
@@ -805,8 +805,8 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
   const moneyFormatted = userData?.money_onhand != null
     ? `$${Number(userData.money_onhand).toLocaleString()}`
     : userData?.personalstats?.moneymugged != null
-    ? null
-    : null;
+      ? null
+      : null;
 
   return (
     <div className="torn-view-root" style={{ height: '100%', flex: 1, minHeight: 0 }}>
@@ -816,18 +816,18 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
 
         {/* ── iframe Panel ─────────────────────────────────────────── */}
         <div className={`torn-iframe-panel${sidebarCollapsed ? ' sidebar-hidden' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
-          
+
           {/* Tab Bar UI */}
           <div className="torn-tab-bar" style={{ display: 'flex', backgroundColor: '#1a1a1a', borderBottom: '1px solid #333', padding: '0 8px', overflowX: 'auto' }}>
-             {tabs.map(tab => (
-              <div 
-                key={tab.id} 
+            {tabs.map(tab => (
+              <div
+                key={tab.id}
                 onClick={() => setActiveTabId(tab.id)}
                 onContextMenu={(e) => handleTabContextMenu(e, tab)}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  padding: '4px 12px', 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '4px 12px',
                   backgroundColor: activeTabId === tab.id ? '#2c2c2c' : 'transparent',
                   borderTopLeftRadius: '6px',
                   borderTopRightRadius: '6px',
@@ -841,7 +841,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem', color: activeTabId === tab.id ? '#fff' : '#aaa' }}>
                   {tab.title || 'Torn'}
                 </span>
-                <button 
+                <button
                   onClick={(e) => handleCloseTab(e, tab.id)}
                   aria-label="Close tab"
                   style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
@@ -849,7 +849,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 >×</button>
               </div>
             ))}
-            <button 
+            <button
               onClick={handleNewTab}
               aria-label="New tab"
               style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px 12px', fontSize: '1rem' }}
@@ -867,8 +867,8 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                     Your energy is {energyValue}/100. You might be stacking and may not want to train in the gym.
                   </span>
                 </div>
-                <button 
-                  className="stacking-warning-close" 
+                <button
+                  className="stacking-warning-close"
                   onClick={() => setDismissedWarnings(prev => ({ ...prev, [activeTabId]: true }))}
                 >
                   ×
@@ -877,11 +877,11 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
             )}
 
             {tabs.map(tab => (
-              <WebviewTab 
-                key={tab.id} 
-                tab={tab} 
-                isActive={activeTabId === tab.id} 
-                onUpdate={handleTabUpdate} 
+              <WebviewTab
+                key={tab.id}
+                tab={tab}
+                isActive={activeTabId === tab.id}
+                onUpdate={handleTabUpdate}
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
@@ -1000,7 +1000,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                   max={userData?.life?.maximum}
                   color="#2ecc71"
                   timeRemaining={lifeTimer}
-                  href="https://www.torn.com/hospital.php"
+                  href="https://www.torn.com/hospitalview.php"
                   onNavigate={navigateTo}
                 />
               </div>
@@ -1025,7 +1025,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 <div className="torn-sidebar-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span>Quick Actions</span>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button 
+                    <button
                       onClick={() => {
                         const activeTab = tabs.find(t => t.id === activeTabId);
                         if (activeTab) {
@@ -1047,7 +1047,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                     >
                       + Add Current
                     </button>
-                    <button 
+                    <button
                       onClick={() => {
                         setIsEditingQuick(!isEditingQuick);
                         setIsAddingNew(false);
@@ -1068,11 +1068,11 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="torn-sidebar-quicklinks">
                   {quickActions.map((action, index) => (
                     isEditingQuick ? (
-                      <div 
+                      <div
                         key={index}
                         style={{
                           position: 'relative',
@@ -1188,28 +1188,28 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                           flexDirection: 'column',
                           gap: '6px'
                         }}>
-                          <input 
-                            type="text" 
-                            placeholder="Label (e.g. 🏋️ Gym)" 
+                          <input
+                            type="text"
+                            placeholder="Label (e.g. 🏋️ Gym)"
                             value={newLabel}
                             onChange={e => setNewLabel(e.target.value)}
                             style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
                           />
-                          <input 
-                            type="text" 
-                            placeholder="URL (e.g. https://www.torn.com/...)" 
+                          <input
+                            type="text"
+                            placeholder="URL (e.g. https://www.torn.com/...)"
                             value={newUrl}
                             onChange={e => setNewUrl(e.target.value)}
                             style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
                           />
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
-                            <button 
+                            <button
                               onClick={() => setIsAddingNew(false)}
                               style={{ backgroundColor: 'transparent', border: 'none', color: '#aaa', fontSize: '0.7rem', cursor: 'pointer' }}
                             >
                               Cancel
                             </button>
-                            <button 
+                            <button
                               onClick={handleSaveNewAction}
                               style={{ backgroundColor: '#3498db', border: 'none', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                             >
@@ -1303,7 +1303,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
       </div>
 
       {contextMenu && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: contextMenu.y,
@@ -1319,7 +1319,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div 
+          <div
             onClick={() => handleCopyUrl(contextMenu.tab.url, contextMenu.tab.id)}
             style={{
               padding: '6px 12px',
