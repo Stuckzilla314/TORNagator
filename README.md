@@ -24,23 +24,23 @@ Make sure you have Node.js and npm (Node Package Manager) installed. You can dow
 
 ### Running the Application
 
-To run the application in development mode:
+To run the application:
 
 ```bash
 npm start
 ```
 
-This will open the application in your browser at `http://localhost:3000`. The page will reload if you make edits.
+This will build the React application and launch the Electron application directly. No local web server will run on `http://localhost:3000`.
 
 ### Building for Production
 
-To build the application for production:
+To build the application assets:
 
 ```bash
 npm run build
 ```
 
-This command builds the app for production to the `build` folder. It correctly bundles React in production mode and optimizes the build for the best performance.
+This command compiles the React frontend assets to the `build` folder.
 
 ## Features
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
+import { IconPlane, IconHospital, IconScales, IconChevronRight } from './Icons';
 
 // Helper to decode HTML entities like &#039;
 const decodeHtml = (html) => {
@@ -32,21 +33,21 @@ const valueStyle = {
   color: '#fff'
 };
 
-const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
+const StatBar = ({ label, current, max, color, timeRemaining, link, onOpenInTorn }) => {
   const content = (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
-        <span className="stat-label" style={{ 
-          fontSize: '0.85rem', 
-          fontWeight: 'bold', 
-          color: '#bbb', 
+        <span className="stat-label" style={{
+          fontSize: '0.85rem',
+          fontWeight: 'bold',
+          color: '#bbb',
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
           transition: 'color 0.2s ease'
         }}>
           {label}
-          {link && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>↗</span>}
+          {link && <IconChevronRight size={12} color="#888" style={{ opacity: 0.6 }} />}
         </span>
         <span style={{ fontSize: '0.85rem', color: '#fff' }}>
           {current || 0} / {max || 0}
@@ -54,9 +55,9 @@ const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
         </span>
       </div>
       <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', overflow: 'hidden' }}>
-        <div style={{ 
-          width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%`, 
-          height: '100%', 
+        <div style={{
+          width: `${Math.min(100, ((current || 0) / (max || 1)) * 100)}%`,
+          height: '100%',
           backgroundColor: color,
           transition: 'width 0.6s cubic-bezier(0.1, 0.7, 1.0, 0.1)',
           boxShadow: `0 0 10px ${color}44`
@@ -67,18 +68,22 @@ const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
 
   if (link) {
     return (
-      <a 
-        href={link} 
-        target="_blank" 
-        rel="noopener noreferrer" 
+      <a
+        href={link}
+        onClick={(e) => {
+          if (onOpenInTorn) {
+            e.preventDefault();
+            onOpenInTorn(link);
+          }
+        }}
         className="dashboard-card-link"
-        style={{ 
-          flex: '1 1 200px', 
-          textDecoration: 'none', 
+        style={{
+          flex: '1 1 200px',
+          textDecoration: 'none',
           color: 'inherit',
           display: 'block',
           cursor: 'pointer',
-          '--hover-color': color 
+          '--hover-color': color
         }}
       >
         {content}
@@ -93,10 +98,10 @@ const StatBar = ({ label, current, max, color, timeRemaining, link }) => {
   );
 };
 
-const UserDashboard = ({ userData, onLogout }) => {
+const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
 
-  const statusColor = userData.status?.color === 'blue' ? '#3498db' : 
-                      userData.status?.color === 'red' ? '#e74c3c' : '#2ecc71';
+  const statusColor = userData.status?.color === 'blue' ? '#3498db' :
+    userData.status?.color === 'red' ? '#e74c3c' : '#2ecc71';
 
   const isTraveling = userData.status?.state === 'Traveling';
   const isHospitalized = userData.status?.state === 'Hospital';
@@ -108,7 +113,7 @@ const UserDashboard = ({ userData, onLogout }) => {
   const statusUntil = userData.status?.until;
   const statusTimeLeft = useTravelTimer((isHospitalized || isJailed) ? statusUntil : 0);
 
-  const formatReleaseTime = (ts) => ts > 0 
+  const formatReleaseTime = (ts) => ts > 0
     ? new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null;
 
@@ -121,14 +126,18 @@ const UserDashboard = ({ userData, onLogout }) => {
   const happyTime = useBarTimer(userData.happy);
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
-            {userData.name} <a 
-              href={`https://www.torn.com/profiles.php?XID=${userData.player_id}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
+            {userData.name} <a
+              href={`https://www.torn.com/profiles.php?XID=${userData.player_id}`}
+              onClick={(e) => {
+                if (onOpenInTorn) {
+                  e.preventDefault();
+                  onOpenInTorn(`https://www.torn.com/profiles.php?XID=${userData.player_id}`);
+                }
+              }}
               className="text-link"
               style={{ color: '#666', fontSize: '1.5rem', textDecoration: 'none' }}
             >[{userData.player_id}]</a>
@@ -140,15 +149,19 @@ const UserDashboard = ({ userData, onLogout }) => {
             <span style={{ color: statusColor, fontWeight: 'bold' }}>
               ● {userData.status?.description}
             </span>
-            <a 
-              href="https://www.torn.com/index.php" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <a
+              href="https://www.torn.com/index.php"
+              onClick={(e) => {
+                if (onOpenInTorn) {
+                  e.preventDefault();
+                  onOpenInTorn("https://www.torn.com/index.php");
+                }
+              }}
               className="header-link"
-              style={{ 
-                marginLeft: '10px', 
-                fontSize: '0.8rem', 
-                color: '#888', 
+              style={{
+                marginLeft: '10px',
+                fontSize: '0.8rem',
+                color: '#888',
                 textDecoration: 'none',
                 display: 'flex',
                 alignItems: 'center',
@@ -158,12 +171,12 @@ const UserDashboard = ({ userData, onLogout }) => {
                 borderRadius: '4px'
               }}
             >
-              TORN Home ↗
+              TORN Home <IconChevronRight size={12} color="#888" style={{ opacity: 0.7 }} />
             </a>
           </div>
         </div>
-        <button 
-          onClick={onLogout} 
+        <button
+          onClick={onLogout}
           style={{ padding: '10px 20px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
         >
           Logout
@@ -172,50 +185,58 @@ const UserDashboard = ({ userData, onLogout }) => {
 
       {/* Status Bars Section */}
       <div style={{ ...cardStyle, marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
-        <StatBar 
-          label="Life" 
-          current={userData.life?.current} 
-          max={userData.life?.maximum} 
-          color="#2ecc71" 
-          timeRemaining={lifeTime} 
-          link="https://www.torn.com/hospital.php"
+        <StatBar
+          label="Life"
+          current={userData.life?.current}
+          max={userData.life?.maximum}
+          color="#2ecc71"
+          timeRemaining={lifeTime}
+          link="https://www.torn.com/hospitalview.php"
+          onOpenInTorn={onOpenInTorn}
         />
-        <StatBar 
-          label="Energy" 
-          current={userData.energy?.current} 
-          max={userData.energy?.maximum} 
-          color="#f1c40f" 
-          timeRemaining={energyTime} 
+        <StatBar
+          label="Energy"
+          current={userData.energy?.current}
+          max={userData.energy?.maximum}
+          color="#f1c40f"
+          timeRemaining={energyTime}
           link="https://www.torn.com/gym.php"
+          onOpenInTorn={onOpenInTorn}
         />
-        <StatBar 
-          label="Nerve" 
-          current={userData.nerve?.current} 
-          max={userData.nerve?.maximum} 
-          color="#e74c3c" 
-          timeRemaining={nerveTime} 
+        <StatBar
+          label="Nerve"
+          current={userData.nerve?.current}
+          max={userData.nerve?.maximum}
+          color="#e74c3c"
+          timeRemaining={nerveTime}
           link="https://www.torn.com/crimes.php"
+          onOpenInTorn={onOpenInTorn}
         />
-        <StatBar 
-          label="Happy" 
-          current={userData.happy?.current} 
-          max={userData.happy?.maximum} 
-          color="#3498db" 
-          timeRemaining={happyTime} 
+        <StatBar
+          label="Happy"
+          current={userData.happy?.current}
+          max={userData.happy?.maximum}
+          color="#3498db"
+          timeRemaining={happyTime}
           link="https://www.torn.com/properties.php"
+          onOpenInTorn={onOpenInTorn}
         />
       </div>
 
       {/* Travel Information Section */}
       {isTraveling && (
-        <a 
-          href="https://www.torn.com/index.php" 
-          target="_blank" 
-          rel="noopener noreferrer"
+        <a
+          href="https://www.torn.com/index.php"
+          onClick={(e) => {
+            if (onOpenInTorn) {
+              e.preventDefault();
+              onOpenInTorn("https://www.torn.com/index.php");
+            }
+          }}
           className="dashboard-card-link"
-          style={{ 
-            textDecoration: 'none', 
-            color: 'inherit', 
+          style={{
+            textDecoration: 'none',
+            color: 'inherit',
             display: 'block',
             cursor: 'pointer'
           }}
@@ -224,7 +245,7 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  ✈️ Travel Manifest
+                  <IconPlane size={18} color="#3498db" /> Travel Manifest
                 </h3>
                 <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
               </div>
@@ -246,14 +267,18 @@ const UserDashboard = ({ userData, onLogout }) => {
 
       {/* Hospital Information Section */}
       {isHospitalized && (
-        <a 
-          href="https://www.torn.com/hospital.php" 
-          target="_blank" 
-          rel="noopener noreferrer"
+        <a
+          href="https://www.torn.com/hospitalview.php"
+          onClick={(e) => {
+            if (onOpenInTorn) {
+              e.preventDefault();
+              onOpenInTorn("https://www.torn.com/hospitalview.php");
+            }
+          }}
           className="dashboard-card-link"
-          style={{ 
-            textDecoration: 'none', 
-            color: 'inherit', 
+          style={{
+            textDecoration: 'none',
+            color: 'inherit',
             display: 'block',
             cursor: 'pointer'
           }}
@@ -262,7 +287,7 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ marginTop: 0, color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  🏥 Medical Report
+                  <IconHospital size={18} color="#e74c3c" /> Medical Report
                 </h3>
                 <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
                 {userData.status?.details && <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#aaa' }}>{userData.status.details}</p>}
@@ -285,14 +310,18 @@ const UserDashboard = ({ userData, onLogout }) => {
 
       {/* Jail Information Section */}
       {isJailed && (
-        <a 
-          href="https://www.torn.com/jailview.php" 
-          target="_blank" 
-          rel="noopener noreferrer"
+        <a
+          href="https://www.torn.com/jailview.php"
+          onClick={(e) => {
+            if (onOpenInTorn) {
+              e.preventDefault();
+              onOpenInTorn("https://www.torn.com/jailview.php");
+            }
+          }}
           className="dashboard-card-link"
-          style={{ 
-            textDecoration: 'none', 
-            color: 'inherit', 
+          style={{
+            textDecoration: 'none',
+            color: 'inherit',
             display: 'block',
             cursor: 'pointer'
           }}
@@ -301,7 +330,7 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ marginTop: 0, color: '#f39c12', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  ⚖️ Incarceration Status
+                  <IconScales size={18} color="#f39c12" /> Incarceration Status
                 </h3>
                 <p style={{ margin: '4px 0', fontSize: '1.1rem' }}>{userData.status?.description}</p>
               </div>
@@ -329,10 +358,14 @@ const UserDashboard = ({ userData, onLogout }) => {
           <div style={{ marginBottom: '12px' }}>
             <div style={labelStyle}>Property</div>
             <div style={valueStyle}>
-              <a 
-                href="https://www.torn.com/properties.php" 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <a
+                href="https://www.torn.com/properties.php"
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn("https://www.torn.com/properties.php");
+                  }
+                }}
                 className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
@@ -349,10 +382,14 @@ const UserDashboard = ({ userData, onLogout }) => {
           <div style={{ marginBottom: '12px' }}>
             <div style={labelStyle}>Job</div>
             <div style={valueStyle}>
-              <a 
-                href={userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php"} 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <a
+                href={userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php"}
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn(userData.job?.company_id ? "https://www.torn.com/companies.php" : "https://www.torn.com/job.php");
+                  }
+                }}
                 className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
@@ -363,10 +400,14 @@ const UserDashboard = ({ userData, onLogout }) => {
           <div style={{ marginBottom: '12px' }}>
             <div style={labelStyle}>Faction</div>
             <div style={valueStyle}>
-              <a 
-                href={`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <a
+                href={`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`}
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn(`https://www.torn.com/factions.php?step=profile&ID=${userData.faction?.faction_id}`);
+                  }
+                }}
                 className="text-link"
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
@@ -378,10 +419,14 @@ const UserDashboard = ({ userData, onLogout }) => {
             <div style={labelStyle}>Marital Status</div>
             <div style={valueStyle}>
               {userData.married?.spouse_id ? (
-                <a 
-                  href={`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+                <a
+                  href={`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`}
+                  onClick={(e) => {
+                    if (onOpenInTorn) {
+                      e.preventDefault();
+                      onOpenInTorn(`https://www.torn.com/profiles.php?XID=${userData.married?.spouse_id}`);
+                    }
+                  }}
                   className="text-link"
                   style={{ color: 'inherit', textDecoration: 'none' }}
                 >
@@ -405,4 +450,5 @@ const UserDashboard = ({ userData, onLogout }) => {
   );
 };
 
-export default UserDashboard;
+// ⚡ Bolt: Wrapped with React.memo() to prevent unnecessary re-renders when parent state updates but dashboard props haven't changed
+export default React.memo(UserDashboard);

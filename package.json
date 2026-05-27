@@ -2,6 +2,8 @@
   "name": "tornagator",
   "version": "0.1.0",
   "private": true,
+  "main": "public/electron.js",
+  "homepage": "./",
   "dependencies": {
     "axios": "^1.16.0",
     "cheerio": "^1.2.0",
@@ -13,10 +15,11 @@
     "recharts": "^3.8.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "npm run build && electron .",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "electron:serve": "npm run build && electron ."
   },
   "eslintConfig": {
     "extends": [
@@ -34,5 +37,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "electron": "^42.2.0"
   }
 }

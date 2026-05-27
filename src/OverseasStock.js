@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from 'recharts';
-import { db } from './firebase';
-import { collection, addDoc, query, where, orderBy, getDocs, limit, Timestamp, startAfter, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db, getDoc, getDocs } from './firebase';
+import { collection, addDoc, query, where, orderBy, limit, Timestamp, startAfter, doc, onSnapshot } from "firebase/firestore";
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
@@ -48,7 +48,7 @@ const YATA_COUNTRY_CODES = {
 // Flatten the IDs from our map into a Set for O(1) lookups during background recording
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
-const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync, filter, setFilter }) => {
+const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync, filter, setFilter, onOpenInTorn }) => {
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);
   const [timeScale, setTimeScale] = useState(24); // Default to 24h to save space
@@ -548,7 +548,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       if (!confirmed) return;
     }
 
-    window.open('https://www.torn.com/travelagency.php', '_blank');
+    if (onOpenInTorn) {
+      onOpenInTorn('https://www.torn.com/travelagency.php', item.country);
+    } else {
+      window.open('https://www.torn.com/travelagency.php', '_blank');
+    }
   };
 
   const renderSortIndicator = (key) => {
@@ -559,7 +563,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
@@ -729,7 +733,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   </td>
                   <td style={cellStyle}>
                     <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
-                    <div 
+                    <div
                       style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px', cursor: 'help', whiteSpace: 'pre-line' }}
                       title={`Arrive Time: ${new Date(Date.now() + (item.totalRoundTripMinutes / 2) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nReturn Time: ${new Date(Date.now() + item.totalRoundTripMinutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                     >
@@ -830,6 +834,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           }} onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setSelectedItemForGraph(null)}
+              aria-label="Close graph"
               style={{
                 position: 'absolute',
                 top: '15px',
@@ -864,8 +869,12 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   }
                 }
 
+                const liveStockQuantity = historicalData.length > 0 
+                  ? historicalData[historicalData.length - 1].stock 
+                  : (selectedItemForGraph.stockQuantity || 0);
+
                 if (restocks.length < 3) {
-                  if (selectedItemForGraph.stockQuantity === 0) {
+                  if (liveStockQuantity === 0) {
                     return <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#666' }}>Gathering data...</div>;
                   }
                   return null;
@@ -931,8 +940,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
                 const timeDisplay = expectedDate.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
-                if (selectedItemForGraph.stockQuantity > 0) {
-                  statusText = `Stock Available ✅\nNext cycle: @ ${timeDisplay}`;
+                if (liveStockQuantity > 0) {
+                  statusText = `Stock Available ${liveStockQuantity} ✅\nNext cycle: @ ${timeDisplay}`;
                   statusColor = "#2ecc71";
                 } else if (timeLeft < 0) {
                   const overdueMins = Math.round(Math.abs(timeLeft) / 60000);
@@ -1057,4 +1066,5 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   );
 };
 
-export default OverseasStock;
+// ⚡ Bolt: Wrapped with React.memo() to prevent expensive chart and table re-renders when parent state updates but stock props remain unchanged
+export default React.memo(OverseasStock);

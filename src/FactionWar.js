@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { fetchFactionById } from './tornApi';
-
 import { useWarTimer } from './useWarTimer';
+import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock } from './Icons';
 
-const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle }) => {
+const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, onOpenInTorn }) => {
   const factionsEntries = Object.entries(war.factions || {}).map(([id, f]) => ({ id, ...f }));
   const ourFactionInfo = factionsEntries.find(f => f.name === factionData.name) || {};
   const ourFactionScore = ourFactionInfo.score || 0;
@@ -22,10 +22,24 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle }) 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h3 style={{ marginTop: 0, color: timer.isFuture ? '#f1c40f' : '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
-            {timer.isFuture ? '⏳ Upcoming Ranked War' : '⚔️ Active Ranked War'}
+            {timer.isFuture
+              ? <><IconClock size={20} color="#f1c40f" /> Upcoming Ranked War</>
+              : <><IconSword size={20} color="#e74c3c" /> Active Ranked War</>}
           </h3>
           <p style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            vs <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: '#fff' }}>{enemyFactionName}</a>
+            vs <a 
+              href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} 
+              onClick={(e) => {
+                if (onOpenInTorn) {
+                  e.preventDefault();
+                  onOpenInTorn(`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`);
+                }
+              }}
+              className="text-link" 
+              style={{ color: '#fff' }}
+            >
+              {enemyFactionName}
+            </a>
           </p>
           <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
             <div style={{ ...labelStyle, color: '#888', fontSize: '0.75rem' }}>
@@ -39,14 +53,38 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle }) 
         <div style={{ display: 'flex', gap: '2rem', textAlign: 'center', flexWrap: 'wrap' }}>
           <div>
             <div style={{ ...labelStyle, color: '#aaa' }}>
-              <a href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: 'inherit' }}>{factionData.name}</a>
+              <a 
+                href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} 
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn(`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`);
+                  }
+                }}
+                className="text-link" 
+                style={{ color: 'inherit' }}
+              >
+                {factionData.name}
+              </a>
             </div>
             <div style={{ ...valueStyle, fontSize: '2rem', color: '#3498db' }}>{ourFactionScore}</div>
           </div>
           <div style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
           <div>
             <div style={{ ...labelStyle, color: '#aaa' }}>
-              <a href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: 'inherit' }}>{enemyFactionName}</a>
+              <a 
+                href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} 
+                onClick={(e) => {
+                  if (onOpenInTorn) {
+                    e.preventDefault();
+                    onOpenInTorn(`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`);
+                  }
+                }}
+                className="text-link" 
+                style={{ color: 'inherit' }}
+              >
+                {enemyFactionName}
+              </a>
             </div>
             <div style={{ ...valueStyle, fontSize: '2rem', color: '#e74c3c' }}>{enemyFactionScore}</div>
           </div>
@@ -61,7 +99,7 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle }) 
   );
 };
 
-const FactionWar = ({ apiKey, factionData, userData }) => {
+const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [compareMode, setCompareMode] = useState(false);
   const [enemyFactionData, setEnemyFactionData] = useState(null);
@@ -200,10 +238,22 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
   });
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
-          <a href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: 'inherit' }}>{factionData.name}</a> <span style={{ color: '#666', fontSize: '1.5rem' }}>[{factionData.tag}]</span>
+          <a 
+            href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} 
+            onClick={(e) => {
+              if (onOpenInTorn) {
+                e.preventDefault();
+                onOpenInTorn(`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`);
+              }
+            }}
+            className="text-link" 
+            style={{ color: 'inherit' }}
+          >
+            {factionData.name}
+          </a> <span style={{ color: '#666', fontSize: '1.5rem' }}>[{factionData.tag}]</span>
         </h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px' }}>
           <span style={{ backgroundColor: '#333', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
@@ -236,6 +286,7 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
                 cardStyle={cardStyle} 
                 labelStyle={labelStyle} 
                 valueStyle={valueStyle} 
+                onOpenInTorn={onOpenInTorn}
               />
             ))
           ) : (
@@ -243,7 +294,7 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ marginTop: 0, color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
-                    🕊️ Peace Time
+                    <IconPeace size={22} color="#2ecc71" /> Peace Time
                   </h3>
                   <p style={{ margin: '4px 0', fontSize: '1.1rem', color: '#aaa' }}>Your faction is not currently in a ranked war.</p>
                 </div>
@@ -254,8 +305,8 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             <div style={cardStyle}>
               <h3 style={{ marginTop: 0, color: '#3498db' }}>General Information</h3>
-              <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Leader</div><div style={valueStyle}>{factionData.leader !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData.leader}`} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: 'inherit' }}>{factionData.leader_name} [{factionData.leader}]</a> : 'Unknown'}</div></div>
-              <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Co-Leader</div><div style={valueStyle}>{factionData['co-leader'] !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData['co-leader']}`} target="_blank" rel="noopener noreferrer" className="text-link" style={{ color: 'inherit' }}>{factionData.co_leader_name} [{factionData['co-leader']}]</a> : 'Unknown'}</div></div>
+              <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Leader</div><div style={valueStyle}>{factionData.leader !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData.leader}`} onClick={(e) => { if (onOpenInTorn) { e.preventDefault(); onOpenInTorn(`https://www.torn.com/profiles.php?XID=${factionData.leader}`); } }} className="text-link" style={{ color: 'inherit' }}>{factionData.leader_name} [{factionData.leader}]</a> : 'Unknown'}</div></div>
+              <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Co-Leader</div><div style={valueStyle}>{factionData['co-leader'] !== 0 ? <a href={`https://www.torn.com/profiles.php?XID=${factionData['co-leader']}`} onClick={(e) => { if (onOpenInTorn) { e.preventDefault(); onOpenInTorn(`https://www.torn.com/profiles.php?XID=${factionData['co-leader']}`); } }} className="text-link" style={{ color: 'inherit' }}>{factionData.co_leader_name} [{factionData['co-leader']}]</a> : 'Unknown'}</div></div>
               <div style={{ marginBottom: '12px' }}><div style={labelStyle}>Age</div><div style={valueStyle}>{factionData.age || 'N/A'} days</div></div>
               <div style={{ marginBottom: '0' }}><div style={labelStyle}>Members</div><div style={valueStyle}>{Object.keys(factionData.members || {}).length}</div></div>
             </div>
@@ -267,7 +318,7 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: cachedAt ? '0.5rem' : '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem' }}>🎯 Target Selection</h3>
+              <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><IconTarget size={22} color="#e74c3c" /> Target Selection</h3>
               <div 
                 onClick={() => setCompareMode(!compareMode)}
                 style={{ 
@@ -378,8 +429,12 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
                     <a 
                       key={member.id} 
                       href={`https://www.torn.com/profiles.php?XID=${member.id}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
+                      onClick={(e) => {
+                        if (onOpenInTorn) {
+                          e.preventDefault();
+                          onOpenInTorn(`https://www.torn.com/profiles.php?XID=${member.id}`);
+                        }
+                      }}
                       className="dashboard-card-link"
                       style={{ borderRadius: '8px' }}
                     >
@@ -445,25 +500,25 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
                             {[
                               { 
-                                label: '🔪 Crimes', 
+                                label: <><IconSwords size={12} color="#e67e22" /> Crimes</>, 
                                 value: criminalOffenses, 
                                 color: '#e67e22',
                                 own: userData.personalstats?.criminaloffenses || 0
                               },
                               { 
-                                label: '💊 Drugs', 
+                                label: <><IconPill size={12} color="#9b59b6" /> Drugs</>, 
                                 value: drugsUsed, 
                                 color: '#9b59b6',
                                 own: userData.personalstats?.drugsused || 0
                               },
                               { 
-                                label: '⚡ Refills', 
+                                label: <><IconBolt size={12} color="#3498db" /> Refills</>, 
                                 value: totalRefills, 
                                 color: '#3498db',
                                 own: (userData.personalstats?.refills || 0) + (userData.personalstats?.nerverefills || 0) + (userData.personalstats?.tokenrefills || 0)
                               },
                               { 
-                                label: '💉 Boosters', 
+                                label: <><IconMuscle size={12} color="#2ecc71" /> Boosters</>, 
                                 value: boostersUsed, 
                                 color: '#2ecc71',
                                 own: userData.personalstats?.boostersused || 0
@@ -513,4 +568,5 @@ const FactionWar = ({ apiKey, factionData, userData }) => {
   );
 };
 
-export default FactionWar;
+// ⚡ Bolt: Wrapped with React.memo() to prevent deep tree re-renders of faction member profiles when other App state changes
+export default React.memo(FactionWar);
