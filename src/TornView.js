@@ -31,13 +31,65 @@ function useLocalStorage(key, initialValue) {
   return [storedValue, setValue];
 }
 
+const getTornPageCategory = (url) => {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+  
+  if (lower.includes('crimes.php') || lower.includes('sid=crimes')) {
+    return 'crimes';
+  }
+  if (lower.includes('gym.php') || lower.includes('sid=gym')) {
+    return 'gym';
+  }
+  if (lower.includes('travelagency.php') || lower.includes('sid=travel')) {
+    return 'travel';
+  }
+  if (lower.includes('hospitalview.php') || lower.includes('hospital.php') || lower.includes('sid=hospital')) {
+    return 'hospital';
+  }
+  if (lower.includes('bank.php') || lower.includes('sid=bank')) {
+    return 'bank';
+  }
+  if (lower.includes('factions.php') || lower.includes('faction.php') || lower.includes('sid=faction')) {
+    return 'faction';
+  }
+  if (lower.includes('imarket.php') || lower.includes('sid=market') || lower.includes('sid=imarket')) {
+    return 'market';
+  }
+  if (lower.includes('bazaar.php') || lower.includes('sid=bazaar')) {
+    return 'bazaar';
+  }
+  if (lower.includes('events.php') || lower.includes('sid=events')) {
+    return 'events';
+  }
+  if (lower.includes('index.php') || lower.includes('home.php') || lower.includes('sid=home')) {
+    return 'home';
+  }
+  if (lower.includes('loader.php?sid=attack') || lower.includes('sid=attack')) {
+    return 'attack';
+  }
+  if (lower.includes('city.php') || lower.includes('sid=city')) {
+    return 'city';
+  }
+  
+  return null;
+};
+
 const areUrlsEqual = (url1, url2) => {
   if (!url1 || !url2) return false;
+  
+  const cat1 = getTornPageCategory(url1);
+  const cat2 = getTornPageCategory(url2);
+  
+  if (cat1 && cat2 && cat1 === cat2) {
+    return true;
+  }
+  
   const normalize = (u) => {
     try {
-      let normalized = u.trim().toLowerCase();
+      let base = u.split('#')[0];
+      let normalized = base.trim().toLowerCase();
       if (normalized.endsWith('/')) normalized = normalized.slice(0, -1);
-      if (normalized.endsWith('#')) normalized = normalized.slice(0, -1);
       return normalized;
     } catch (e) {
       return u;
