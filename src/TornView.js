@@ -1179,7 +1179,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
   const activeWars = Object.values(rankedWars);
   const currentWar = activeWars.find(w => w.factions);
-  
+
   let enemyFactionId = null;
   let enemyFactionInfo = null;
   if (currentWar && factionData) {
@@ -1188,7 +1188,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     enemyFactionId = enemyInfo.id || null;
     enemyFactionInfo = enemyFactionId ? currentWar.factions[enemyFactionId] : null;
   }
-  
+
   const cacheKey = enemyFactionId ? `tornagator_targets_${enemyFactionId}` : null;
 
   const [enemyFactionData, setEnemyFactionData] = useState(() => {
@@ -1196,7 +1196,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     try {
       const raw = sessionStorage.getItem(cacheKey);
       if (raw) return JSON.parse(raw).factionData;
-    } catch (e) {}
+    } catch (e) { }
     return null;
   });
 
@@ -1205,7 +1205,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     try {
       const raw = sessionStorage.getItem(cacheKey);
       if (raw) return JSON.parse(raw).profiles || {};
-    } catch (e) {}
+    } catch (e) { }
     return {};
   });
 
@@ -1214,7 +1214,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     try {
       const raw = sessionStorage.getItem(cacheKey);
       if (raw) return JSON.parse(raw).fetchedAt;
-    } catch (e) {}
+    } catch (e) { }
     return null;
   });
 
@@ -2178,11 +2178,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                             <IconTarget size={10} color="#888" /> Target: {currentWar?.war?.target || 'N/A'} pts
                           </div>
                         </div>
-                        
-                        <button 
-                          onClick={handleForceRefresh} 
-                          disabled={isLoadingTargets} 
-                          style={{ 
+
+                        <button
+                          onClick={handleForceRefresh}
+                          disabled={isLoadingTargets}
+                          style={{
                             background: 'transparent',
                             border: '1px solid #444',
                             borderRadius: '20px',
@@ -2209,10 +2209,10 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                           const ourFactionScore = ourFactionInfoObj.score || 0;
                           const enemyFactionInfoObj = factionsEntries.find(f => f.name !== factionData?.name) || {};
                           const enemyFactionScore = enemyFactionInfoObj.score || 0;
-                          
+
                           const totalScore = ourFactionScore + enemyFactionScore;
                           const ourPct = totalScore > 0 ? (ourFactionScore / totalScore) * 100 : 50;
-                          
+
                           return (
                             <>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold' }}>
@@ -2233,8 +2233,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                           <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SORT BY:</span>
                           <div style={{ display: 'flex', gap: '4px' }}>
-                            <select 
-                              value={sortBy} 
+                            <select
+                              value={sortBy}
                               onChange={(e) => setSortBy(e.target.value)}
                               style={{
                                 backgroundColor: '#111',
@@ -2253,7 +2253,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               <option value="age">Days Playing</option>
                               <option value="winrate">Win Rate</option>
                             </select>
-                            
+
                             <button
                               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                               style={{
@@ -2274,12 +2274,12 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
                           <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>COMPARE STATS:</span>
-                          <div 
+                          <div
                             onClick={() => setCompareMode(!compareMode)}
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '6px', 
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
                               cursor: 'pointer',
                               backgroundColor: '#111',
                               padding: '2px 8px',
@@ -2288,10 +2288,10 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               transition: 'all 0.2s'
                             }}
                           >
-                            <div style={{ 
-                              width: '8px', 
-                              height: '8px', 
-                              borderRadius: '50%', 
+                            <div style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
                               backgroundColor: compareMode ? '#e74c3c' : '#555',
                               transition: 'all 0.2s'
                             }} />
@@ -2457,6 +2457,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
                                 const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
 
+                                const criminalOffenses = ps.criminaloffenses || 0;
+                                const drugsUsed = ps.drugsused || 0;
+                                const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
+                                const boostersUsed = ps.boostersused || 0;
+
                                 return {
                                   id,
                                   ...member,
@@ -2465,13 +2470,17 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                   winRate,
                                   suspectedVal: suspect ? suspect.value : -1,
                                   suspectedRaw: suspect ? suspect.raw : null,
-                                  suspectedIndex: suspect ? suspect.index : null
+                                  suspectedIndex: suspect ? suspect.index : null,
+                                  criminalOffenses,
+                                  drugsUsed,
+                                  totalRefills,
+                                  boostersUsed
                                 };
                               })
                               .sort((a, b) => {
                                 if (sortBy === 'default') {
-                                  const aOkay = a.status.state === 'Okay' ? 0 : 1;
-                                  const bOkay = b.status.state === 'Okay' ? 0 : 1;
+                                  const aOkay = a.status?.state === 'Okay' ? 0 : 1;
+                                  const bOkay = b.status?.state === 'Okay' ? 0 : 1;
                                   if (aOkay !== bOkay) return aOkay - bOkay;
                                   return a.level - b.level;
                                 }
@@ -2494,13 +2503,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               });
 
                             return sortedMembers.map((member) => {
-                              const isOkay = member.status.state === 'Okay';
-                              const statusColor = isOkay ? '#2ecc71' : member.status.state === 'Hospital' ? '#e74c3c' : member.status.state === 'Jail' ? '#f39c12' : '#3498db';
+                              const isOkay = member.status?.state === 'Okay';
+                              const statusColor = isOkay ? '#2ecc71' : member.status?.state === 'Hospital' ? '#e74c3c' : member.status?.state === 'Jail' ? '#f39c12' : '#3498db';
                               const profile = member.profile;
                               const hasProfile = Object.keys(profile).length > 0;
-                              
+
                               return (
-                                <div 
+                                <div
                                   key={member.id}
                                   style={{
                                     padding: '8px',
@@ -2516,7 +2525,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
                                     <div style={{ minWidth: 0 }}>
-                                      <span 
+                                      <span
                                         onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
                                         style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'none' }}
                                         className="text-link"
@@ -2524,7 +2533,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                         {member.name}
                                       </span>
                                       <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '4px' }}>[{member.id}]</span>
-                                      
+
                                       <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
                                         Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
                                       </div>
@@ -2532,10 +2541,10 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                       <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem', display: 'block' }}>
-                                        {member.status.state}
+                                        {member.status?.state || 'Unknown'}
                                       </span>
                                       <span style={{ color: '#666', fontSize: '0.65rem', display: 'block' }}>
-                                        {member.status.description?.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                                        {member.status?.description?.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '') || ''}
                                       </span>
                                     </div>
                                   </div>
@@ -2558,6 +2567,76 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                           </span>
                                         )}
                                       </div>
+                                    </div>
+                                  )}
+
+                                  {/* Activity strip */}
+                                  {hasProfile && (
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      gap: '4px', 
+                                      flexWrap: 'wrap', 
+                                      marginTop: '4px', 
+                                      paddingTop: '4px', 
+                                      borderTop: '1px dashed rgba(255,255,255,0.05)' 
+                                    }}>
+                                      {[
+                                        { 
+                                          label: <><IconSwords size={10} color="#e67e22" /> Cri</>, 
+                                          value: member.criminalOffenses, 
+                                          color: '#e67e22',
+                                          own: userData?.personalstats?.criminaloffenses || 0
+                                        },
+                                        { 
+                                          label: <><IconPill size={10} color="#9b59b6" /> Drg</>, 
+                                          value: member.drugsUsed, 
+                                          color: '#9b59b6',
+                                          own: userData?.personalstats?.drugsused || 0
+                                        },
+                                        { 
+                                          label: <><IconBolt size={10} color="#3498db" /> Ref</>, 
+                                          value: member.totalRefills, 
+                                          color: '#3498db',
+                                          own: (userData?.personalstats?.refills || 0) + (userData?.personalstats?.nerverefills || 0) + (userData?.personalstats?.tokenrefills || 0)
+                                        },
+                                        { 
+                                          label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>, 
+                                          value: member.boostersUsed, 
+                                          color: '#2ecc71',
+                                          own: userData?.personalstats?.boostersused || 0
+                                        },
+                                      ].map(({ label, value, color, own }) => {
+                                        const valNum = Number(value) || 0;
+                                        const ownNum = Number(own) || 0;
+                                        const diff = valNum - ownNum;
+                                        const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+                                        const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
+
+                                        return (
+                                          <span key={color} style={{
+                                            backgroundColor: 'rgba(0,0,0,0.15)',
+                                            border: `1px solid ${color}22`,
+                                            color: '#aaa',
+                                            padding: '2px 5px',
+                                            borderRadius: '10px',
+                                            fontSize: '0.65rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            flexGrow: 1,
+                                            justifyContent: 'center'
+                                          }}>
+                                            {label}: <strong style={{ color }}>
+                                              {compareMode ? diffStr : valNum.toLocaleString()}
+                                            </strong>
+                                            {compareMode && (
+                                              <span style={{ fontSize: '0.6rem', color: diffColor, fontStyle: 'italic' }}>
+                                                ({diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'})
+                                              </span>
+                                            )}
+                                          </span>
+                                        );
+                                      })}
                                     </div>
                                   )}
 
@@ -2608,8 +2687,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                       ) : (
                         <div style={{ textAlign: 'center', padding: '10px 0' }}>
                           <span style={{ fontSize: '0.75rem', color: '#888' }}>No target data loaded.</span>
-                          <button 
-                            onClick={doFetchTargets} 
+                          <button
+                            onClick={doFetchTargets}
                             style={{
                               display: 'block',
                               margin: '8px auto 0 auto',
