@@ -182,6 +182,83 @@ const ChainWatcher = ({ factionData }) => {
 };
 
 /**
+ * Component for displaying a highly condensed ticking chain status when the overview is collapsed.
+ */
+const CompactChainInfo = ({ chain }) => {
+  const current = chain?.current || 0;
+  const timeout = chain?.timeout || 0;
+  const cooldown = chain?.cooldown || 0;
+
+  const [localTimeout, setLocalTimeout] = useState(timeout);
+  const [localCooldown, setLocalCooldown] = useState(cooldown);
+
+  useEffect(() => {
+    setLocalTimeout(timeout);
+  }, [timeout]);
+
+  useEffect(() => {
+    setLocalCooldown(cooldown);
+  }, [cooldown]);
+
+  useEffect(() => {
+    if (localTimeout <= 0) return;
+    const timer = setInterval(() => {
+      setLocalTimeout(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localTimeout]);
+
+  useEffect(() => {
+    if (localCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setLocalCooldown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localCooldown]);
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const hasActiveChain = current > 0 || localTimeout > 0;
+  const hasCooldown = localCooldown > 0;
+
+  if (hasCooldown) {
+    return (
+      <span style={{ fontSize: '0.72rem', color: '#f39c12', fontWeight: 'bold' }}>
+        🔗 Cooldown: {formatTime(localCooldown)}
+      </span>
+    );
+  }
+
+  if (hasActiveChain) {
+    let timerColor = '#2ecc71'; // Green
+    if (localTimeout < 60) {
+      timerColor = '#e74c3c'; // Red
+    } else if (localTimeout < 120) {
+      timerColor = '#f39c12'; // Orange
+    }
+
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+        <span style={{ color: '#fff' }}>🔗 {current.toLocaleString()}</span>
+        <span style={{ color: timerColor, fontFamily: 'monospace' }}>
+          ({formatTime(localTimeout)})
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span style={{ fontSize: '0.72rem', color: '#666', fontWeight: 'bold' }}>
+      🔗 Ready
+    </span>
+  );
+};
+
+/**
  * Infers a broader categorization or key from a specific Torn URL for deduplication.
  * Useful when comparing different deep-linked paths that logically belong to the same page.
  *
@@ -3153,8 +3230,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                           </span>
                         </div>
                         {isWarOverviewCollapsed && (
-                          <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#e74c3c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
-                            vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#e74c3c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }} title={`vs ${suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}`}>
+                              vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}
+                            </div>
+                            <CompactChainInfo chain={factionData?.chain} />
                           </div>
                         )}
                         {!isWarOverviewCollapsed && (
