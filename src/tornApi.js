@@ -1,9 +1,12 @@
 const BASE_URL = 'https://api.torn.com';
 
 /**
- * Fetches user data from Torn API
- * @param {string} apiKey - The user's private API key
- * @param {string} selections - Comma separated list of selections
+ * Fetches user data from Torn API.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @param {string} [selections='basic,profile'] - Comma separated list of data selections to retrieve.
+ * @returns {Promise<Object>} A promise resolving to the user data object.
+ * @throws {Error} If the API returns an error or the request fails.
  */
 export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
   try {
@@ -20,8 +23,12 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
 };
 
 /**
- * Fetches basic faction data from Torn API
- * @param {string} apiKey - The user's private API key
+ * Fetches basic faction data from the Torn API.
+ * Additionally attempts to resolve and populate the names of the leader and co-leader.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @returns {Promise<Object>} A promise resolving to the faction data object.
+ * @throws {Error} If the API returns an error or the request fails.
  */
 export const fetchFactionData = async (apiKey) => {
   try {
@@ -68,8 +75,12 @@ export const fetchFactionData = async (apiKey) => {
 
 /**
  * Fetches basic faction data for a specific faction ID
- * @param {string} apiKey - The user's private API key
- * @param {string|number} factionId - The ID of the faction to fetch
+ * Fetches basic profile data for a specific faction by its ID.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @param {string|number} factionId - The ID of the faction to fetch.
+ * @returns {Promise<Object>} A promise resolving to the faction data object.
+ * @throws {Error} If the API returns an error or the request fails.
  */
 export const fetchFactionById = async (apiKey, factionId) => {
   try {
@@ -85,6 +96,13 @@ export const fetchFactionById = async (apiKey, factionId) => {
   }
 };
 
+/**
+ * Fetches the complete list of items from the Torn API.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @returns {Promise<Object>} A promise resolving to an object mapping item IDs to item data.
+ * @throws {Error} If the API returns an error or the request fails.
+ */
 export const fetchTornItems = async (apiKey) => {
   try {
     const response = await fetch(`${BASE_URL}/torn/?selections=items&key=${apiKey}`);
@@ -99,7 +117,11 @@ export const fetchTornItems = async (apiKey) => {
 /**
  * Fetches user inventory using TORN v2 API.
  * Since v2 requires category-specific calls, we fetch the common categories 
- * used in overseas trading and merge them into a single object.
+ * Note: The API does not allow fetching multiple categories at once; we fetch only 'Flower'.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @returns {Promise<Array<Object>>} A promise resolving to an array of inventory items.
+ * @throws {Error} If the API returns an error or the request fails.
  */
 export const fetchUserInventoryV2 = async (apiKey) => {
   const categories = [

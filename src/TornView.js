@@ -8,6 +8,13 @@ import {
   getQuickActionIcon
 } from './Icons';
 
+/**
+ * Custom hook to safely sync state with localStorage.
+ *
+ * @param {string} key - The localStorage key.
+ * @param {*} initialValue - The initial value if no data exists in localStorage.
+ * @returns {Array} An array containing the stored value and a setter function.
+ */
 function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -31,6 +38,13 @@ function useLocalStorage(key, initialValue) {
   return [storedValue, setValue];
 }
 
+/**
+ * Infers a broader categorization or key from a specific Torn URL for deduplication.
+ * Useful when comparing different deep-linked paths that logically belong to the same page.
+ *
+ * @param {string} url - The URL to categorize.
+ * @returns {string|null} The inferred category key, or null if it cannot be classified.
+ */
 const getTornPageCategory = (url) => {
   if (!url) return null;
   const lower = url.toLowerCase();
@@ -105,6 +119,13 @@ const getTornPageCategory = (url) => {
   }
 };
 
+/**
+ * Determines whether a URL is a generic Torn page (like index or main index)
+ * that does not map to a specific game view.
+ *
+ * @param {string} url - The URL to check.
+ * @returns {boolean} True if the URL is generic.
+ */
 const isGenericMainPage = (url) => {
   if (!url) return false;
   try {
@@ -143,6 +164,14 @@ const isGenericMainPage = (url) => {
   }
 };
 
+/**
+ * Compares two URLs logically to see if they refer to the same Torn page.
+ * Strips basic parameters like layout overrides and compares generic paths.
+ *
+ * @param {string} url1 - The first URL.
+ * @param {string} url2 - The second URL.
+ * @returns {boolean} True if the URLs logically match.
+ */
 const areUrlsEqual = (url1, url2) => {
   if (!url1 || !url2) return false;
 
@@ -173,6 +202,19 @@ const areUrlsEqual = (url1, url2) => {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+/**
+ * Renders a compact progress bar for user stats, designed to fit inside the sidebar.
+ *
+ * @param {Object} props - The component props.
+ * @param {string|React.ReactNode} props.label - The title/icon of the stat.
+ * @param {number} props.current - The current stat value.
+ * @param {number} props.max - The maximum stat value.
+ * @param {string} props.color - The CSS color for the progress bar.
+ * @param {string} [props.timeRemaining] - Formatted time remaining to max out.
+ * @param {string} [props.href] - Link to navigate to on click.
+ * @param {Function} [props.onNavigate] - Callback for navigation.
+ * @returns {React.JSX.Element} The rendered SidebarStatBar component.
+ */
 const SidebarStatBar = ({ label, current, max, color, timeRemaining, href, onNavigate }) => {
   const pct = Math.min(100, ((current || 0) / (max || 1)) * 100);
 
@@ -213,6 +255,19 @@ const SidebarStatBar = ({ label, current, max, color, timeRemaining, href, onNav
   );
 };
 
+/**
+ * Renders a status card (e.g., Hospital, Jail, Traveling) showing the state and remaining time.
+ *
+ * @param {Object} props - The component props.
+ * @param {React.ReactNode} props.icon - The status icon.
+ * @param {string} props.title - The title of the status.
+ * @param {string} props.description - Extra context or description of the status.
+ * @param {string} [props.detail] - Action/detail label (e.g., 'Release', 'Arrival').
+ * @param {string} [props.timeLeft] - Time remaining string.
+ * @param {string} [props.releaseTime] - Human-readable time when the status expires.
+ * @param {string} props.accentColor - The CSS color mapping to the status type.
+ * @returns {React.JSX.Element} The rendered StatusCard component.
+ */
 const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, accentColor }) => (
   <div className="torn-status-card" style={{ borderColor: accentColor, '--accent': accentColor }}>
     <div className="torn-status-card-title" style={{ color: accentColor }}>
@@ -230,6 +285,21 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 );
 
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
+/**
+ * Renders a hidden or active Electron webview element representing a browser tab.
+ * Handles deep linking, quick actions injection, and specific market overlay scripts.
+ *
+ * @param {Object} props - The component props.
+ * @param {Object} props.tab - The tab state object containing id, url, title, etc.
+ * @param {boolean} props.isActive - Whether this tab is currently the active view.
+ * @param {Function} props.onUpdate - Callback to update the parent with tab state changes (title, url, etc.).
+ * @param {string} props.targetCountry - Currently selected target country for travel tools.
+ * @param {Function} props.setTargetCountry - Callback to update the target country.
+ * @param {Object} props.itemsData - Static items mapping for market overlays.
+ * @param {number} props.cargoCapacity - Estimated max cargo items user can hold.
+ * @param {string} props.apiKey - The user API key (used for auto-injecting some scripts or data if needed).
+ * @returns {React.JSX.Element} The rendered WebviewTab component.
+ */
 const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
@@ -917,6 +987,21 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+/**
+ * The core wrapper component for the Tornagator experience.
+ * Manages the multi-tab browser state, custom quick actions sidebar, and user status summary.
+ *
+ * @param {Object} props - The component props.
+ * @param {Object} props.userData - The current user's profile and state.
+ * @param {string} props.apiKey - The user's API key.
+ * @param {string} [props.requestedUrl] - An incoming URL requested by the app (e.g., from Dashboard link).
+ * @param {Function} props.setRequestedUrl - Callback to clear the requested URL.
+ * @param {string} props.targetCountry - Currently selected travel target country.
+ * @param {Function} props.setTargetCountry - Setter for target country.
+ * @param {Object} props.itemsData - Full items map for reference.
+ * @param {number} props.cargoCapacity - Max items user can bring back.
+ * @returns {React.JSX.Element} The rendered TornView component.
+ */
 const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);

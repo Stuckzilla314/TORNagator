@@ -3,6 +3,18 @@ import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
 import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock } from './Icons';
 
+/**
+ * Renders a card displaying details for a specific Ranked War (upcoming or active).
+ *
+ * @param {Object} props - The component props.
+ * @param {Object} props.war - The specific war data object.
+ * @param {Object} props.factionData - Data about the user's current faction.
+ * @param {Object} props.cardStyle - CSS style object for the outer card container.
+ * @param {Object} props.labelStyle - CSS style object for labels.
+ * @param {Object} props.valueStyle - CSS style object for values.
+ * @param {Function} props.onOpenInTorn - Callback to open a link in Torn.
+ * @returns {React.JSX.Element} The rendered RankedWarCard component.
+ */
 const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, onOpenInTorn }) => {
   const factionsEntries = Object.entries(war.factions || {}).map(([id, f]) => ({ id, ...f }));
   const ourFactionInfo = factionsEntries.find(f => f.name === factionData.name) || {};
@@ -99,6 +111,17 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
   );
 };
 
+/**
+ * Renders the Faction War dashboard tab, fetching and displaying current faction details,
+ * peace treaties, active/upcoming ranked wars, and territory wars.
+ *
+ * @param {Object} props - The component props.
+ * @param {string} props.apiKey - The user's API key.
+ * @param {Object} props.factionData - Basic faction data provided by parent.
+ * @param {Object} props.userData - The current user's data.
+ * @param {Function} props.onOpenInTorn - Callback to open links inside the Torn view.
+ * @returns {React.JSX.Element|null} The rendered FactionWar component, or null if user is not in a faction.
+ */
 const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [compareMode, setCompareMode] = useState(false);

@@ -3,6 +3,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { db, getDoc, getDocs } from './firebase';
 import { collection, addDoc, query, where, orderBy, limit, Timestamp, startAfter, doc, onSnapshot } from "firebase/firestore";
 
+/**
+ * A mapping of country names to their respective item IDs available in the foreign item market.
+ * Used to categorize and filter items by country.
+ *
+ * @type {Object<string, number[]>}
+ */
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
   "Cayman Islands": [617, 1482, 618, 620, 626, 614, 623, 613, 622, 621, 624, 619, 615, 612, 616, 625],
@@ -17,6 +23,12 @@ const COUNTRY_MAP = {
   "South Africa": [282, 1497, 281, 203, 199, 201, 406, 200, 4, 225, 280, 651, 228, 227, 332, 206, 654, 226, 358, 652, 653, 1500]
 };
 
+/**
+ * Approximate travel times (in minutes) from Torn City to each destination using standard transport.
+ * Used to calculate potential profit per minute (PPM).
+ *
+ * @type {Object<string, number>}
+ */
 const TRAVEL_TIMES = {
   "Mexico": 26,
   "Cayman Islands": 35,
@@ -31,6 +43,12 @@ const TRAVEL_TIMES = {
   "South Africa": 297
 };
 
+/**
+ * Three-letter country codes used by the YATA API.
+ * Maps Torn country names to their YATA equivalents.
+ *
+ * @type {Object<string, string>}
+ */
 const YATA_COUNTRY_CODES = {
   "Mexico": "mex",
   "Cayman Islands": "cay",
@@ -45,9 +63,28 @@ const YATA_COUNTRY_CODES = {
   "South Africa": "sou"
 };
 
-// Flatten the IDs from our map into a Set for O(1) lookups during background recording
+/**
+ * A flattened set of all tracked foreign item IDs for O(1) lookup during data processing.
+ *
+ * @type {Set<number>}
+ */
 const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 
+/**
+ * Renders the Overseas Stock section, showing current foreign item availability,
+ * potential profit, and historical restock data.
+ *
+ * @param {Object} props - The component props.
+ * @param {Object} props.itemsData - Static metadata for all Torn items (names, prices, etc.).
+ * @param {Object} props.userData - The current user's profile and travel state.
+ * @param {number} [props.cargoCapacity=5] - The number of items the user can carry back.
+ * @param {boolean} props.autoSyncStock - Whether the app is currently auto-syncing stock data.
+ * @param {Function} props.onManualSync - Callback to manually trigger a stock data sync.
+ * @param {string} props.filter - The currently selected country filter.
+ * @param {Function} props.setFilter - Callback to change the country filter.
+ * @param {Function} props.onOpenInTorn - Callback to open a specific link in the Torn game view.
+ * @returns {React.JSX.Element} The rendered Overseas Stock component.
+ */
 const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, onManualSync, filter, setFilter, onOpenInTorn }) => {
   const [yataData, setYataData] = useState(null);
   const [loadingYata, setLoadingYata] = useState(false);

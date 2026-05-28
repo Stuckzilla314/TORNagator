@@ -1,5 +1,24 @@
 import React from 'react';
 
+/**
+ * Renders the settings menu dropdown, allowing the user to configure app preferences
+ * such as the tab timer display, stock auto-sync interval, and manual override of cargo capacity.
+ *
+ * @param {Object} props - The component props.
+ * @param {Object} props.userData - The current user's profile and travel data.
+ * @param {boolean} props.showTabTimer - Whether the tab timer should be visible.
+ * @param {Function} props.setShowTabTimer - Setter for the tab timer visibility.
+ * @param {boolean} props.stockAutoSync - Whether stock auto-sync is enabled.
+ * @param {Function} props.setStockAutoSync - Setter for the stock auto-sync toggle.
+ * @param {number} props.cargoCapacity - The current estimated cargo capacity.
+ * @param {Function} props.setCargoCapacity - Setter for the manual cargo capacity override.
+ * @param {boolean} props.manualOverride - Whether the user has manually overridden cargo capacity.
+ * @param {Function} props.setManualOverride - Setter for the manual override toggle.
+ * @param {Function} props.onSyncTravel - Callback to manually force a sync of the travel/cargo data from the API.
+ * @param {number} props.pollInterval - The auto-sync polling interval in seconds (0 for manual).
+ * @param {Function} props.setPollInterval - Setter for the polling interval.
+ * @returns {React.JSX.Element} The rendered settings menu component.
+ */
 const SettingsMenu = ({ 
   userData, 
   showTabTimer, 

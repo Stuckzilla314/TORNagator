@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getApiLogs, getApiCounters, clearLogs, resetLifetimeCounters, subscribeToLogs } from './apiLogger';
 
+/**
+ * Renders the API usage dashboard and diagnostics console.
+ * Displays session and lifetime counters for various external services (TORN, YATA, Firebase)
+ * and provides a live, filterable table of raw API requests and responses.
+ *
+ * @returns {React.JSX.Element} The rendered API logs view component.
+ */
 const ApiLogsView = () => {
   const [logs, setLogs] = useState(getApiLogs());
   const [counters, setCounters] = useState(getApiCounters());
@@ -17,19 +24,30 @@ const ApiLogsView = () => {
     return unsubscribe;
   }, []);
 
+  /**
+   * Prompts the user for confirmation and clears the visible session logs.
+   */
   const handleClearLogs = () => {
     if (window.confirm("Are you sure you want to clear the session console logs? This won't reset lifetime stats.")) {
       clearLogs();
     }
   };
 
+  /**
+   * Prompts the user for confirmation and resets all lifetime API usage counters.
+   */
   const handleResetLifetime = () => {
     if (window.confirm("Are you sure you want to reset all lifetime API call counters?")) {
       resetLifetimeCounters();
     }
   };
 
-  // Helper to format timestamps nicely
+  /**
+   * Helper to format a Date object into a readable HH:MM:SS.mmm string.
+   *
+   * @param {Date|string|number} dateObj - The date to format.
+   * @returns {string} The formatted time string.
+   */
   const formatTime = (dateObj) => {
     if (!dateObj) return '';
     const date = new Date(dateObj);
@@ -39,6 +57,19 @@ const ApiLogsView = () => {
     const secs = pad(date.getSeconds());
     const ms = String(date.getMilliseconds()).padStart(3, '0');
     return `${hrs}:${mins}:${secs}.${ms}`;
+  };
+
+  /**
+   * Helper to determine the color of the latency text based on its duration.
+   *
+   * @param {number} ms - The latency duration in milliseconds.
+   * @returns {string} A CSS color string.
+   */
+  const getLatencyColor = (ms) => {
+    if (!ms && ms !== 0) return '#888';
+    if (ms < 200) return '#2ecc71'; // Green
+    if (ms < 1000) return '#f39c12'; // Orange
+    return '#e74c3c'; // Red
   };
 
   // Filter logs based on search term, service, and status
@@ -51,12 +82,6 @@ const ApiLogsView = () => {
   });
 
   // Calculate latency colors
-  const getLatencyColor = (ms) => {
-    if (!ms && ms !== 0) return '#666';
-    if (ms < 200) return '#2ecc71'; // Green for fast
-    if (ms < 1000) return '#f39c12'; // Yellow for moderate
-    return '#e74c3c'; // Red for slow
-  };
 
   return (
     <div className="api-logs-container" style={{ animation: 'fadeIn 0.5s ease-in', color: '#e0e0e0', width: '100%' }}>
