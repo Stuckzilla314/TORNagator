@@ -316,13 +316,49 @@ export const QUICK_ACTION_ICONS = {
   'factions.php':      IconFolder,
 };
 
-/**
- * Returns the SVG icon component for a quick action based on its href.
- * Falls back to a generic target icon.
- */
-export const getQuickActionIcon = (href = '') => {
-  for (const [key, Icon] of Object.entries(QUICK_ACTION_ICONS)) {
-    if (href.includes(key)) return Icon;
+export const getQuickActionIcon = (href = '', label = '') => {
+  const safeHref = (href || '').toLowerCase();
+  const safeLabel = (label || '').toLowerCase();
+  const combined = `${safeHref} ${safeLabel}`;
+
+  // Define keyword-to-icon mapping for custom actions based on what user typed
+  const keywordMappings = [
+    { keywords: ['crocodile', 'alligator', 'gator', 'lizard', 'reptile', 'tornagator'], icon: IconCrocodile },
+    { keywords: ['gym', 'dumbbell', 'workout', 'train', 'exercise', 'physical'], icon: IconDumbbell },
+    { keywords: ['muscle', 'strength', 'power'], icon: IconMuscle },
+    { keywords: ['jail', 'prison', 'court', 'law', 'judge', 'scales', 'justice', 'jailed'], icon: IconScales },
+    { keywords: ['crime', 'crimes', 'mug', 'nerve', 'steal', 'rob', 'hustle', 'bolt', 'energy'], icon: IconBolt },
+    { keywords: ['attack', 'fight', 'battle', 'combat', 'war', 'swords', 'sword', 'hit', 'loader'], icon: IconSwords },
+    { keywords: ['peace'], icon: IconPeace },
+    { keywords: ['bazaar', 'shop', 'store', 'item', 'items', 'buy', 'sell'], icon: IconStore },
+    { keywords: ['market', 'imarket', 'stock', 'stocks', 'share', 'shares', 'trade', 'trading', 'chart', 'graph'], icon: IconChartUp },
+    { keywords: ['travel', 'fly', 'flight', 'plane', 'airport', 'abroad', 'overseas', 'country', 'countries'], icon: IconPlane },
+    { keywords: ['hospital', 'clinic', 'doctor', 'medical', 'heal'], icon: IconHospital },
+    { keywords: ['heart', 'life', 'hp'], icon: IconHeart },
+    { keywords: ['home', 'profile', 'main', 'index', 'base', 'house', 'estate', 'property', 'properties'], icon: IconHome },
+    { keywords: ['bank', 'deposit', 'save', 'wealth'], icon: IconBank },
+    { keywords: ['money', 'cash', 'coin', 'coins', 'points', 'point'], icon: IconCoin },
+    { keywords: ['event', 'events', 'target', 'mission', 'missions', 'quest', 'quests', 'daily', 'activity'], icon: IconTarget },
+    { keywords: ['city', 'town', 'building', 'map', 'area', 'street', 'place'], icon: IconBuilding },
+    { keywords: ['time', 'clock', 'timer', 'watch', 'date', 'schedule'], icon: IconClock },
+    { keywords: ['warning', 'alert', 'hazard', 'danger'], icon: IconWarning },
+    { keywords: ['gamepad', 'play', 'game', 'casino', 'slots', 'lottery', 'bet', 'betting', 'gamble', 'gambling', 'poker', 'wheel'], icon: IconGamepad },
+    { keywords: ['pill', 'drug', 'drugs', 'rehab', 'addict', 'addiction', 'medicine'], icon: IconPill },
+    { keywords: ['refresh', 'reload', 'cycle', 'loop', 'again'], icon: IconRefresh },
+    { keywords: ['faction', 'factions', 'clan', 'guild', 'folder'], icon: IconFolder }
+  ];
+
+  // Check the keyword mappings first to match what user typed
+  for (const mapping of keywordMappings) {
+    if (mapping.keywords.some(keyword => combined.includes(keyword))) {
+      return mapping.icon;
+    }
   }
+
+  // Fallback to the original URL-based matching logic
+  for (const [key, Icon] of Object.entries(QUICK_ACTION_ICONS)) {
+    if (safeHref.includes(key.toLowerCase())) return Icon;
+  }
+
   return IconTarget;
 };

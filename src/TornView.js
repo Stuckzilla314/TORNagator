@@ -1250,7 +1250,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                           ×
                         </button>
 
-                        {(() => { const Icon = getQuickActionIcon(action.href); return <Icon size={16} color="#888" />; })()}
+                        {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={16} color="#888" />; })()}
 
                         <input
                           type="text"
@@ -1312,7 +1312,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                         className="torn-sidebar-quicklink-btn"
                         onClick={() => navigateTo(action.href)}
                       >
-                        {(() => { const Icon = getQuickActionIcon(action.href); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
+                        {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
                         <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1 }}>{action.label}</span>
                       </button>
                     )
@@ -1346,6 +1346,32 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                             onChange={e => setNewUrl(e.target.value)}
                             style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
                           />
+
+                          {/* Live Icon & Button Preview */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '6px 8px',
+                            backgroundColor: 'rgba(255,255,255,0.02)',
+                            borderRadius: '4px',
+                            border: '1px dashed #333',
+                            marginTop: '2px'
+                          }}>
+                            <span style={{ fontSize: '0.65rem', color: '#666' }}>Preview:</span>
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                              <div className="torn-sidebar-quicklink-btn" style={{ width: '100%', minHeight: '48px', cursor: 'default', pointerEvents: 'none' }}>
+                                {(() => {
+                                  const Icon = getQuickActionIcon(newUrl, newLabel);
+                                  return <Icon size={15} color="#3498db" style={{ marginBottom: '3px' }} />;
+                                })()}
+                                <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1, color: '#fff' }}>
+                                  {newLabel.trim() || 'Preview'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
                             <button
                               onClick={() => setIsAddingNew(false)}

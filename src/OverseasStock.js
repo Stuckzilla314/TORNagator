@@ -58,6 +58,15 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [maxRoundTripMinutes, setMaxRoundTripMinutes] = useState('');
   const [maxBagCost, setMaxBagCost] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [lowCashItem, setLowCashItem] = useState(null);
+
+  const proceedToTravel = useCallback((item) => {
+    if (onOpenInTorn) {
+      onOpenInTorn('https://www.torn.com/travelagency.php', item.country);
+    } else {
+      window.open('https://www.torn.com/travelagency.php', '_blank');
+    }
+  }, [onOpenInTorn]);
   // Overrides stock quantities with the freshest value seen from Firestore history fetches.
   // Keyed as 'country_itemId' -> { quantity, timestamp }
   const [historyStockOverrides, setHistoryStockOverrides] = useState(() => {
@@ -544,14 +553,9 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     const cashOnHand = userData?.money_onhand || 0;
 
     if (cashOnHand < totalCost) {
-      const confirmed = window.confirm(`⚠️ Low on Cash! \n\nTo buy ${cargoCapacity}x ${item.name}, you need $${totalCost.toLocaleString()}.\nYou only have $${cashOnHand.toLocaleString()} on hand.\n\nDo you want to go to the Travel Agency anyway?`);
-      if (!confirmed) return;
-    }
-
-    if (onOpenInTorn) {
-      onOpenInTorn('https://www.torn.com/travelagency.php', item.country);
+      setLowCashItem(item);
     } else {
-      window.open('https://www.torn.com/travelagency.php', '_blank');
+      proceedToTravel(item);
     }
   };
 
@@ -804,6 +808,179 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           No items found for this selection.
         </div>
       )}
+
+      {/* Low Cash Warning Modal Overlay */}
+      {lowCashItem && (() => {
+        const totalCost = lowCashItem.buy_price * cargoCapacity;
+        const cashOnHand = userData?.money_onhand || 0;
+        const shortAmount = totalCost - cashOnHand;
+
+        return (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 3000,
+            padding: '20px',
+            backdropFilter: 'blur(6px)'
+          }} onClick={() => setLowCashItem(null)}>
+            <div style={{
+              background: 'linear-gradient(145deg, #2a1616 0%, #150a0a 100%)',
+              padding: '30px',
+              borderRadius: '16px',
+              border: '1px solid #e74c3c',
+              maxWidth: '480px',
+              width: '100%',
+              position: 'relative',
+              boxShadow: '0 15px 35px rgba(231, 76, 60, 0.25)',
+              animation: 'fadeIn 0.25s ease-out',
+              color: '#e0e0e0',
+              textAlign: 'center'
+            }} onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setLowCashItem(null)}
+                aria-label="Close alert"
+                style={{
+                  position: 'absolute',
+                  top: '15px',
+                  right: '15px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#888',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+              
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '15px',
+                display: 'inline-block'
+              }}>
+                ⚠️
+              </div>
+
+              <h3 style={{
+                marginTop: 0,
+                color: '#e74c3c',
+                fontSize: '1.4rem',
+                fontWeight: '800',
+                letterSpacing: '0.5px',
+                marginBottom: '20px'
+              }}>
+                Low on Cash!
+              </h3>
+
+              <div style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '25px',
+                border: '1px solid #333',
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px', borderBottom: '1px solid #2a2a2a', paddingBottom: '15px' }}>
+                  <img
+                    src={`https://www.torn.com/images/items/${lowCashItem.id}/large.png`}
+                    alt={lowCashItem.name}
+                    style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#fff' }}>{lowCashItem.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '2px' }}>Target: {lowCashItem.country}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
+                  <span style={{ color: '#aaa' }}>Required for {cargoCapacity}x:</span>
+                  <span style={{ fontWeight: 'bold', color: '#fff' }}>${totalCost.toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' }}>
+                  <span style={{ color: '#aaa' }}>Cash on Hand:</span>
+                  <span style={{ fontWeight: 'bold', color: '#e74c3c' }}>${cashOnHand.toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #2a2a2a', paddingTop: '10px', marginTop: '10px', fontSize: '0.95rem' }}>
+                  <span style={{ color: '#aaa', fontWeight: 'bold' }}>Short of:</span>
+                  <span style={{ fontWeight: 'bold', color: '#e74c3c' }}>-${shortAmount.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <p style={{ color: '#bbb', fontSize: '0.9rem', marginBottom: '25px', lineHeight: '1.5' }}>
+                You do not have enough money on hand to buy the maximum capacity of this item. Do you want to go to the Travel Agency anyway?
+              </p>
+
+              <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => setLowCashItem(null)}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    backgroundColor: 'transparent',
+                    color: '#aaa',
+                    border: '1px solid #444',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s',
+                    fontSize: '0.9rem'
+                  }}
+                  onMouseEnter={e => {
+                    e.target.style.borderColor = '#666';
+                    e.target.style.color = '#fff';
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.02)';
+                  }}
+                  onMouseLeave={e => {
+                    e.target.style.borderColor = '#444';
+                    e.target.style.color = '#aaa';
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setLowCashItem(null);
+                    proceedToTravel(lowCashItem);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 20px',
+                    backgroundColor: '#e74c3c',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s',
+                    fontSize: '0.9rem',
+                    boxShadow: '0 4px 12px rgba(231, 76, 60, 0.3)'
+                  }}
+                  onMouseEnter={e => {
+                    e.target.style.backgroundColor = '#c0392b';
+                    e.target.style.boxShadow = '0 6px 16px rgba(231, 76, 60, 0.4)';
+                  }}
+                  onMouseLeave={e => {
+                    e.target.style.backgroundColor = '#e74c3c';
+                    e.target.style.boxShadow = '0 4px 12px rgba(231, 76, 60, 0.3)';
+                  }}
+                >
+                  Go Anyway
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Stock History Popup Overlay */}
       {selectedItemForGraph && (
