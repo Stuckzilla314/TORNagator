@@ -604,3 +604,58 @@
   opacity: 1;
 }
 
+/* ── Browser Navigation Toolbar ── */
+.torn-browser-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1e1e1e;
+  border-bottom: 1px solid #2d2d2d;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.torn-browser-nav-btn {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.torn-browser-nav-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.torn-browser-nav-btn:disabled {
+  color: #444;
+  cursor: not-allowed;
+}
+
+.torn-browser-url-bar {
+  flex: 1;
+  background-color: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #bbb;
+  font-size: 0.75rem;
+  padding: 5px 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Consolas', 'Courier New', monospace;
+  user-select: all;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+

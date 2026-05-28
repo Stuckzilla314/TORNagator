@@ -5,6 +5,7 @@ import {
   IconBolt, IconDot, IconSmile, IconHeart,
   IconPlane, IconHospital, IconScales,
   IconCoin, IconWarning, IconChevronRight,
+  IconChevronLeft, IconRefresh,
   getQuickActionIcon
 } from './Icons';
 
@@ -303,6 +304,20 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [canGoForward, setCanGoForward] = useState(false);
+
+  const updateNavigationState = useCallback(() => {
+    const wv = webviewRef.current;
+    if (wv) {
+      try {
+        setCanGoBack(wv.canGoBack());
+        setCanGoForward(wv.canGoForward());
+      } catch (err) {
+        // Can fail if webview isn't fully ready
+      }
+    }
+  }, []);
 
   const trySelectCountry = useCallback((attempt = 1) => {
     const wv = webviewRef.current;
@@ -424,6 +439,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         return;
       }
       onUpdate(tab.id, { url: e.url });
+      updateNavigationState();
     };
     const handleTitle = (e) => onUpdate(tab.id, { title: e.title });
     const handleConsole = (e) => {
@@ -435,16 +451,18 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
     wv.addEventListener('did-navigate', handleNavigate);
     wv.addEventListener('did-navigate-in-page', handleNavigate);
+    wv.addEventListener('did-stop-loading', updateNavigationState);
     wv.addEventListener('page-title-updated', handleTitle);
     wv.addEventListener('console-message', handleConsole);
 
     return () => {
       wv.removeEventListener('did-navigate', handleNavigate);
       wv.removeEventListener('did-navigate-in-page', handleNavigate);
+      wv.removeEventListener('did-stop-loading', updateNavigationState);
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tab.id, onUpdate]);
+  }, [tab.id, onUpdate, updateNavigationState]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -540,6 +558,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
 
     const handleDomReady = () => {
+      updateNavigationState();
       wv.insertCSS(`
         [class*="swiper-slide"][class*="slide___"] {
           width: 60px !important;
@@ -673,7 +692,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     return () => {
       wv.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [isActive, targetCountry, trySelectCountry]);
+  }, [isActive, targetCountry, trySelectCountry, updateNavigationState]);
 
   useEffect(() => {
     const wv = webviewRef.current;
@@ -972,16 +991,81 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     return () => clearInterval(profitInterval);
   }, [isActive, itemsData, cargoCapacity, apiKey]);
 
+  const handleGoBack = () => {
+    const wv = webviewRef.current;
+    if (wv && wv.canGoBack()) {
+      wv.goBack();
+      updateNavigationState();
+    }
+  };
+
+  const handleGoForward = () => {
+    const wv = webviewRef.current;
+    if (wv && wv.canGoForward()) {
+      wv.goForward();
+      updateNavigationState();
+    }
+  };
+
+  const handleReload = () => {
+    const wv = webviewRef.current;
+    if (wv) {
+      wv.reload();
+      updateNavigationState();
+    }
+  };
+
   return (
-    <webview
-      ref={webviewRef}
-      src={initialUrlRef.current}
-      useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-      title={tab.title}
-      className="torn-iframe"
-      allowpopups="true"
-      style={{ display: isActive ? 'flex' : 'none', flex: 1, height: '100%', width: '100%' }}
-    />
+    <div style={{ display: isActive ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0 }}>
+      {/* Navigation Toolbar */}
+      <div className="torn-browser-toolbar">
+        <button
+          className="torn-browser-nav-btn"
+          onClick={handleGoBack}
+          disabled={!canGoBack}
+          title="Back"
+          aria-label="Back"
+        >
+          <IconChevronLeft size={16} />
+        </button>
+        <button
+          className="torn-browser-nav-btn"
+          onClick={handleGoForward}
+          disabled={!canGoForward}
+          title="Forward"
+          aria-label="Forward"
+        >
+          <IconChevronRight size={16} />
+        </button>
+        <button
+          className="torn-browser-nav-btn"
+          onClick={handleReload}
+          title="Reload"
+          aria-label="Reload"
+        >
+          <IconRefresh size={16} />
+        </button>
+        <input
+          type="text"
+          className="torn-browser-url-bar"
+          value={tab.url}
+          readOnly
+          onClick={(e) => e.target.select()}
+          title="Click to select/copy URL"
+        />
+      </div>
+
+      <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+        <webview
+          ref={webviewRef}
+          src={initialUrlRef.current}
+          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+          title={tab.title}
+          className="torn-iframe"
+          allowpopups="true"
+        />
+      </div>
+    </div>
   );
 };
 
