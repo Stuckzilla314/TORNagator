@@ -234,8 +234,12 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [cachedAt, setCachedAt] = useState(() => cachedData?.fetchedAt || null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortBy, setSortBy] = useState(() => {
+    return localStorage.getItem('tornagator_faction_sort_by') || 'default';
+  });
+  const [sortOrder, setSortOrder] = useState(() => {
+    return localStorage.getItem('tornagator_faction_sort_order') || 'desc';
+  });
   const [importedStats, setImportedStats] = useState({});
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
 
@@ -263,6 +267,15 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   useEffect(() => {
     localStorage.setItem('tornagator_faction_active_subtab', activeSubTab);
   }, [activeSubTab]);
+
+  // Save sort selection and order to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_sort_by', sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_sort_order', sortOrder);
+  }, [sortOrder]);
 
   // Load targets if starting on the targets tab and they aren't loaded yet
   useEffect(() => {
