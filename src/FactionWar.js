@@ -194,7 +194,9 @@ const parseSuspectedStats = (text) => {
 };
 
 const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
-  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    return localStorage.getItem('tornagator_faction_active_subtab') || 'overview';
+  });
   const [compareMode, setCompareMode] = useState(false);
   const [enemyFactionData, setEnemyFactionData] = useState(null);
   const [memberProfiles, setMemberProfiles] = useState({});
@@ -238,6 +240,19 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
       sessionStorage.removeItem(cacheKey);
     }
   }, [cacheKey]);
+
+  // Save active subtab to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_active_subtab', activeSubTab);
+  }, [activeSubTab]);
+
+  // Load targets if starting on the targets tab and they aren't loaded yet
+  useEffect(() => {
+    if (activeSubTab === 'targets' && !enemyFactionData && !isLoadingTargets && firstEnemyFactionId && apiKey) {
+      doFetchTargets();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
 
   // Load suspected stats from localStorage when target faction ID changes
   useEffect(() => {
