@@ -10,7 +10,9 @@ const SettingsMenu = ({
   setCargoCapacity, 
   manualOverride, 
   setManualOverride, 
-  onSyncTravel 
+  onSyncTravel,
+  pollInterval,
+  setPollInterval
 }) => {  
 
   return (
@@ -69,6 +71,38 @@ const SettingsMenu = ({
           onChange={(e) => setStockAutoSync(e.target.checked)}
           style={{ cursor: 'pointer' }}
         />
+      </label>
+      
+      <label 
+        style={{
+          padding: '8px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: '4px',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <span style={{ fontSize: '0.9rem' }}>Dashboard Poll</span>
+        <select
+          value={pollInterval}
+          onChange={(e) => setPollInterval(parseInt(e.target.value, 10))}
+          style={{
+            backgroundColor: '#2b2b2b',
+            color: '#fff',
+            border: '1px solid #444',
+            borderRadius: '4px',
+            padding: '2px 4px',
+            fontSize: '0.8rem',
+            cursor: 'pointer'
+          }}
+        >
+          <option value={30}>30s</option>
+          <option value={60}>1m</option>
+          <option value={120}>2m</option>
+          <option value={300}>5m</option>
+          <option value={0}>Manual Only</option>
+        </select>
       </label>
 
       <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px' }}>

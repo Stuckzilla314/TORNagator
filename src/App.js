@@ -55,7 +55,8 @@ function useLocalStorage(key, initialValue) {
       'torn_api_key', 'active_tab', 'show_tab_timer',
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
       'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
-      'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase'
+      'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase',
+      'dashboard_poll_interval'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -85,7 +86,8 @@ function App() {
       'torn_view_url',
       'tornagator_lifetime_torn',
       'tornagator_lifetime_yata',
-      'tornagator_lifetime_firebase'
+      'tornagator_lifetime_firebase',
+      'dashboard_poll_interval'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -133,6 +135,7 @@ function App() {
   }, [setActiveTab]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
+  const [pollInterval, setPollInterval] = useLocalStorage('dashboard_poll_interval', 30);
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
   const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
@@ -267,8 +270,8 @@ function App() {
     let lastFetchTime = Date.now();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        if (Date.now() - lastFetchTime >= 29000) {
+      if (document.visibilityState === 'visible' && pollInterval > 0) {
+        if (Date.now() - lastFetchTime >= (pollInterval * 1000 - 1000)) {
           loadDashboardData(false);
           lastFetchTime = Date.now();
         }
@@ -284,20 +287,22 @@ function App() {
 
       document.addEventListener('visibilitychange', handleVisibilityChange);
 
-      interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          if (Date.now() - lastFetchTime >= 29000) {
-            loadDashboardData(false);
-            lastFetchTime = Date.now();
+      if (pollInterval > 0) {
+        interval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            if (Date.now() - lastFetchTime >= (pollInterval * 1000 - 1000)) {
+              loadDashboardData(false);
+              lastFetchTime = Date.now();
+            }
           }
-        }
-      }, 30000);
+        }, Math.max(10000, pollInterval * 1000));
+      }
     }
     return () => {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [apiKey, loadDashboardData]);
+  }, [apiKey, loadDashboardData, pollInterval]);
 
   // Fetch faction data whenever the faction tab is activated
   useEffect(() => {
@@ -563,6 +568,8 @@ function App() {
               manualOverride={manualOverride}
               setManualOverride={setManualOverride}
               onSyncTravel={syncTravelData}
+              pollInterval={pollInterval}
+              setPollInterval={setPollInterval}
             />
           )}
         </div>
