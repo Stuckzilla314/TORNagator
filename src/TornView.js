@@ -1364,7 +1364,7 @@ const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
           Profile
         </button>
         <button
-          onClick={() => navigateTo(`https://www.torn.com/loader.php?sid=attack&user2ID=${member.id}`)}
+          onClick={() => navigateTo(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`)}
           style={{
             flex: 1,
             backgroundColor: 'rgba(231, 76, 60, 0.15)',
@@ -1470,6 +1470,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   });
 
   const [isLoadingTargets, setIsLoadingTargets] = useState(false);
+  const [isSyncingTargets, setIsSyncingTargets] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
   const [errorTargets, setErrorTargets] = useState(null);
 
@@ -1479,6 +1480,21 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [sortOrder, setSortOrder] = useState(() => {
     return localStorage.getItem('tornagator_faction_sort_order') || 'desc';
   });
+
+  const [syncInterval, setSyncInterval] = useState(() => {
+    try {
+      const cached = localStorage.getItem('tornagator_faction_sync_interval');
+      return cached !== null ? Number(cached) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tornagator_faction_sync_interval', syncInterval);
+    } catch (e) {}
+  }, [syncInterval]);
 
   const [compareMode, setCompareMode] = useState(false);
 
@@ -1603,19 +1619,24 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const handleForceRefresh = () => {
     if (loadFactionData) loadFactionData();
     if (cacheKey) sessionStorage.removeItem(cacheKey);
-    doFetchTargets();
+    doFetchTargets(false);
   };
 
-  const doFetchTargets = useCallback(async () => {
+  const doFetchTargets = useCallback(async (silent = false) => {
     if (!enemyFactionId || !apiKey) return;
-    setIsLoadingTargets(true);
-    setErrorTargets(null);
-    setMemberProfiles({});
+    if (silent) {
+      setIsSyncingTargets(true);
+    } else {
+      setIsLoadingTargets(true);
+      setErrorTargets(null);
+      setMemberProfiles({});
+    }
     try {
       const data = await fetchFactionById(apiKey, enemyFactionId);
-      setEnemyFactionData(data);
       const memberIds = Object.keys(data.members || {});
-      setLoadingProgress({ done: 0, total: memberIds.length });
+      if (!silent) {
+        setLoadingProgress({ done: 0, total: memberIds.length });
+      }
       const BATCH_SIZE = 5;
       const profiles = {};
       for (let i = 0; i < memberIds.length; i += BATCH_SIZE) {
@@ -1632,11 +1653,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
             profiles[result.value.id] = result.value.pData;
           }
         });
-        setLoadingProgress({ done: Math.min(i + BATCH_SIZE, memberIds.length), total: memberIds.length });
+        if (!silent) {
+          setLoadingProgress({ done: Math.min(i + BATCH_SIZE, memberIds.length), total: memberIds.length });
+        }
         if (i + BATCH_SIZE < memberIds.length) {
           await new Promise(res => setTimeout(res, 350));
         }
       }
+      setEnemyFactionData(data);
       setMemberProfiles(profiles);
       const fetchedAt = Date.now();
       setCachedAt(fetchedAt);
@@ -1648,18 +1672,37 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
         }
       }
     } catch (err) {
-      setErrorTargets('Failed to fetch targets.');
+      if (!silent) {
+        setErrorTargets('Failed to fetch targets.');
+      }
     } finally {
-      setIsLoadingTargets(false);
+      if (silent) {
+        setIsSyncingTargets(false);
+      } else {
+        setIsLoadingTargets(false);
+      }
     }
   }, [enemyFactionId, apiKey, cacheKey]);
 
   // Auto-fetch targets on tab switch to war sidebar if not cached
   useEffect(() => {
-    if (sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && enemyFactionId && apiKey) {
-      doFetchTargets();
+    if (sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+      doFetchTargets(false);
     }
-  }, [sidebarTab, enemyFactionData, isLoadingTargets, enemyFactionId, apiKey, doFetchTargets]);
+  }, [sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
+
+  // Auto-sync timer effect
+  useEffect(() => {
+    if (syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
+
+    const intervalId = setInterval(() => {
+      if (!isLoadingTargets && !isSyncingTargets) {
+        doFetchTargets(true);
+      }
+    }, syncInterval * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
@@ -2506,14 +2549,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                         <button
                           onClick={handleForceRefresh}
-                          disabled={isLoadingTargets}
+                          disabled={isLoadingTargets || isSyncingTargets}
                           style={{
                             background: 'transparent',
                             border: '1px solid #444',
                             borderRadius: '20px',
                             padding: '3px 8px',
-                            cursor: isLoadingTargets ? 'not-allowed' : 'pointer',
-                            color: isLoadingTargets ? '#666' : '#3498db',
+                            cursor: (isLoadingTargets || isSyncingTargets) ? 'not-allowed' : 'pointer',
+                            color: (isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db',
                             fontWeight: 'bold',
                             fontSize: '0.68rem',
                             transition: 'all 0.2s',
@@ -2522,7 +2565,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                             gap: '4px'
                           }}
                         >
-                          <IconRefresh size={10} color={isLoadingTargets ? '#666' : '#3498db'} />
+                          <IconRefresh
+                            size={10}
+                            color={(isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db'}
+                            className={isSyncingTargets ? 'spin-animation' : ''}
+                          />
                         </button>
                       </div>
 
@@ -2624,6 +2671,30 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               {compareMode ? 'ON' : 'OFF'}
                             </span>
                           </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>AUTO SYNC:</span>
+                          <select
+                            value={syncInterval}
+                            onChange={(e) => setSyncInterval(Number(e.target.value))}
+                            style={{
+                              backgroundColor: '#111',
+                              border: '1px solid #333',
+                              borderRadius: '4px',
+                              color: '#fff',
+                              padding: '2px 4px',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                          >
+                            <option value={0}>Off</option>
+                            <option value={30}>30s</option>
+                            <option value={60}>1m</option>
+                            <option value={120}>2m</option>
+                            <option value={300}>5m</option>
+                          </select>
                         </div>
 
                         {/* Import Suspected Stats Trigger */}

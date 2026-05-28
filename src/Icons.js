@@ -677,6 +677,7 @@ export const QUICK_ACTION_ICONS = {
   'gym.php':           IconDumbbell,
   'crimes.php':        IconBolt,
   'loader.php':        IconSwords,       // attack
+  'sid=attack':        IconSwords,       // attack
   'imarket.php':       IconItemMarket,   // Item Market
   'travelagency.php':  IconPlane,
   'events.php':        IconTarget,
