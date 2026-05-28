@@ -201,11 +201,17 @@ function App() {
   // Fetch Faction data — only called on-demand when visiting the Faction War tab
   const loadFactionData = useCallback(async () => {
     if (!apiKey) return;
+    console.log('[TORNagator] loadFactionData triggered...');
     try {
       const faction = await fetchFactionData(apiKey);
-      if (faction && !faction.error) setFactionData(faction);
+      console.log('[TORNagator] fetchFactionData returned:', faction);
+      if (faction && !faction.error) {
+        setFactionData(faction);
+      } else {
+        console.warn('[TORNagator] Faction fetch returned error:', faction?.error);
+      }
     } catch (err) {
-      console.warn("Faction data fetch failed", err);
+      console.warn("[TORNagator] Faction data fetch failed", err);
     }
   }, [apiKey]);
 
@@ -354,9 +360,9 @@ function App() {
     };
   }, [apiKey, loadDashboardData, pollInterval]);
 
-  // Fetch faction data whenever the faction tab is activated
+  // Fetch faction data whenever the faction or torn tab is activated
   useEffect(() => {
-    if (apiKey && activeTab === 'faction') {
+    if (apiKey && (activeTab === 'faction' || activeTab === 'torn')) {
       if (!hasFactionSyncRun.current) {
         hasFactionSyncRun.current = true;
         loadFactionData();
@@ -673,6 +679,8 @@ function App() {
             ) : activeTab === 'torn' ? (
               <TornView 
                 userData={userData} 
+                factionData={factionData}
+                loadFactionData={loadFactionData}
                 apiKey={apiKey} 
                 requestedUrl={requestedUrl} 
                 setRequestedUrl={setRequestedUrl}

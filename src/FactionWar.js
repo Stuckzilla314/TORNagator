@@ -195,7 +195,7 @@ const parseSuspectedStats = (text) => {
 
 const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   // Derive war state from factionData (safe to do before the guard — factionData may be null)
-  const rankedWars = factionData?.ranked_wars || {};
+  const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
   const activeWars = Object.values(rankedWars);
   const isInWar = activeWars.length > 0;
 
