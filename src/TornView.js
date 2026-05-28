@@ -1671,7 +1671,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
           </button>
 
           {!sidebarCollapsed && (
-            <div className="torn-sidebar-inner">
+            <div className={`torn-sidebar-inner ${sidebarTab === 'war' ? 'war-tab-active' : ''}`}>
               {/* Player header */}
               <div className="torn-sidebar-header">
                 <div className="torn-sidebar-avatar">
@@ -2138,7 +2138,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   </div>
                 </>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: 0 }}>
                   {!enemyFactionId ? (
                     <div style={{ padding: '12px', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed #444' }}>
                       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
@@ -2441,7 +2441,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                       ) : errorTargets ? (
                         <div style={{ color: '#e74c3c', textAlign: 'center', fontSize: '0.75rem', padding: '10px 0' }}>{errorTargets}</div>
                       ) : enemyFactionData && enemyFactionData.members ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
                           {(() => {
                             const sortedMembers = Object.entries(enemyFactionData.members)
                               .map(([id, member]) => {

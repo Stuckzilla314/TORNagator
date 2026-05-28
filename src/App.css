@@ -253,6 +253,10 @@
   scrollbar-color: #333 transparent;
 }
 
+.torn-sidebar-inner.war-tab-active {
+  overflow-y: hidden;
+}
+
 .torn-sidebar-inner::-webkit-scrollbar { width: 4px; }
 .torn-sidebar-inner::-webkit-scrollbar-track { background: transparent; }
 .torn-sidebar-inner::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
