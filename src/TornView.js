@@ -1231,6 +1231,42 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   const [compareMode, setCompareMode] = useState(false);
 
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const cached = localStorage.getItem('tornagator_sidebar_width');
+    return cached ? parseInt(cached, 10) : 300;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((e) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 220 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+        localStorage.setItem('tornagator_sidebar_width', newWidth);
+      }
+    }
+  }, [isResizing]);
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResizing);
+    }
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [isResizing, resize, stopResizing]);
+
   const [importedStats, setImportedStats] = useState({});
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -1576,6 +1612,20 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   return (
     <div className="torn-view-root" style={{ height: '100%', flex: 1, minHeight: 0 }}>
+      {isResizing && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 99999,
+            cursor: 'ew-resize',
+            backgroundColor: 'transparent'
+          }}
+        />
+      )}
 
       {/* ── Main Layout ──────────────────────────────────────────────── */}
       <div className="torn-main-layout">
@@ -1658,7 +1708,31 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
         </div>
 
         {/* ── Sidebar ──────────────────────────────────────────────── */}
-        <aside className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>
+        <aside 
+          className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}
+          style={{
+            width: sidebarCollapsed ? '0px' : `${sidebarWidth}px`,
+            transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        >
+          {/* Resize handle */}
+          {!sidebarCollapsed && (
+            <div
+              onMouseDown={startResizing}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '-3px',
+                width: '6px',
+                bottom: 0,
+                cursor: 'ew-resize',
+                zIndex: 100,
+                backgroundColor: isResizing ? 'rgba(52, 152, 219, 0.5)' : 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+            />
+          )}
+
           {/* Collapse toggle */}
           <button
             className="torn-sidebar-toggle"
