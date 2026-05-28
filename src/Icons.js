@@ -299,13 +299,377 @@ export const IconMuscle = ({ size = 16, color = 'currentColor', style, className
   </svg>
 );
 
+export const IconGraduationCap = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+  </svg>
+);
+
+export const IconGavel = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="m14 13-8.3 8.3c-.8.8-2 .8-2.8 0a2 2 0 0 1 0-2.8L11.2 10m3.3-3.3 4.2 4.2M16 2l6 6M10.8 7.2l6 6"/>
+  </svg>
+);
+
+export const IconChurch = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M12 22V10l-8 4v8h16v-8l-8-4z"/>
+    <path d="M12 10V4"/>
+    <path d="M10 6h4M12 4v4"/>
+    <path d="M10 22v-4a2 2 0 0 1 4 0v4"/>
+  </svg>
+);
+
+export const IconCasino = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <rect x="2" y="6" width="10" height="10" rx="2"/>
+    <circle cx="5" cy="9" r="1" fill="currentColor"/>
+    <circle cx="9" cy="13" r="1" fill="currentColor"/>
+    <rect x="12" y="8" width="10" height="10" rx="2"/>
+    <circle cx="15" cy="11" r="1" fill="currentColor"/>
+    <circle cx="17" cy="13" r="1" fill="currentColor"/>
+    <circle cx="19" cy="15" r="1" fill="currentColor"/>
+  </svg>
+);
+
+export const IconDump = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M3 6h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/>
+    <path d="M3 6l4-3h10l4 3"/>
+    <line x1="8" y1="10" x2="8" y2="15"/>
+    <line x1="12" y1="10" x2="12" y2="15"/>
+    <line x1="16" y1="10" x2="16" y2="15"/>
+  </svg>
+);
+
+export const IconLoanShark = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M2 20c3-1.5 5-1.5 8 0s5 1.5 8 0 5-1.5 8 0"/>
+    <path d="M7 19c2-5 6-9 10-9-1.5 3-1.5 6-3 9H7z"/>
+    <path d="M18 5h-4a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4h-4"/>
+    <path d="M16 3v12"/>
+  </svg>
+);
+
+export const IconRaceway = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M4 22V2m0 3c5-1.5 8 1.5 16 0v8c-8 1.5-11-1.5-16 0"/>
+    <path d="M8 4v8M12 3v8M16 4v8"/>
+  </svg>
+);
+
+export const IconEstateAgents = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <path d="M9 22V12h6v10"/>
+    <path d="M12 5v2"/>
+  </svg>
+);
+
+export const IconPrivateIsland = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M2 20c5-2 15-2 20 0"/>
+    <path d="M8 20c1-4 3-7 6-9"/>
+    <path d="M14 11c-2-3-5-3-5-3s3 3 5 3zm0 0c0-4 3-5 3-5s-1 4-3 5zm0 0c3-2 6-1 6-1s-4 2-6 1z"/>
+  </svg>
+);
+
+export const IconPointsBuilding = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <path d="M9 14V8h3.5a2 2 0 0 1 0 4H9"/>
+  </svg>
+);
+
+export const IconPointsMarket = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M10 14V8h2.5a2 2 0 0 1 0 4H10"/>
+  </svg>
+);
+
+export const IconItemMarket = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M12 3v18M3 6h18M6 6v6a6 6 0 0 0 12 0V6"/>
+    <path d="M3 10a3 3 0 0 0 6 0M15 10a3 3 0 0 0 6 0"/>
+  </svg>
+);
+
+export const IconCityHall = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M4 22h16M6 14v8M18 22v-8M12 6V3M9 6h6M12 6a4 4 0 0 0-4 4v4h8v-4a4 4 0 0 0-4-4zM2 22h20"/>
+  </svg>
+);
+
+export const IconPawnShop = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <circle cx="12" cy="7" r="3"/>
+    <circle cx="7" cy="15" r="3"/>
+    <circle cx="17" cy="15" r="3"/>
+    <line x1="12" y1="10" x2="9" y2="13"/>
+    <line x1="12" y1="10" x2="15" y2="13"/>
+    <line x1="9" y1="15" x2="15" y2="15"/>
+  </svg>
+);
+
+export const IconRecycling = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M7 11H2V6M21 13h-5v5M14 3h5v5"/>
+    <path d="M3.5 18.5a9 9 0 0 0 15.3-3.5M20.5 5.5a9 9 0 0 0-15.3 3.5M12 21a9 9 0 0 1-8.5-6"/>
+  </svg>
+);
+
+export const IconGun = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M19 11H8l-1.5-3h11a1.5 1.5 0 0 1 1.5 1.5V11z"/>
+    <path d="M9 11v6a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1v-7"/>
+    <path d="M9 13h3v2H9z"/>
+  </svg>
+);
+
+export const IconCyberForce = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+    <circle cx="12" cy="12" r="3"/>
+    <line x1="12" y1="5" x2="12" y2="9"/>
+    <line x1="12" y1="15" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="9" y2="12"/>
+    <line x1="15" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+export const IconClothing = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M20.38 3.46L16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2L3.62 3.46a1 1 0 0 0-1.34.45L.38 7.54a1 1 0 0 0 .45 1.34L4 10.5V20a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10.5l3.17-1.62a1 1 0 0 0 .45-1.34l-1.9-3.63a1 1 0 0 0-1.34-.45z"/>
+  </svg>
+);
+
+export const IconStaff = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <polygon points="12 2 15 8 22 9 17 14 18.5 21 12 17.5 5.5 21 7 14 2 9 9 8 12 2"/>
+    <circle cx="12" cy="11" r="2"/>
+  </svg>
+);
+
+export const IconNewspaper = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+    <path d="M18 14h-8M18 18h-8M16 6H10v4h6V6Z"/>
+  </svg>
+);
+
+export const IconJail = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <path d="M7 3v18M11 3v18M15 3v18M19 3v18M3 12h18"/>
+  </svg>
+);
+
+export const IconMuseum = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="m2 9 10-6 10 6M4 21V9M20 21V9M8 21V12M12 21V12M16 21V12M1 21h22"/>
+  </svg>
+);
+
+export const IconUsers = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+export const IconStar = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+  </svg>
+);
+
+export const IconMessageSquare = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+);
+
+export const IconCrosshair = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="22" y1="12" x2="18" y2="12"/>
+    <line x1="6" y1="12" x2="2" y2="12"/>
+    <line x1="12" y1="6" x2="12" y2="2"/>
+    <line x1="12" y1="22" x2="12" y2="18"/>
+  </svg>
+);
+
+export const IconBox = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+    <line x1="12" y1="22.08" x2="12" y2="12"/>
+  </svg>
+);
+
+export const IconCpu = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <path d="M9 9h6v6H9zm0-5V2m6 2V2m-9 18v2m6-2v2M4 9H2m2 6H2m18-6h2m-2 6h2"/>
+  </svg>
+);
+
+export const IconAnchor = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <circle cx="12" cy="5" r="3"/>
+    <line x1="12" y1="8" x2="12" y2="22"/>
+    <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+    <circle cx="5" cy="12" r="1"/>
+    <circle cx="19" cy="12" r="1"/>
+  </svg>
+);
+
+export const IconGem = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M6 3h12l4 6-10 12L2 9z"/>
+    <path d="M11 3 8 9l4 12 4-12-3-6"/>
+    <path d="M2 9h20"/>
+  </svg>
+);
+
+export const IconTag = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M20.59 13.41 12 4.83a2 2 0 0 0-1.41-.59H4v6.59a2 2 0 0 0 .59 1.41l8.59 8.59a2 2 0 0 0 2.83 0l6.59-6.59a2 2 0 0 0 0-2.83z"/>
+    <line x1="7" y1="7" x2="7.01" y2="7" strokeWidth="3" strokeLinecap="round"/>
+  </svg>
+);
+
+export const IconMail = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+);
+
+export const IconPrinter = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <polyline points="6 9 6 2 18 2 18 9"/>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+    <rect x="6" y="14" width="12" height="8"/>
+  </svg>
+);
+
+export const IconTrash = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <line x1="10" y1="11" x2="10" y2="17"/>
+    <line x1="14" y1="11" x2="14" y2="17"/>
+  </svg>
+);
+
+export const IconShoppingBag = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <path d="M16 10a4 4 0 0 1-8 0"/>
+  </svg>
+);
+
+export const IconInfo = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="16" x2="12" y2="12"/>
+    <line x1="12" y1="8" x2="12.01" y2="8"/>
+  </svg>
+);
+
+export const IconCandy = ({ size = 16, color = 'currentColor', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="5"/>
+    <path d="m15.5 8.5 4.5-4.5h3v3l-4.5 4.5M8.5 15.5l-4.5 4.5H1v-3l4.5-4.5"/>
+  </svg>
+);
+
 // ── Quick Action href→icon lookup map ─────────────────────────────────────────
 
 export const QUICK_ACTION_ICONS = {
   'gym.php':           IconDumbbell,
   'crimes.php':        IconBolt,
   'loader.php':        IconSwords,       // attack
-  'imarket.php':       IconChartUp,
+  'imarket.php':       IconItemMarket,   // Item Market
   'travelagency.php':  IconPlane,
   'events.php':        IconTarget,
   'bazaar.php':        IconStore,
@@ -314,6 +678,28 @@ export const QUICK_ACTION_ICONS = {
   'city.php':          IconBuilding,
   'bank.php':          IconBank,
   'factions.php':      IconFolder,
+  'casino.php':        IconCasino,       // Casino
+  'dump.php':          IconDump,         // Dump
+  'church.php':        IconChurch,       // Church
+  'education.php':     IconGraduationCap,// Education
+  'amarket.php':       IconGavel,        // Auction House
+  'loanshark.php':     IconLoanShark,    // Loan Shark
+  'properties.php':    IconEstateAgents, // Estate Agent
+  'museum.php':        IconMuseum,       // Museum
+  'pawnshop.php':      IconPawnShop,     // Pawn Shop
+  'recycling.php':     IconRecycling,    // Recycling Center
+  'points.php':        IconPointsBuilding,
+  'step=gunshop':      IconGun,
+  'step=cyberforce':   IconCyberForce,
+  'step=docks':        IconAnchor,
+  'step=jewelry':      IconGem,
+  'step=pharmacy':     IconPill,
+  'step=postoffice':   IconMail,
+  'step=printshop':    IconPrinter,
+  'step=superstore':   IconShoppingBag,
+  'step=sweetshop':    IconCandy,
+  'step=clothing':     IconClothing,
+  'step=bitsnbobs':    IconBox,
 };
 
 export const getQuickActionIcon = (href = '', label = '') => {
@@ -321,12 +707,17 @@ export const getQuickActionIcon = (href = '', label = '') => {
   const safeLabel = (label || '').toLowerCase();
   const combined = `${safeHref} ${safeLabel}`;
 
-  // Define keyword-to-icon mapping for custom actions based on what user typed
+  // 1. Check exact/partial URL-based matching first
+  for (const [key, Icon] of Object.entries(QUICK_ACTION_ICONS)) {
+    if (safeHref.includes(key.toLowerCase())) return Icon;
+  }
+
+  // 2. Define keyword-to-icon mapping for custom actions based on what user typed
   const keywordMappings = [
     { keywords: ['crocodile', 'alligator', 'gator', 'lizard', 'reptile', 'tornagator'], icon: IconCrocodile },
     { keywords: ['gym', 'dumbbell', 'workout', 'train', 'exercise', 'physical'], icon: IconDumbbell },
     { keywords: ['muscle', 'strength', 'power'], icon: IconMuscle },
-    { keywords: ['jail', 'prison', 'court', 'law', 'judge', 'scales', 'justice', 'jailed'], icon: IconScales },
+    { keywords: ['jail', 'prison', 'court', 'law', 'judge', 'scales', 'justice', 'jailed'], icon: IconJail },
     { keywords: ['crime', 'crimes', 'mug', 'nerve', 'steal', 'rob', 'hustle', 'bolt', 'energy'], icon: IconBolt },
     { keywords: ['attack', 'fight', 'battle', 'combat', 'war', 'swords', 'sword', 'hit', 'loader'], icon: IconSwords },
     { keywords: ['peace'], icon: IconPeace },
@@ -342,22 +733,42 @@ export const getQuickActionIcon = (href = '', label = '') => {
     { keywords: ['city', 'town', 'building', 'map', 'area', 'street', 'place'], icon: IconBuilding },
     { keywords: ['time', 'clock', 'timer', 'watch', 'date', 'schedule'], icon: IconClock },
     { keywords: ['warning', 'alert', 'hazard', 'danger'], icon: IconWarning },
-    { keywords: ['gamepad', 'play', 'game', 'casino', 'slots', 'lottery', 'bet', 'betting', 'gamble', 'gambling', 'poker', 'wheel'], icon: IconGamepad },
+    { keywords: ['gamepad', 'play', 'game', 'slots', 'lottery', 'bet', 'betting', 'gamble', 'gambling', 'poker', 'wheel'], icon: IconGamepad },
+    { keywords: ['casino'], icon: IconCasino },
+    { keywords: ['dump'], icon: IconDump },
     { keywords: ['pill', 'drug', 'drugs', 'rehab', 'addict', 'addiction', 'medicine'], icon: IconPill },
     { keywords: ['refresh', 'reload', 'cycle', 'loop', 'again'], icon: IconRefresh },
-    { keywords: ['faction', 'factions', 'clan', 'guild', 'folder'], icon: IconFolder }
+    { keywords: ['faction', 'factions', 'clan', 'guild', 'folder'], icon: IconFolder },
+    { keywords: ['education', 'study', 'class', 'learn', 'degree', 'university', 'college', 'course', 'courses'], icon: IconGraduationCap },
+    { keywords: ['auction', 'gavel', 'bid', 'bids'], icon: IconGavel },
+    { keywords: ['church', 'cross', 'god', 'pray', 'religion'], icon: IconChurch },
+    { keywords: ['chronicle', 'archives', 'newspaper', 'news', 'press'], icon: IconNewspaper },
+    { keywords: ['museum'], icon: IconMuseum },
+    { keywords: ['community', 'center', 'users', 'staff', 'committee', 'hall', 'city hall'], icon: IconUsers },
+    { keywords: ['donator', 'star', 'crown'], icon: IconStar },
+    { keywords: ['message', 'messaging', 'mail', 'send', 'post', 'post office'], icon: IconMail },
+    { keywords: ['gun', 'guns', 'ammo', 'weapon', 'weapons', 'pistol', 'armory', 'crosshair', 'shoot'], icon: IconGun },
+    { keywords: ['bobs', 'bits', 'gift', 'box', 'package'], icon: IconBox },
+    { keywords: ['cyber', 'force', 'cpu', 'hacking', 'terminal', 'tech'], icon: IconCyberForce },
+    { keywords: ['dock', 'docks', 'anchor', 'ship', 'boat', 'harbor', 'port'], icon: IconAnchor },
+    { keywords: ['jewelry', 'jewel', 'gem', 'diamond', 'ring'], icon: IconGem },
+    { keywords: ['pawn', 'tag', 'tags', 'label'], icon: IconPawnShop },
+    { keywords: ['clothing', 'tc clothing', 'shirt', 'clothes'], icon: IconClothing },
+    { keywords: ['printer', 'print'], icon: IconPrinter },
+    { keywords: ['recycling', 'recycle', 'trash'], icon: IconRecycling },
+    { keywords: ['super', 'super store', 'bag'], icon: IconShoppingBag },
+    { keywords: ['sweet', 'sweets', 'candy', 'cookie', 'chocolate'], icon: IconCandy },
+    { keywords: ['visitor', 'info', 'guide'], icon: IconInfo },
+    { keywords: ['loan', 'loanshark', 'shark'], icon: IconLoanShark },
+    { keywords: ['raceway', 'race', 'racing'], icon: IconRaceway },
+    { keywords: ['island'], icon: IconPrivateIsland }
   ];
 
-  // Check the keyword mappings first to match what user typed
+  // Check the keyword mappings to match what user typed
   for (const mapping of keywordMappings) {
     if (mapping.keywords.some(keyword => combined.includes(keyword))) {
       return mapping.icon;
     }
-  }
-
-  // Fallback to the original URL-based matching logic
-  for (const [key, Icon] of Object.entries(QUICK_ACTION_ICONS)) {
-    if (safeHref.includes(key.toLowerCase())) return Icon;
   }
 
   return IconTarget;
