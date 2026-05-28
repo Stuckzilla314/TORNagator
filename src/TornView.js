@@ -2013,6 +2013,16 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     return localStorage.getItem('tornagator_faction_sort_order') || 'desc';
   });
 
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return localStorage.getItem('tornagator_faction_status_filter') || 'all';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tornagator_faction_status_filter', statusFilter);
+    } catch (e) {}
+  }, [statusFilter]);
+
   const [syncInterval, setSyncInterval] = useState(() => {
     try {
       const cached = localStorage.getItem('tornagator_faction_sync_interval');
@@ -3345,7 +3355,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                         </div>
                         {isControlsCollapsed && (
                           <span style={{ fontSize: '0.65rem', color: '#666' }}>
-                            Sort: {sortBy} • Auto Sync: {syncInterval > 0 ? `${syncInterval}s` : 'Off'}
+                            Sort: {sortBy} {statusFilter !== 'all' && `• ${statusFilter === 'online' ? 'Online' : 'Offline'}`} • Auto Sync: {syncInterval > 0 ? `${syncInterval}s` : 'Off'}
                           </span>
                         )}
                       </div>
@@ -3392,6 +3402,28 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 {sortOrder === 'asc' ? '▲' : '▼'}
                               </button>
                             </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SHOW:</span>
+                            <select
+                              value={statusFilter}
+                              onChange={(e) => setStatusFilter(e.target.value)}
+                              style={{
+                                backgroundColor: '#111',
+                                border: '1px solid #333',
+                                borderRadius: '4px',
+                                color: '#fff',
+                                padding: '2px 4px',
+                                fontSize: '0.72rem',
+                                cursor: 'pointer',
+                                outline: 'none'
+                              }}
+                            >
+                              <option value="all">All Members</option>
+                              <option value="online">Online / Idle</option>
+                              <option value="offline">Offline Only</option>
+                            </select>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
@@ -3647,6 +3679,16 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                             });
 
                             const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
+                            const filteredMembers = allMembers.filter(m => {
+                               const status = m.last_action?.status;
+                               if (statusFilter === 'online') {
+                                 return status === 'Online' || status === 'Idle';
+                               }
+                               if (statusFilter === 'offline') {
+                                 return status === 'Offline' || !status;
+                               }
+                               return true;
+                             });
 
                             // Group by status
                             const groups = {
@@ -3655,7 +3697,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               other: { label: '✈️ Other', color: '#3498db', members: [] },
                             };
 
-                            allMembers.forEach(m => {
+                            filteredMembers.forEach(m => {
                               const state = m.status?.state || '';
                               if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
                               else if (state === 'Jail') groups.jail.members.push(m);

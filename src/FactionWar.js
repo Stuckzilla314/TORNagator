@@ -573,6 +573,9 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [sortOrder, setSortOrder] = useState(() => {
     return localStorage.getItem('tornagator_faction_sort_order') || 'desc';
   });
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return localStorage.getItem('tornagator_faction_status_filter') || 'all';
+  });
   const [importedStats, setImportedStats] = useState({});
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
 
@@ -609,6 +612,10 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   useEffect(() => {
     localStorage.setItem('tornagator_faction_sort_order', sortOrder);
   }, [sortOrder]);
+
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_status_filter', statusFilter);
+  }, [statusFilter]);
 
   // Load targets if starting on the targets tab and they aren't loaded yet
   useEffect(() => {
@@ -921,48 +928,72 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
               border: '1px solid #2d2d2d',
               marginBottom: '1.5rem'
             }}>
-              {/* Sorting controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Sort By:</span>
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value)}
-                  style={{
-                    backgroundColor: '#222',
-                    border: '1px solid #444',
-                    borderRadius: '4px',
-                    color: '#fff',
-                    padding: '4px 8px',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="default">Status & Level (Default)</option>
-                  <option value="level">Level</option>
-                  {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP/Stats</option>}
-                  <option value="age">Days Playing</option>
-                  <option value="winrate">Win Rate</option>
-                </select>
-                
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  style={{
-                    backgroundColor: '#222',
-                    border: '1px solid #444',
-                    borderRadius: '4px',
-                    color: '#aaa',
-                    padding: '4.5px 10px',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  {sortOrder === 'asc' ? '▲ ASC' : '▼ DESC'}
-                </button>
+              {/* Sorting and Filter controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Sort By:</span>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="default">Status & Level (Default)</option>
+                    <option value="level">Level</option>
+                    {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP/Stats</option>}
+                    <option value="age">Days Playing</option>
+                    <option value="winrate">Win Rate</option>
+                  </select>
+                  
+                  <button
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#aaa',
+                      padding: '4.5px 10px',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {sortOrder === 'asc' ? '▲ ASC' : '▼ DESC'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Show:</span>
+                  <select 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="all">All Members</option>
+                    <option value="online">Online / Idle</option>
+                    <option value="offline">Offline Only</option>
+                  </select>
+                </div>
               </div>
 
               {/* Import / Suspected stats info */}
@@ -1174,6 +1205,16 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                 });
 
                 const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
+                const filteredMembers = allMembers.filter(m => {
+                  const status = m.last_action?.status;
+                  if (statusFilter === 'online') {
+                    return status === 'Online' || status === 'Idle';
+                  }
+                  if (statusFilter === 'offline') {
+                    return status === 'Offline' || !status;
+                  }
+                  return true;
+                });
 
                 // Group by status
                 const groups = {
@@ -1182,7 +1223,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                   other: { label: '✈️ Other', color: '#3498db', members: [] },
                 };
 
-                allMembers.forEach(m => {
+                filteredMembers.forEach(m => {
                   const state = m.status?.state || '';
                   if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
                   else if (state === 'Jail') groups.jail.members.push(m);
