@@ -674,3 +674,16 @@
 .spin-animation {
   animation: spin 1.2s linear infinite;
 }
+
+@keyframes pulse-alert {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+.pulse-alert-animation {
+  animation: pulse-alert 0.8s ease-in-out infinite alternate;
+}

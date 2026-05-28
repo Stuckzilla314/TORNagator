@@ -7,7 +7,7 @@ import {
   IconCoin, IconWarning, IconChevronRight,
   IconChevronLeft, IconRefresh,
   IconTarget, IconPeace, IconSwords,
-  IconBarChart, IconClock, IconPill, IconMuscle,
+  IconBarChart, IconClock, IconPill, IconMuscle, IconLink,
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
@@ -41,6 +41,145 @@ function useLocalStorage(key, initialValue) {
 
   return [storedValue, setValue];
 }
+
+/**
+ * Component for monitoring and displaying the active faction chain and countdown timer.
+ */
+const ChainWatcher = ({ factionData }) => {
+  const chain = factionData?.chain || {};
+  const current = chain.current || 0;
+  const timeout = chain.timeout || 0;
+  const modifier = chain.modifier || 1;
+  const cooldown = chain.cooldown || 0;
+
+  const [localTimeout, setLocalTimeout] = useState(timeout);
+  const [localCooldown, setLocalCooldown] = useState(cooldown);
+
+  // Sync with API updates
+  useEffect(() => {
+    setLocalTimeout(timeout);
+  }, [timeout]);
+
+  useEffect(() => {
+    setLocalCooldown(cooldown);
+  }, [cooldown]);
+
+  // Tick down timeout
+  useEffect(() => {
+    if (localTimeout <= 0) return;
+    const timer = setInterval(() => {
+      setLocalTimeout(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localTimeout]);
+
+  // Tick down cooldown
+  useEffect(() => {
+    if (localCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setLocalCooldown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localCooldown]);
+
+  // Formatter helper
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const hasActiveChain = current > 0 || localTimeout > 0;
+  const hasCooldown = localCooldown > 0;
+
+  // Milestone calculation
+  const milestones = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+  const nextMilestone = milestones.find(m => m > current) || 10;
+  const prevMilestone = milestones[milestones.indexOf(nextMilestone) - 1] || 0;
+  const progressPct = Math.min(100, Math.max(0, ((current - prevMilestone) / (nextMilestone - prevMilestone)) * 100));
+
+  if (!factionData) {
+    return (
+      <div style={{ padding: '8px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '6px', fontSize: '0.75rem', color: '#888', textAlign: 'center' }}>
+        Loading Faction Chain...
+      </div>
+    );
+  }
+
+  // Timer color alert styling
+  let timerColor = '#2ecc71'; // Green
+  if (localTimeout < 60) {
+    timerColor = '#e74c3c'; // Red
+  } else if (localTimeout < 120) {
+    timerColor = '#f39c12'; // Orange
+  }
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '6px',
+      backgroundColor: 'rgba(0,0,0,0.25)',
+      padding: '8px',
+      borderRadius: '6px',
+      border: '1px solid rgba(255,255,255,0.03)'
+    }}>
+      {/* Title & Stats */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <IconLink size={11} color="#3498db" /> CHAIN WATCHER
+        </span>
+        {hasActiveChain && modifier > 1 && (
+          <span style={{ fontSize: '0.65rem', color: '#3498db', fontWeight: 'bold', backgroundColor: 'rgba(52,152,219,0.15)', padding: '1px 5px', borderRadius: '4px' }}>
+            {modifier}x
+          </span>
+        )}
+      </div>
+
+      {hasCooldown ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8rem', color: '#f39c12', fontWeight: 'bold' }}>Cooldown</span>
+          <span style={{ fontSize: '1rem', color: '#f39c12', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            {formatTime(localCooldown)}
+          </span>
+        </div>
+      ) : hasActiveChain ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div>
+              <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>{current.toLocaleString()}</span>
+              <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '4px' }}>/ {nextMilestone.toLocaleString()}</span>
+            </div>
+            <div 
+              className={localTimeout < 30 ? 'pulse-alert-animation' : ''}
+              style={{
+                fontSize: '1.05rem',
+                fontWeight: 'bold',
+                color: timerColor,
+                fontFamily: 'monospace',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <IconClock size={12} color={timerColor} />
+              {formatTime(localTimeout)}
+            </div>
+          </div>
+          {/* Progress Bar to next Milestone */}
+          <div style={{ height: '4px', backgroundColor: '#111', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{ width: `${progressPct}%`, backgroundColor: '#3498db', height: '100%', transition: 'width 0.4s ease' }} />
+          </div>
+        </>
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>No Active Chain</span>
+          <span style={{ fontSize: '0.75rem', color: '#888' }}>Ready</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Infers a broader categorization or key from a specific Torn URL for deduplication.
@@ -1697,12 +1836,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
     const intervalId = setInterval(() => {
       if (!isLoadingTargets && !isSyncingTargets) {
+        if (loadFactionData) loadFactionData();
         doFetchTargets(true);
       }
     }, syncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets]);
+  }, [syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
@@ -2599,6 +2739,9 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                           );
                         })()}
                       </div>
+
+                      {/* Chain Watcher */}
+                      <ChainWatcher factionData={factionData} />
 
                       {/* Sorting & Import Panel */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid #222' }}>
