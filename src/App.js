@@ -224,12 +224,12 @@ function App() {
           // Format specific items like TornView expects, using itemsMarketValues
           const itemsMarketValues = {};
           const itemsMarketValuesById = {};
-          Object.values(items).forEach(item => {
+          Object.entries(items).forEach(([id, item]) => {
             if (item.name && item.market_value) {
               itemsMarketValues[item.name.toLowerCase()] = item.market_value;
             }
-            if (item.id && item.market_value) {
-              itemsMarketValuesById[item.id] = item.market_value;
+            if (id && item.market_value) {
+              itemsMarketValuesById[id] = item.market_value;
             }
           });
 

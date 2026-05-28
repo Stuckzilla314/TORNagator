@@ -722,12 +722,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     const itemsMarketValues = {};
     const itemsMarketValuesById = {};
     if (itemsData) {
-      Object.values(itemsData).forEach(item => {
+      Object.entries(itemsData).forEach(([id, item]) => {
         if (item.name && item.market_value) {
           itemsMarketValues[item.name.toLowerCase()] = item.market_value;
         }
-        if (item.id && item.market_value) {
-          itemsMarketValuesById[item.id] = item.market_value;
+        if (id && item.market_value) {
+          itemsMarketValuesById[id] = item.market_value;
         }
       });
     }
@@ -737,8 +737,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         try {
           // Initialize local cache from React props if not already set, or fall back to empty
           if (!window._tornagator_market_values_by_id) {
-            window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+            window._tornagator_market_values_by_id = {};
           }
+          Object.assign(window._tornagator_market_values_by_id, ${JSON.stringify(itemsMarketValuesById)});
           const marketValuesById = window._tornagator_market_values_by_id;
 
           const marketValues = ${JSON.stringify(itemsMarketValues)};
@@ -972,22 +973,34 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 window._tornagator_fetching_catalog = true;
                 console.log("[TORNagator Webview] Requesting Torn items catalog on-demand for itemId:", itemId);
 
-                // Instead of fetching directly with an API key here, we request it from the host environment via IPC
-                if (window.require) {
-                  const { ipcRenderer } = window.require('electron');
-                  ipcRenderer.send('request-catalog-update', itemId);
-                }
+                // Instead of calling ipcRenderer directly (which is unavailable in guest webview),
+                // we set a global variable that the host will read during the interval execution
+                window._tornagator_pending_item_id = itemId;
               }
             }
           }
+
+          const pendingItemId = window._tornagator_pending_item_id || null;
+          if (pendingItemId) {
+            window._tornagator_pending_item_id = null;
+          }
+          return { requestFetchItemId: pendingItemId };
         } catch (e) {
           console.error("Profit/Crimes injection error:", e);
+          return null;
         }
       })()
     `;
 
     const profitInterval = setInterval(() => {
-      wv.executeJavaScript(script).catch(() => { });
+      wv.executeJavaScript(script)
+        .then(result => {
+          if (result && result.requestFetchItemId && window.require) {
+            const { ipcRenderer } = window.require('electron');
+            ipcRenderer.send('request-catalog-update', result.requestFetchItemId);
+          }
+        })
+        .catch(() => { });
     }, 1000);
 
     return () => clearInterval(profitInterval);
