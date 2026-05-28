@@ -800,17 +800,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const countSpan = cell.querySelector('span[class*=count___]');
                 const qty = countSpan ? (parseInt(countSpan.textContent.replace(/[^0-9]/g, ''), 10) || 1) : 1;
 
+                cell.style.position = 'relative';
+
                 const valDiv = document.createElement('div');
                 valDiv.className = 'injected-crime-value';
+                valDiv.style.position = 'absolute';
+                valDiv.style.bottom = '2px';
+                valDiv.style.left = '50%';
+                valDiv.style.transform = 'translateX(-50%)';
+                valDiv.style.whiteSpace = 'nowrap';
+                valDiv.style.pointerEvents = 'none';
                 valDiv.style.textAlign = 'center';
-                valDiv.style.fontSize = '0.7rem';
+                valDiv.style.fontSize = '0.62rem';
                 valDiv.style.fontWeight = 'bold';
-                valDiv.style.marginTop = '4px';
-                valDiv.style.padding = '2px 4px';
-                valDiv.style.borderRadius = '4px';
-                valDiv.style.backgroundColor = 'rgba(0,0,0,0.6)';
-                valDiv.style.border = '1px solid rgba(255,255,255,0.1)';
+                valDiv.style.padding = '1px 4px';
+                valDiv.style.borderRadius = '3px';
+                valDiv.style.backgroundColor = 'rgba(0,0,0,0.75)';
+                valDiv.style.border = '1px solid rgba(255,255,255,0.15)';
                 valDiv.style.display = 'block';
+                valDiv.style.zIndex = '5';
                 
                 if (val > 0) {
                   const totalVal = val * qty;
@@ -835,12 +843,23 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 if (window._tornagator_fetching_catalog) continue;
 
                 // Add temp loading element
+                cell.style.position = 'relative';
                 const tempDiv = document.createElement('div');
                 tempDiv.className = 'injected-crime-value-loading';
                 tempDiv.textContent = '...';
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.bottom = '2px';
+                tempDiv.style.left = '50%';
+                tempDiv.style.transform = 'translateX(-50%)';
+                tempDiv.style.pointerEvents = 'none';
                 tempDiv.style.textAlign = 'center';
-                tempDiv.style.fontSize = '0.65rem';
+                tempDiv.style.fontSize = '0.62rem';
+                tempDiv.style.fontWeight = 'bold';
+                tempDiv.style.backgroundColor = 'rgba(0,0,0,0.75)';
+                tempDiv.style.padding = '1px 6px';
+                tempDiv.style.borderRadius = '3px';
                 tempDiv.style.color = '#aaa';
+                tempDiv.style.zIndex = '5';
                 cell.appendChild(tempDiv);
 
                 window._tornagator_fetching_catalog = true;
