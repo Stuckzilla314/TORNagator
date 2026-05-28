@@ -1136,6 +1136,257 @@ const parseSuspectedStats = (text) => {
 };
 
 /**
+ * Parses remaining seconds from Torn description text.
+ * E.g. "Hospitalized for 3h 12m" -> 11520 seconds
+ */
+const parseTornDescriptionTime = (description) => {
+  if (!description) return 0;
+  const clean = description.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '').trim();
+  let totalSeconds = 0;
+  
+  const dayMatch = clean.match(/(\d+)\s*d/i);
+  const hourMatch = clean.match(/(\d+)\s*h/i);
+  const minuteMatch = clean.match(/(\d+)\s*m/i);
+  const secondMatch = clean.match(/(\d+)\s*s/i);
+  
+  if (dayMatch) totalSeconds += parseInt(dayMatch[1], 10) * 86400;
+  if (hourMatch) totalSeconds += parseInt(hourMatch[1], 10) * 3600;
+  if (minuteMatch) totalSeconds += parseInt(minuteMatch[1], 10) * 60;
+  if (secondMatch) totalSeconds += parseInt(secondMatch[1], 10);
+  
+  return totalSeconds;
+};
+
+/**
+ * Component for rendering a single member sidebar row with real-time ticking timer.
+ */
+const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
+  const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
+  const [currentDescription, setCurrentDescription] = useState(member.status?.description);
+
+  useEffect(() => {
+    setCurrentStatusState(member.status?.state);
+    setCurrentDescription(member.status?.description);
+  }, [member.status?.state, member.status?.description]);
+
+  const [statusUntil, setStatusUntil] = useState(0);
+
+  useEffect(() => {
+    if (member.status?.until && member.status.until > 0) {
+      setStatusUntil(member.status.until);
+    } else {
+      const seconds = parseTornDescriptionTime(member.status?.description);
+      if (seconds > 0) {
+        setStatusUntil(Math.floor(Date.now() / 1000) + seconds);
+      } else {
+        setStatusUntil(0);
+      }
+    }
+  }, [member.status?.until, member.status?.description]);
+
+  useEffect(() => {
+    if (currentStatusState !== 'Hospital' || !statusUntil) return;
+
+    const calculate = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = statusUntil - now;
+      if (remaining <= 0) {
+        setCurrentStatusState('Okay');
+        setCurrentDescription('');
+      } else {
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        setCurrentDescription(formatted);
+      }
+    };
+
+    calculate();
+    const interval = setInterval(calculate, 1000);
+    return () => clearInterval(interval);
+  }, [currentStatusState, statusUntil]);
+
+  const isOkay = currentStatusState === 'Okay';
+  const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
+  const profile = member.profile || {};
+  const hasProfile = Object.keys(profile).length > 0;
+
+  return (
+    <div
+      style={{
+        padding: '8px',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        borderRadius: '6px',
+        borderLeft: `3px solid ${statusColor}`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        transition: 'all 0.15s ease'
+      }}
+      className="torn-stat-bar"
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+        <div style={{ minWidth: 0 }}>
+          <span
+            onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
+            style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'none' }}
+            className="text-link"
+          >
+            {member.name}
+          </span>
+          <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '4px' }}>[{member.id}]</span>
+
+          <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
+            Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem', display: 'block' }}>
+            {currentStatusState || 'Unknown'}
+          </span>
+          <span style={{ color: '#666', fontSize: '0.65rem', display: 'block' }}>
+            {currentDescription?.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '') || ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Suspected XP info & Profile indicators */}
+      {(member.suspectedRaw || hasProfile) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
+          <div>
+            {member.suspectedRaw && (
+              <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
+              </span>
+            )}
+          </div>
+          <div>
+            {hasProfile && (
+              <span style={{ color: '#888' }}>
+                {profile.age ? `${profile.age.toLocaleString()}d` : ''}
+                {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Activity strip */}
+      {hasProfile && (
+        <div style={{ 
+          display: 'flex', 
+          gap: '4px', 
+          flexWrap: 'wrap', 
+          marginTop: '4px', 
+          paddingTop: '4px', 
+          borderTop: '1px dashed rgba(255,255,255,0.05)' 
+        }}>
+          {[
+            { 
+              label: <><IconSwords size={10} color="#e67e22" /> Cri</>, 
+              value: member.criminalOffenses, 
+              color: '#e67e22',
+              own: userData?.personalstats?.criminaloffenses || 0
+            },
+            { 
+              label: <><IconPill size={10} color="#9b59b6" /> Drg</>, 
+              value: member.drugsUsed, 
+              color: '#9b59b6',
+              own: userData?.personalstats?.drugsused || 0
+            },
+            { 
+              label: <><IconBolt size={10} color="#3498db" /> Ref</>, 
+              value: member.totalRefills, 
+              color: '#3498db',
+              own: (userData?.personalstats?.refills || 0) + (userData?.personalstats?.nerverefills || 0) + (userData?.personalstats?.tokenrefills || 0)
+            },
+            { 
+              label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>, 
+              value: member.boostersUsed, 
+              color: '#2ecc71',
+              own: userData?.personalstats?.boostersused || 0
+            },
+          ].map(({ label, value, color, own }) => {
+            const valNum = Number(value) || 0;
+            const ownNum = Number(own) || 0;
+            const diff = valNum - ownNum;
+            const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+            const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
+
+            return (
+              <span key={color} style={{
+                backgroundColor: 'rgba(0,0,0,0.15)',
+                border: `1px solid ${color}22`,
+                color: '#aaa',
+                padding: '2px 5px',
+                borderRadius: '10px',
+                fontSize: '0.65rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+                flexGrow: 1,
+                justifyContent: 'center'
+              }}>
+                {label}: <strong style={{ color }}>
+                  {compareMode ? diffStr : valNum.toLocaleString()}
+                </strong>
+                {compareMode && (
+                  <span style={{ fontSize: '0.6rem', color: diffColor, fontStyle: 'italic' }}>
+                    ({diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'})
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Compact Action Buttons */}
+      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+        <button
+          onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
+          style={{
+            flex: 1,
+            backgroundColor: '#2c2c2c',
+            border: 'none',
+            borderRadius: '4px',
+            color: '#ccc',
+            padding: '3px 0',
+            fontSize: '0.68rem',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            transition: 'all 0.15s'
+          }}
+        >
+          Profile
+        </button>
+        <button
+          onClick={() => navigateTo(`https://www.torn.com/loader.php?sid=attack&user2ID=${member.id}`)}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(231, 76, 60, 0.15)',
+            border: '1px solid rgba(231, 76, 60, 0.4)',
+            borderRadius: '4px',
+            color: '#e74c3c',
+            padding: '2px 0',
+            fontSize: '0.68rem',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            textAlign: 'center',
+            transition: 'all 0.15s'
+          }}
+        >
+          Attack
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/**
  * The core wrapper component for the Tornagator experience.
  * Manages the multi-tab browser state, custom quick actions sidebar, and user status summary.
  *
@@ -2576,186 +2827,15 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 return sortOrder === 'asc' ? comparison : -comparison;
                               });
 
-                            return sortedMembers.map((member) => {
-                              const isOkay = member.status?.state === 'Okay';
-                              const statusColor = isOkay ? '#2ecc71' : member.status?.state === 'Hospital' ? '#e74c3c' : member.status?.state === 'Jail' ? '#f39c12' : '#3498db';
-                              const profile = member.profile;
-                              const hasProfile = Object.keys(profile).length > 0;
-
-                              return (
-                                <div
-                                  key={member.id}
-                                  style={{
-                                    padding: '8px',
-                                    backgroundColor: 'rgba(255,255,255,0.02)',
-                                    borderRadius: '6px',
-                                    borderLeft: `3px solid ${statusColor}`,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '4px',
-                                    transition: 'all 0.15s ease'
-                                  }}
-                                  className="torn-stat-bar"
-                                >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
-                                    <div style={{ minWidth: 0 }}>
-                                      <span
-                                        onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
-                                        style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'none' }}
-                                        className="text-link"
-                                      >
-                                        {member.name}
-                                      </span>
-                                      <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '4px' }}>[{member.id}]</span>
-
-                                      <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
-                                        Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
-                                      </div>
-                                    </div>
-
-                                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                      <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem', display: 'block' }}>
-                                        {member.status?.state || 'Unknown'}
-                                      </span>
-                                      <span style={{ color: '#666', fontSize: '0.65rem', display: 'block' }}>
-                                        {member.status?.description?.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '') || ''}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Suspected XP info & Profile indicators */}
-                                  {(member.suspectedRaw || hasProfile) && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
-                                      <div>
-                                        {member.suspectedRaw && (
-                                          <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                                            <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div>
-                                        {hasProfile && (
-                                          <span style={{ color: '#888' }}>
-                                            {profile.age ? `${profile.age.toLocaleString()}d` : ''}
-                                            {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Activity strip */}
-                                  {hasProfile && (
-                                    <div style={{ 
-                                      display: 'flex', 
-                                      gap: '4px', 
-                                      flexWrap: 'wrap', 
-                                      marginTop: '4px', 
-                                      paddingTop: '4px', 
-                                      borderTop: '1px dashed rgba(255,255,255,0.05)' 
-                                    }}>
-                                      {[
-                                        { 
-                                          label: <><IconSwords size={10} color="#e67e22" /> Cri</>, 
-                                          value: member.criminalOffenses, 
-                                          color: '#e67e22',
-                                          own: userData?.personalstats?.criminaloffenses || 0
-                                        },
-                                        { 
-                                          label: <><IconPill size={10} color="#9b59b6" /> Drg</>, 
-                                          value: member.drugsUsed, 
-                                          color: '#9b59b6',
-                                          own: userData?.personalstats?.drugsused || 0
-                                        },
-                                        { 
-                                          label: <><IconBolt size={10} color="#3498db" /> Ref</>, 
-                                          value: member.totalRefills, 
-                                          color: '#3498db',
-                                          own: (userData?.personalstats?.refills || 0) + (userData?.personalstats?.nerverefills || 0) + (userData?.personalstats?.tokenrefills || 0)
-                                        },
-                                        { 
-                                          label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>, 
-                                          value: member.boostersUsed, 
-                                          color: '#2ecc71',
-                                          own: userData?.personalstats?.boostersused || 0
-                                        },
-                                      ].map(({ label, value, color, own }) => {
-                                        const valNum = Number(value) || 0;
-                                        const ownNum = Number(own) || 0;
-                                        const diff = valNum - ownNum;
-                                        const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
-                                        const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
-
-                                        return (
-                                          <span key={color} style={{
-                                            backgroundColor: 'rgba(0,0,0,0.15)',
-                                            border: `1px solid ${color}22`,
-                                            color: '#aaa',
-                                            padding: '2px 5px',
-                                            borderRadius: '10px',
-                                            fontSize: '0.65rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '3px',
-                                            flexGrow: 1,
-                                            justifyContent: 'center'
-                                          }}>
-                                            {label}: <strong style={{ color }}>
-                                              {compareMode ? diffStr : valNum.toLocaleString()}
-                                            </strong>
-                                            {compareMode && (
-                                              <span style={{ fontSize: '0.6rem', color: diffColor, fontStyle: 'italic' }}>
-                                                ({diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'})
-                                              </span>
-                                            )}
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-
-                                  {/* Compact Action Buttons */}
-                                  <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                                    <button
-                                      onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
-                                      style={{
-                                        flex: 1,
-                                        backgroundColor: '#2c2c2c',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        color: '#ccc',
-                                        padding: '3px 0',
-                                        fontSize: '0.68rem',
-                                        cursor: 'pointer',
-                                        fontWeight: 'bold',
-                                        textAlign: 'center',
-                                        transition: 'all 0.15s'
-                                      }}
-                                    >
-                                      Profile
-                                    </button>
-                                    <button
-                                      onClick={() => navigateTo(`https://www.torn.com/loader.php?sid=attack&user2ID=${member.id}`)}
-                                      style={{
-                                        flex: 1,
-                                        backgroundColor: 'rgba(231, 76, 60, 0.15)',
-                                        border: '1px solid rgba(231, 76, 60, 0.4)',
-                                        borderRadius: '4px',
-                                        color: '#e74c3c',
-                                        padding: '2px 0',
-                                        fontSize: '0.68rem',
-                                        cursor: 'pointer',
-                                        fontWeight: 'bold',
-                                        textAlign: 'center',
-                                        transition: 'all 0.15s'
-                                      }}
-                                    >
-                                      Attack
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            });
+                            return sortedMembers.map((member) => (
+                              <MemberSidebarRow
+                                key={member.id}
+                                member={member}
+                                userData={userData}
+                                compareMode={compareMode}
+                                navigateTo={navigateTo}
+                              />
+                            ));
                           })()}
                         </div>
                       ) : (
