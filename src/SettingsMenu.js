@@ -135,6 +135,30 @@ const SettingsMenu = ({
           )}
         </div>
       </div>
+
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column' }}>
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('dump-torn-dom'));
+          }}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#e74c3c',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '0.8rem',
+            transition: 'background-color 0.2s',
+            textAlign: 'center'
+          }}
+          onMouseEnter={e => { e.target.style.backgroundColor = '#c0392b'; }}
+          onMouseLeave={e => { e.target.style.backgroundColor = '#e74c3c'; }}
+        >
+          Dump Crimes DOM
+        </button>
+      </div>
     </div>
   );
 };

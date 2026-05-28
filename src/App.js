@@ -190,8 +190,9 @@ function App() {
     }
   }, [apiKey]);
 
-  // Load cached items/inventory on mount
+  // Load cached items/inventory on mount, and fetch items if cache is empty/expired
   useEffect(() => {
+    let cachedData = null;
     try {
       // 1. Items Data (LocalStorage - long lived)
       const cachedItemsRaw = localStorage.getItem('tornagator_items_cache');
@@ -199,6 +200,7 @@ function App() {
         const { data, timestamp } = JSON.parse(cachedItemsRaw);
         // Cache valid for 24 hours
         if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          cachedData = data;
           setItemsData(data);
           itemsDataRef.current = data;
         }
@@ -213,7 +215,19 @@ function App() {
     } catch (e) {
       console.warn("Cache restoration failed:", e);
     }
-  }, []);
+
+    if (!cachedData && apiKey) {
+      fetchTornItems(apiKey)
+        .then(items => {
+          itemsDataRef.current = items;
+          setItemsData(items);
+          localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
+        })
+        .catch(err => {
+          console.error("Failed to fetch items on startup:", err);
+        });
+    }
+  }, [apiKey]);
 
   // Fetch Overseas Stock data (Inventory & Items)
   const loadOverseasData = useCallback(async () => {

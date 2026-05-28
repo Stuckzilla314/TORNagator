@@ -1,0 +1,250 @@
+{
+  "url": "https://www.torn.com/page.php?sid=crimes#/searchforcash",
+  "successOuterHTML": "<div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div>",
+  "successParentOuterHTML": "<div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div>",
+  "successGrandparentOuterHTML": "<div class=\"outcomeContent___lPmOs outcome-content crimes-outcome-success\"><div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div></div>",
+  "interestingElements": [
+    {
+      "tagName": "DIV",
+      "className": "profile-image-wrapper",
+      "outerHTML": "<div class=\"profile-image-wrapper\"><img class=\"mini-avatar-image\" alt=\"\" src=\"/images/avatar-profile_man.jpg\"></div>"
+    },
+    {
+      "tagName": "IMG",
+      "className": "mini-avatar-image",
+      "outerHTML": "<img class=\"mini-avatar-image\" alt=\"\" src=\"/images/avatar-profile_man.jpg\">"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionImage___qWmxX crime-image",
+      "outerHTML": "<div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Trash.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Trash.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Trash.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Trash.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu outline___ipg40 undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu outline___ipg40 undefined\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeWrapper___viSTs",
+      "outerHTML": "<div class=\"outcomeWrapper___viSTs\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionImage___qWmxX crime-image",
+      "outerHTML": "<div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/TrainStation.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/TrainStation.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/TrainStation.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/TrainStation.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu outline___ipg40 undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu outline___ipg40 undefined\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeWrapper___viSTs",
+      "outerHTML": "<div class=\"outcomeWrapper___viSTs\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionImage___qWmxX crime-image",
+      "outerHTML": "<div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/ScrapYard.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/ScrapYard.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/ScrapYard.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/ScrapYard.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu outline___ipg40 undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu outline___ipg40 undefined\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeWrapper___viSTs",
+      "outerHTML": "<div class=\"outcomeWrapper___viSTs\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionImage___qWmxX crime-image",
+      "outerHTML": "<div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Beach.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Beach.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Beach.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Beach.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu filled___Q2gzP undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Requires: Metal Detector\" srcset=\"/images/items/852/medium.png 1x, /images/items/852/medium@2x.png 2x, /images/items/852/medium@3x.png 3x, /images/items/852/medium@4x.png 4x\" src=\"/images/items/852/medium.png\" style=\"width: 60px; height: 30px;\"><div class=\"assetEffectIcon___cGwxu require___Qng1U assetEffectIcon___k_FzM\"></div></div>"
+    },
+    {
+      "tagName": "IMG",
+      "className": "image___pLBSk",
+      "outerHTML": "<img class=\"image___pLBSk\" alt=\"Requires: Metal Detector\" srcset=\"/images/items/852/medium.png 1x, /images/items/852/medium@2x.png 2x, /images/items/852/medium@3x.png 3x, /images/items/852/medium@4x.png 4x\" src=\"/images/items/852/medium.png\" style=\"width: 60px; height: 30px;\">"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeWrapper___viSTs",
+      "outerHTML": "<div class=\"outcomeWrapper___viSTs\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "virtualItem___KHUp2 virtual-item outcome-expanded",
+      "outerHTML": "<div class=\"virtualItem___KHUp2 virtual-item outcome-expanded\" style=\"--transition-duration: 300ms; height: 180px; transform: translateY(204px);\"><div class=\"crimeOptionWrapper___Av99B\"><div class=\"crime-option crimeOption___EmXio\" style=\"transform: translateX(0px);\"><div class=\"sections___IVEqp crime-option-sections\"><div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Graveyard.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Graveyard.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Graveyard.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Graveyard.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div><div class=\"crimeOptionSection___FL3HG flexGrow___AYYE7\">Search the Cemetery</div><div class=\"sectionDelimiter___O1uPS\"></div><div class=\"crimeOptionSection___FL3HG desktopDensitySection___Ke2uw\"><div class=\"densityBarWrapper___yrxhw\"><div class=\"densityBar___OmWP8\"><div class=\"outerRing___nSyMQ\"><div class=\"innerRing___uBvi_\"><div class=\"delimitersWrapper___jTm75\"><div class=\"segmentDelimiter___ggbHM\" style=\"left: 14.2857%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 28.5714%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 42.8571%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 57.1429%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 71.4286%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 85.7143%;\"></div></div><div class=\"track___SaQCI\"><div class=\"densityBarFill___v8GCl\" style=\"background-position-y: -48px;\"></div><div class=\"stripes___h5UBK\"></div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 0%; width: 14.2857%;\">m</div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 14.2857%; width: 14.2857%;\">t</div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 28.5714%; width: 14.2857%;\">w</div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 42.8571%; width: 14.2857%;\">t</div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 57.1429%; width: 14.2857%;\">f</div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 71.4286%; width: 14.2857%;\">s</div><div class=\"segmentLabel___FJhj7\" aria-hidden=\"true\" style=\"left: 85.7143%; width: 14.2857%;\">s</div><div class=\"pin___rq7U6 large___DRyZt\" style=\"--left: 44%; --light-mode-drop-shadow: drop-shadow(0 0 2px #A1C600bf);\"><div class=\"densityIcon___oawt9\" style=\"--icon-offset-x: 0px; --icon-offset-y: 0px; --scale: 1; --translate-y: 0px;\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10.15\" height=\"12\" viewBox=\"0 0 10.15 12\" style=\"fill: rgb(161, 198, 0);\"><path d=\"M9.9,10.62H.26c-.14,0-.25.1-.26.24,0,0,0,0,0,0v.93c.02.12.13.21.26.2h9.64c.14,0,.25-.11.25-.25v-.92c-.02-.12-.13-.2-.25-.2h0ZM1.27,9.87h7.62c.14,0,.25-.11.25-.25v-5.62C9.12,1.77,7.3-.01,5.08,0,2.85-.02,1.03,1.77,1.02,4v5.62c0,.14.11.25.25.25,0,0,0,0,0,0h0ZM6.34,5h-2.53c-.14,0-.25-.11-.25-.25s.11-.25.25-.25h2.53c.14,0,.25.11.25.25s-.11.25-.25.25ZM3.3,3h3.56c.14,0,.25.11.25.25s-.11.25-.25.25h-3.56c-.14,0-.25-.11-.25-.25s.11-.25.25-.25Z\"></path></svg></div></div></div></div></div></div></div><div class=\"densityTooltipTrigger___hcmVh\" aria-label=\"Groundskeeping: Weekdays 09:00 - 17:00 (75%)\" tabindex=\"0\" data-is-tooltip-opened=\"false\"></div></div><div class=\"sectionDelimiter___O1uPS\"></div><div class=\"crimeOptionSection___FL3HG requirementSection___KM3i9\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Requires: Cemetery Key\" srcset=\"/images/items/853/medium.png 1x, /images/items/853/medium@2x.png 2x, /images/items/853/medium@3x.png 3x, /images/items/853/medium@4x.png 4x\" src=\"/images/items/853/medium.png\" style=\"width: 60px; height: 30px;\"><div class=\"assetEffectIcon___cGwxu require___Qng1U assetEffectIcon___k_FzM\"></div></div></div><div class=\"sectionDelimiter___O1uPS\"></div><div class=\"crimeOptionSection___FL3HG commitButtonSection___SuslO\" style=\"width: 90px;\"><button type=\"button\" class=\"torn-btn grey commit-button commitButton___S1ay3\" aria-disabled=\"false\" aria-label=\"Search, 2 nerve\" data-is-tooltip-opened=\"false\" i-data=\"i_876_470_90_31\"><div class=\"childrenWrapper___qtt1Z\"><span class=\"title___nOk1n\">Search</span><span class=\"divider___e7Sj6\"></span><span class=\"nerve___asHBO\">2</span><div class=\"uniqueStars____P3AY\"></div></div></button></div><div class=\"sectionDelimiter___O1uPS\"></div></div></div></div><div class=\"outcomeWrapper___viSTs\"><div class=\"outcome___nRghz entered___zIUlD\" style=\"--transition-duration: 300ms;\"><div class=\"outcomeContent___lPmOs outcome-content crimes-outcome-success\"><div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionImage___qWmxX crime-image",
+      "outerHTML": "<div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Graveyard.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Graveyard.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Graveyard.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Graveyard.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu filled___Q2gzP undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Requires: Cemetery Key\" srcset=\"/images/items/853/medium.png 1x, /images/items/853/medium@2x.png 2x, /images/items/853/medium@3x.png 3x, /images/items/853/medium@4x.png 4x\" src=\"/images/items/853/medium.png\" style=\"width: 60px; height: 30px;\"><div class=\"assetEffectIcon___cGwxu require___Qng1U assetEffectIcon___k_FzM\"></div></div>"
+    },
+    {
+      "tagName": "IMG",
+      "className": "image___pLBSk",
+      "outerHTML": "<img class=\"image___pLBSk\" alt=\"Requires: Cemetery Key\" srcset=\"/images/items/853/medium.png 1x, /images/items/853/medium@2x.png 2x, /images/items/853/medium@3x.png 3x, /images/items/853/medium@4x.png 4x\" src=\"/images/items/853/medium.png\" style=\"width: 60px; height: 30px;\">"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeWrapper___viSTs",
+      "outerHTML": "<div class=\"outcomeWrapper___viSTs\"><div class=\"outcome___nRghz entered___zIUlD\" style=\"--transition-duration: 300ms;\"><div class=\"outcomeContent___lPmOs outcome-content crimes-outcome-success\"><div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcome___nRghz entered___zIUlD",
+      "outerHTML": "<div class=\"outcome___nRghz entered___zIUlD\" style=\"--transition-duration: 300ms;\"><div class=\"outcomeContent___lPmOs outcome-content crimes-outcome-success\"><div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeContent___lPmOs outcome-content crimes-outcome-success",
+      "outerHTML": "<div class=\"outcomeContent___lPmOs outcome-content crimes-outcome-success\"><div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "innerOutcomeWrapper___flX_Q inner-outcome-wrapper",
+      "outerHTML": "<div class=\"innerOutcomeWrapper___flX_Q inner-outcome-wrapper\"><div class=\"closeButtonWrapper___DQJWe\"><button class=\"closeButton___SueuL\" type=\"button\" aria-label=\"Close\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" style=\"--light-mode-fill: #999; --light-mode-hover-fill: #444; --dark-mode-fill: #ccc; --dark-mode-hover-fill: #fff;\"><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path><path d=\"M12.31,0l-5.32,5.31L1.68,0,0,1.68l5.32,5.32-.07.07L0,12.32l1.68,1.68,5.33-5.32.07.07,5.24,5.25,1.68-1.69-5.31-5.32.07-.07L14,1.68l-1.69-1.68Z\"></path></svg></button></div><p class=\"story___ko2Wp\">As you roam the cemetery, you notice a trail of footprints in the grass that lead off the main path. \nFollowing the prints, you find an isolated white headstone with a wreath fixed to the top. \nYou take the wreath and continue on with your ghoulish activities.</p><div class=\"divider___b_ipa\"></div><div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeReward___aVKEh",
+      "outerHTML": "<div class=\"outcomeReward___aVKEh\"><p class=\"title___l5x9X\">SUCCESS</p><div class=\"resultArrowWrap___Q9bL0\"><span class=\"resultArrow___FsaU6\"></span></div><div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "rewards___m4tv6",
+      "outerHTML": "<div class=\"rewards___m4tv6\"><div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "reward___w6KhY",
+      "outerHTML": "<div class=\"reward___w6KhY\" style=\"gap: 0.625rem;\"><div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu filled___Q2gzP undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu filled___Q2gzP undefined\" data-is-tooltip-opened=\"false\"><img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\"></div>"
+    },
+    {
+      "tagName": "IMG",
+      "className": "image___pLBSk",
+      "outerHTML": "<img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\">"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionWrapper___Av99B roundedBottomUnlessOutcomeExpanded___RVn09",
+      "outerHTML": "<div class=\"crimeOptionWrapper___Av99B roundedBottomUnlessOutcomeExpanded___RVn09\"><div class=\"crime-option crimeOption___EmXio locked___zkGF_ crime-option-locked\" style=\"transform: translateX(0px);\"><div class=\"sections___IVEqp crime-option-sections\"><div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Fountain.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Fountain.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Fountain.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Fountain.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div><div class=\"crimeOptionSection___FL3HG flexGrow___AYYE7\">Search the Fountain</div><div class=\"sectionDelimiter___O1uPS\"></div><div class=\"crimeOptionSection___FL3HG desktopDensitySection___Ke2uw\"><div class=\"densityBarWrapper___yrxhw\"><div class=\"densityBar___OmWP8 locked___Eg0Fr\"><div class=\"outerRing___nSyMQ\"><div class=\"innerRing___uBvi_\"><div class=\"delimitersWrapper___jTm75\"><div class=\"segmentDelimiter___ggbHM\" style=\"left: 25%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 50%;\"></div><div class=\"segmentDelimiter___ggbHM\" style=\"left: 75%;\"></div></div><div class=\"track___SaQCI\"></div></div></div></div></div></div><div class=\"sectionDelimiter___O1uPS\"></div><div class=\"crimeOptionSection___FL3HG requirementSection___KM3i9\"><div class=\"itemCell___oNopu dashed___E0mQi undefined\"></div></div><div class=\"sectionDelimiter___O1uPS\"></div><div class=\"crimeOptionSection___FL3HG commitButtonSection___SuslO\" style=\"width: 90px;\"><button type=\"button\" class=\"torn-btn grey commit-button commitButton___S1ay3 disabled levelLocked___XbDFj\" aria-disabled=\"true\" aria-label=\"Requires crime level 75\" data-is-tooltip-opened=\"false\" i-data=\"i_876_521_90_31\"><div class=\"childrenWrapper___qtt1Z\"><span class=\"levelLockLevelLabel___XAaIH\">Level</span><div class=\"levelStar___Fbp12 group4___YryRh\"><div class=\"starGraphic___gFxtT\"></div><div class=\"number___zBYGr row0___HmXyk\"></div></div></div></button></div><div class=\"sectionDelimiter___O1uPS\"></div></div></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "crimeOptionImage___qWmxX crime-image",
+      "outerHTML": "<div class=\"crimeOptionImage___qWmxX crime-image\"><img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Fountain.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Fountain.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Fountain.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Fountain.jpg 4x\"><div class=\"gradient___fV0TW\"></div></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "itemCell___oNopu dashed___E0mQi undefined",
+      "outerHTML": "<div class=\"itemCell___oNopu dashed___E0mQi undefined\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outcomeWrapper___viSTs",
+      "outerHTML": "<div class=\"outcomeWrapper___viSTs\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "silhouette___yF6iG image___VsMAB",
+      "outerHTML": "<div class=\"silhouette___yF6iG image___VsMAB\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outline___d7yuC itemCell___O_zIo fullWidth___G0vgO",
+      "outerHTML": "<div class=\"outline___d7yuC itemCell___O_zIo fullWidth___G0vgO\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "outline___d7yuC itemCell___O_zIo fullWidth___G0vgO",
+      "outerHTML": "<div class=\"outline___d7yuC itemCell___O_zIo fullWidth___G0vgO\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "silhouette___yF6iG image___VsMAB",
+      "outerHTML": "<div class=\"silhouette___yF6iG image___VsMAB\"></div>"
+    },
+    {
+      "tagName": "DIV",
+      "className": "silhouette___yF6iG image___VsMAB",
+      "outerHTML": "<div class=\"silhouette___yF6iG image___VsMAB\"></div>"
+    }
+  ],
+  "images": [
+    {
+      "src": "https://www.torn.com/images/avatar-profile_man.jpg",
+      "className": "mini-avatar-image",
+      "outerHTML": "<img class=\"mini-avatar-image\" alt=\"\" src=\"/images/avatar-profile_man.jpg\">"
+    },
+    {
+      "src": "",
+      "className": "",
+      "outerHTML": "<img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Trash.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Trash.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Trash.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Trash.jpg 4x\">"
+    },
+    {
+      "src": "",
+      "className": "",
+      "outerHTML": "<img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/TrainStation.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/TrainStation.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/TrainStation.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/TrainStation.jpg 4x\">"
+    },
+    {
+      "src": "",
+      "className": "",
+      "outerHTML": "<img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/ScrapYard.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/ScrapYard.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/ScrapYard.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/ScrapYard.jpg 4x\">"
+    },
+    {
+      "src": "",
+      "className": "",
+      "outerHTML": "<img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Beach.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Beach.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Beach.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Beach.jpg 4x\">"
+    },
+    {
+      "src": "https://www.torn.com/images/items/852/medium.png",
+      "className": "image___pLBSk",
+      "outerHTML": "<img class=\"image___pLBSk\" alt=\"Requires: Metal Detector\" srcset=\"/images/items/852/medium.png 1x, /images/items/852/medium@2x.png 2x, /images/items/852/medium@3x.png 3x, /images/items/852/medium@4x.png 4x\" src=\"/images/items/852/medium.png\" style=\"width: 60px; height: 30px;\">"
+    },
+    {
+      "src": "",
+      "className": "",
+      "outerHTML": "<img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Graveyard.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Graveyard.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Graveyard.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Graveyard.jpg 4x\">"
+    },
+    {
+      "src": "https://www.torn.com/images/items/853/medium.png",
+      "className": "image___pLBSk",
+      "outerHTML": "<img class=\"image___pLBSk\" alt=\"Requires: Cemetery Key\" srcset=\"/images/items/853/medium.png 1x, /images/items/853/medium@2x.png 2x, /images/items/853/medium@3x.png 3x, /images/items/853/medium@4x.png 4x\" src=\"/images/items/853/medium.png\" style=\"width: 60px; height: 30px;\">"
+    },
+    {
+      "src": "https://www.torn.com/images/items/904/medium.png",
+      "className": "image___pLBSk",
+      "outerHTML": "<img class=\"image___pLBSk\" alt=\"Funeral Wreath\" srcset=\"/images/items/904/medium.png 1x, /images/items/904/medium@2x.png 2x, /images/items/904/medium@3x.png 3x, /images/items/904/medium@4x.png 4x\" src=\"/images/items/904/medium.png\" style=\"width: 60px; height: 30px;\">"
+    },
+    {
+      "src": "",
+      "className": "",
+      "outerHTML": "<img alt=\"\" aria-hidden=\"true\" srcset=\"/images/v2/crimes/01-searchforcash/crime-options/x1/Fountain.jpg 1x, /images/v2/crimes/01-searchforcash/crime-options/x2/Fountain.jpg 2x, /images/v2/crimes/01-searchforcash/crime-options/x3/Fountain.jpg 3x, /images/v2/crimes/01-searchforcash/crime-options/x4/Fountain.jpg 4x\">"
+    },
+    {
+      "src": "https://www.torn.com/images/v2/dummy.png?v=1528808940574",
+      "className": "",
+      "outerHTML": "<img src=\"/images/v2/dummy.png?v=1528808940574\" id=\"dummypng\">"
+    }
+  ]
+}

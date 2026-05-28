@@ -230,7 +230,7 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
 );
 
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
 
@@ -356,15 +356,23 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       onUpdate(tab.id, { url: e.url });
     };
     const handleTitle = (e) => onUpdate(tab.id, { title: e.title });
+    const handleConsole = (e) => {
+      if (window.process && window.process.stdout) {
+        window.process.stdout.write(`[Webview-${tab.id}] ${e.message}\n`);
+      }
+      console.log(`[Webview-${tab.id}]`, e.message);
+    };
 
     wv.addEventListener('did-navigate', handleNavigate);
     wv.addEventListener('did-navigate-in-page', handleNavigate);
     wv.addEventListener('page-title-updated', handleTitle);
+    wv.addEventListener('console-message', handleConsole);
 
     return () => {
       wv.removeEventListener('did-navigate', handleNavigate);
       wv.removeEventListener('did-navigate-in-page', handleNavigate);
       wv.removeEventListener('page-title-updated', handleTitle);
+      wv.removeEventListener('console-message', handleConsole);
     };
   }, [tab.id, onUpdate]);
 
@@ -376,6 +384,83 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       return () => clearTimeout(timer);
     }
   }, [isActive, targetCountry, trySelectCountry]);
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleDump = () => {
+      const wv = webviewRef.current;
+      if (!wv) return;
+
+      console.log("[TornView] Dumping active webview DOM...");
+      const dumpScript = `
+        (() => {
+          const result = {};
+          result.url = window.location.href;
+
+          // Find SUCCESS/FAIL text elements
+          const allEls = Array.from(document.querySelectorAll('*'));
+          const successEl = allEls.find(el => el.textContent && (el.textContent.trim() === 'SUCCESS' || el.textContent.trim() === 'FAIL'));
+          if (successEl) {
+            result.successOuterHTML = successEl.outerHTML;
+            if (successEl.parentElement) {
+              result.successParentOuterHTML = successEl.parentElement.outerHTML;
+              if (successEl.parentElement.parentElement) {
+                result.successGrandparentOuterHTML = successEl.parentElement.parentElement.outerHTML;
+              }
+            }
+          }
+
+          // Gather interesting elements
+          const elements = [];
+          document.querySelectorAll('[class*="itemCell" i], [class*="outcome" i], [class*="image" i], [class*="reward" i]').forEach(el => {
+            elements.push({
+              tagName: el.tagName,
+              className: el.className,
+              outerHTML: el.outerHTML
+            });
+          });
+          result.interestingElements = elements;
+
+          // Gather img tags
+          const images = [];
+          document.querySelectorAll('img').forEach(img => {
+            images.push({
+              src: img.src,
+              className: img.className,
+              outerHTML: img.outerHTML
+            });
+          });
+          result.images = images;
+
+          return JSON.stringify(result, null, 2);
+        })()
+      `;
+
+      wv.executeJavaScript(dumpScript)
+        .then(jsonStr => {
+          try {
+            const fs = window.require('fs');
+            const path = window.require('path');
+            const dumpPath = path.join(process.cwd(), 'crimes_dom_dump.json');
+            fs.writeFileSync(dumpPath, jsonStr, 'utf8');
+            alert('DOM dumped successfully to ' + dumpPath + '!');
+          } catch (e) {
+            console.error('Failed to write DOM dump file:', e);
+            navigator.clipboard.writeText(jsonStr);
+            alert('Failed to write file, but copied DOM dump to clipboard!');
+          }
+        })
+        .catch(err => {
+          alert('Failed to execute dump script in webview: ' + err.message);
+        });
+    };
+
+    window.addEventListener('dump-torn-dom', handleDump);
+    return () => {
+      window.removeEventListener('dump-torn-dom', handleDump);
+    };
+  }, [isActive]);
 
 
 
@@ -522,22 +607,36 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   useEffect(() => {
     const wv = webviewRef.current;
-    if (!wv || !isActive || !itemsData) return;
+    if (!wv || !isActive) return;
 
-    // Map item names to their market values from the database
+    // Map item names and IDs to their market values from the database if they exist
     const itemsMarketValues = {};
-    Object.values(itemsData).forEach(item => {
-      if (item.name && item.market_value) {
-        itemsMarketValues[item.name.toLowerCase()] = item.market_value;
-      }
-    });
+    const itemsMarketValuesById = {};
+    if (itemsData) {
+      Object.values(itemsData).forEach(item => {
+        if (item.name && item.market_value) {
+          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+        }
+        if (item.id && item.market_value) {
+          itemsMarketValuesById[item.id] = item.market_value;
+        }
+      });
+    }
 
+    const userApiKey = apiKey || '';
     const script = `
       (() => {
         try {
+          // Initialize local cache from React props if not already set, or fall back to empty
+          if (!window._tornagator_market_values_by_id) {
+            window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+          }
+          const marketValuesById = window._tornagator_market_values_by_id;
+
           const marketValues = ${JSON.stringify(itemsMarketValues)};
           const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
           const cargoCapacity = ${cargoCapacity || 5};
+          const userApiKey = ${JSON.stringify(userApiKey)};
 
           // 1. Find and update header cells
           const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
@@ -628,57 +727,23 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             const cost = parseInt(costText, 10) || 0;
             const profitPerItem = marketValue - cost;
 
-            // Exclude submit, button, and image inputs to target the text/number Qty input specifically
-            const input = Array.from(row.querySelectorAll('input')).find(inp => {
-              const type = (inp.getAttribute('type') || 'text').toLowerCase();
-              return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
-            });
+            const input = row.querySelector('input');
+            const button = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
 
-            let stock = Infinity;
-            if (stockHeaderIdx !== -1) {
-              const stockCell = originalRowCells[stockHeaderIdx];
-              if (stockCell) {
-                const stockText = stockCell.textContent.replace(/[^0-9]/g, '');
-                if (stockText) {
-                  stock = parseInt(stockText, 10);
-                }
-              }
-            }
-
-            if (input && !input.dataset.hasDefaultedCargo) {
-              input.dataset.hasDefaultedCargo = 'true';
-              input.value = Math.min(cargoCapacity, stock);
-              // Trigger input events for Torn's page logic to register the value
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            
             const updateRowProfit = () => {
-              if (!input) return;
-              
-              let priceSpan = costCell.querySelector('[class*="displayPrice___"]') || costCell;
-              let profitSpan = priceSpan.querySelector('.injected-profit-span');
+              let profitSpan = button.querySelector('.injected-profit-span');
               if (!profitSpan) {
                 profitSpan = document.createElement('span');
                 profitSpan.className = 'injected-profit-span';
-                profitSpan.style.marginLeft = '6px';
                 profitSpan.style.fontWeight = 'bold';
-                profitSpan.style.fontSize = '0.9em';
-                priceSpan.appendChild(profitSpan);
+                button.appendChild(profitSpan);
               }
 
-              const qtyVal = input.value.trim();
-              const qty = qtyVal ? (parseInt(qtyVal, 10) || 0) : 0;
-              
-              // Update display cost based on quantity (default to 1 if quantity is 0)
-              const displayQty = qty === 0 ? 1 : qty;
-              const totalCost = cost * displayQty;
-              let textNode = Array.from(priceSpan.childNodes).find(n => n.nodeType === 3);
-              const costDisplayString = '$' + totalCost.toLocaleString();
-              if (textNode) {
-                textNode.nodeValue = costDisplayString;
-              } else {
-                priceSpan.insertBefore(document.createTextNode(costDisplayString), priceSpan.firstChild);
+              const qty = parseInt(input?.value || '0', 10) || 0;
+              let stock = 0;
+              if (stockHeaderIdx !== -1 && originalRowCells[stockHeaderIdx]) {
+                const stockText = originalRowCells[stockHeaderIdx].textContent.replace(/[^0-9]/g, '');
+                stock = parseInt(stockText, 10) || 0;
               }
 
               // Calculate profit based on qty, but if stock is 0, base it on cargoCapacity
@@ -705,8 +770,108 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               input.addEventListener('change', updateRowProfit);
             }
           }
+
+          // 3. Inject market values for found items on Crimes page (ONLY under outcome reward container)
+          if (window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes')) {
+            const rewardCells = document.querySelectorAll('div[class*=outcomeReward___] div[class*=itemCell___]');
+            
+            for (const cell of rewardCells) {
+              if (cell.querySelector('.injected-crime-value') || cell.querySelector('.injected-crime-value-loading')) continue;
+
+              const img = cell.querySelector('img[class*=image___]');
+              if (!img) continue;
+
+              const src = img.getAttribute('src') || img.src || '';
+              if (!src) continue;
+
+              // Extract item ID from src url (e.g. /images/items/904/medium.png)
+              const parts = src.split('/');
+              const itemId = parts.find(p => p && !isNaN(p) && /^[0-9]+$/.test(p));
+              if (!itemId) continue;
+
+              // Setup badge drawing function
+              const renderBadge = (val) => {
+                const temp = cell.querySelector('.injected-crime-value-loading');
+                if (temp) temp.remove();
+
+                if (cell.querySelector('.injected-crime-value')) return;
+
+                // Check quantity
+                const countSpan = cell.querySelector('span[class*=count___]');
+                const qty = countSpan ? (parseInt(countSpan.textContent.replace(/[^0-9]/g, ''), 10) || 1) : 1;
+
+                const valDiv = document.createElement('div');
+                valDiv.className = 'injected-crime-value';
+                valDiv.style.textAlign = 'center';
+                valDiv.style.fontSize = '0.7rem';
+                valDiv.style.fontWeight = 'bold';
+                valDiv.style.marginTop = '4px';
+                valDiv.style.padding = '2px 4px';
+                valDiv.style.borderRadius = '4px';
+                valDiv.style.backgroundColor = 'rgba(0,0,0,0.6)';
+                valDiv.style.border = '1px solid rgba(255,255,255,0.1)';
+                valDiv.style.display = 'block';
+                
+                if (val > 0) {
+                  const totalVal = val * qty;
+                  valDiv.style.color = '#10b981';
+                  if (qty > 1) {
+                    valDiv.textContent = '$' + totalVal.toLocaleString() + ' ($' + val.toLocaleString() + ')';
+                  } else {
+                    valDiv.textContent = '$' + val.toLocaleString();
+                  }
+                } else {
+                  valDiv.style.color = '#888';
+                  valDiv.textContent = 'N/A';
+                }
+                cell.appendChild(valDiv);
+              };
+
+              const marketValue = marketValuesById[itemId];
+              if (marketValue !== undefined) {
+                renderBadge(marketValue);
+              } else {
+                // If not cached, fetch all items on-demand from Torn API to populate the cache
+                if (window._tornagator_fetching_catalog) continue;
+
+                // Add temp loading element
+                const tempDiv = document.createElement('div');
+                tempDiv.className = 'injected-crime-value-loading';
+                tempDiv.textContent = '...';
+                tempDiv.style.textAlign = 'center';
+                tempDiv.style.fontSize = '0.65rem';
+                tempDiv.style.color = '#aaa';
+                cell.appendChild(tempDiv);
+
+                window._tornagator_fetching_catalog = true;
+                console.log("[TORNagator Webview] Fetching Torn items catalog on-demand for itemId:", itemId);
+
+                fetch(\`https://api.torn.com/torn/?selections=items&key=\${userApiKey}\`)
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data && data.items) {
+                      Object.entries(data.items).forEach(([id, item]) => {
+                        marketValuesById[id] = item.market_value || 0;
+                      });
+                      console.log("[TORNagator Webview] On-demand catalog loaded. Total items:", Object.keys(marketValuesById).length);
+                      const newVal = marketValuesById[itemId] || 0;
+                      renderBadge(newVal);
+                    } else {
+                      renderBadge(0);
+                    }
+                  })
+                  .catch(err => {
+                    console.error("[TORNagator Webview] On-demand catalog fetch failed:", err);
+                    renderBadge(0);
+                  })
+                  .finally(() => {
+                    window._tornagator_fetching_catalog = false;
+                  });
+              }
+            }
+          }
         } catch (e) {
-          console.error("Profit injection error:", e);
+          console.error("Profit/Crimes injection error:", e);
         }
       })()
     `;
@@ -716,7 +881,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }, 1000);
 
     return () => clearInterval(profitInterval);
-  }, [isActive, itemsData, cargoCapacity]);
+  }, [isActive, itemsData, cargoCapacity, apiKey]);
 
   return (
     <webview
@@ -733,7 +898,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
+const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -1030,6 +1195,7 @@ const TornView = ({ userData, requestedUrl, setRequestedUrl, targetCountry, setT
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
                 cargoCapacity={cargoCapacity}
+                apiKey={apiKey}
               />
             ))}
           </div>
