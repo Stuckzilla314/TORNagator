@@ -1578,6 +1578,7 @@ const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
     return () => clearInterval(interval);
   }, [currentStatusState, statusUntil]);
 
+  const [isOpen, setIsOpen] = useState(false);
   const isOkay = currentStatusState === 'Okay';
   const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
   const profile = member.profile || {};
@@ -1585,28 +1586,45 @@ const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
 
   return (
     <div
+      onClick={() => setIsOpen(!isOpen)}
       style={{
-        padding: '8px',
+        padding: '6px 8px',
         backgroundColor: 'rgba(255,255,255,0.02)',
         borderRadius: '6px',
         borderLeft: `3px solid ${statusColor}`,
         display: 'flex',
         flexDirection: 'column',
         gap: '4px',
-        transition: 'all 0.15s ease'
+        transition: 'all 0.15s ease',
+        cursor: 'pointer'
       }}
       className="torn-stat-bar"
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
         <div style={{ minWidth: 0 }}>
+          <span style={{
+            marginRight: '6px',
+            fontSize: '0.6rem',
+            color: '#666',
+            display: 'inline-block',
+            transition: 'transform 0.15s ease',
+            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+            verticalAlign: 'middle',
+            userSelect: 'none'
+          }}>
+            ▶
+          </span>
           <span
-            onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
-            style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'none' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`);
+            }}
+            style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'none', verticalAlign: 'middle' }}
             className="text-link"
           >
             {member.name}
           </span>
-          <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '4px' }}>[{member.id}]</span>
+          <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '4px', verticalAlign: 'middle' }}>[{member.id}]</span>
           {member.last_action?.status && (
             <span
               title={member.last_action.status}
@@ -1630,146 +1648,189 @@ const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
           </div>
         </div>
 
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem', display: 'block' }}>
+        <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+          <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem' }}>
             {currentStatusState || 'Unknown'}
           </span>
-          <span style={{ color: '#666', fontSize: '0.65rem', display: 'block' }}>
-            {currentDescription?.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '') || ''}
-          </span>
+          {isOkay ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigateTo(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`);
+              }}
+              style={{
+                backgroundColor: 'rgba(231, 76, 60, 0.15)',
+                border: '1px solid rgba(231, 76, 60, 0.4)',
+                borderRadius: '3px',
+                color: '#e74c3c',
+                padding: '1px 5px',
+                fontSize: '0.65rem',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                lineHeight: '1.2',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
+                e.currentTarget.style.borderColor = 'rgba(231, 76, 60, 0.7)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(231, 76, 60, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(231, 76, 60, 0.4)';
+              }}
+            >
+              ⚔️ Attack
+            </button>
+          ) : (
+            currentDescription && currentDescription !== currentStatusState && (
+              <span style={{ color: '#666', fontSize: '0.65rem' }}>
+                {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+              </span>
+            )
+          )}
         </div>
       </div>
 
-      {/* Suspected XP info & Profile indicators */}
-      {(member.suspectedRaw || hasProfile) && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
-          <div>
-            {member.suspectedRaw && (
-              <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
-              </span>
-            )}
-          </div>
-          <div>
-            {hasProfile && (
-              <span style={{ color: '#888' }}>
-                {profile.age ? `${profile.age.toLocaleString()}d` : ''}
-                {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Activity strip */}
-      {hasProfile && (
-        <div style={{ 
-          display: 'flex', 
-          gap: '4px', 
-          flexWrap: 'wrap', 
-          marginTop: '4px', 
-          paddingTop: '4px', 
-          borderTop: '1px dashed rgba(255,255,255,0.05)' 
-        }}>
-          {[
-            { 
-              label: <><IconSwords size={10} color="#e67e22" /> Cri</>, 
-              value: member.criminalOffenses, 
-              color: '#e67e22',
-              own: userData?.personalstats?.criminaloffenses || 0
-            },
-            { 
-              label: <><IconPill size={10} color="#9b59b6" /> Drg</>, 
-              value: member.drugsUsed, 
-              color: '#9b59b6',
-              own: userData?.personalstats?.drugsused || 0
-            },
-            { 
-              label: <><IconBolt size={10} color="#3498db" /> Ref</>, 
-              value: member.totalRefills, 
-              color: '#3498db',
-              own: (userData?.personalstats?.refills || 0) + (userData?.personalstats?.nerverefills || 0) + (userData?.personalstats?.tokenrefills || 0)
-            },
-            { 
-              label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>, 
-              value: member.boostersUsed, 
-              color: '#2ecc71',
-              own: userData?.personalstats?.boostersused || 0
-            },
-          ].map(({ label, value, color, own }) => {
-            const valNum = Number(value) || 0;
-            const ownNum = Number(own) || 0;
-            const diff = valNum - ownNum;
-            const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
-            const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
-
-            return (
-              <span key={color} style={{
-                backgroundColor: 'rgba(0,0,0,0.15)',
-                border: `1px solid ${color}22`,
-                color: '#aaa',
-                padding: '2px 5px',
-                borderRadius: '10px',
-                fontSize: '0.65rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-                flexGrow: 1,
-                justifyContent: 'center'
-              }}>
-                {label}: <strong style={{ color }}>
-                  {compareMode ? diffStr : valNum.toLocaleString()}
-                </strong>
-                {compareMode && (
-                  <span style={{ fontSize: '0.6rem', color: diffColor, fontStyle: 'italic' }}>
-                    ({diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'})
+      {isOpen && (
+        <>
+          {/* Suspected XP info & Profile indicators */}
+          {(member.suspectedRaw || hasProfile) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
+              <div>
+                {member.suspectedRaw && (
+                  <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
                   </span>
                 )}
-              </span>
-            );
-          })}
-        </div>
-      )}
+              </div>
+              <div>
+                {hasProfile && (
+                  <span style={{ color: '#888' }}>
+                    {profile.age ? `${profile.age.toLocaleString()}d` : ''}
+                    {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
-      {/* Compact Action Buttons */}
-      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-        <button
-          onClick={() => navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`)}
-          style={{
-            flex: 1,
-            backgroundColor: '#2c2c2c',
-            border: 'none',
-            borderRadius: '4px',
-            color: '#ccc',
-            padding: '3px 0',
-            fontSize: '0.68rem',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            transition: 'all 0.15s'
-          }}
-        >
-          Profile
-        </button>
-        <button
-          onClick={() => navigateTo(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`)}
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(231, 76, 60, 0.15)',
-            border: '1px solid rgba(231, 76, 60, 0.4)',
-            borderRadius: '4px',
-            color: '#e74c3c',
-            padding: '2px 0',
-            fontSize: '0.68rem',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            transition: 'all 0.15s'
-          }}
-        >
-          Attack
-        </button>
-      </div>
+          {/* Activity strip */}
+          {hasProfile && (
+            <div style={{ 
+              display: 'flex', 
+              gap: '4px', 
+              flexWrap: 'wrap', 
+              marginTop: '4px', 
+              paddingTop: '4px', 
+              borderTop: '1px dashed rgba(255,255,255,0.05)' 
+            }}>
+              {[
+                { 
+                  label: <><IconSwords size={10} color="#e67e22" /> Cri</>, 
+                  value: member.criminalOffenses, 
+                  color: '#e67e22',
+                  own: userData?.personalstats?.criminaloffenses || 0
+                },
+                { 
+                  label: <><IconPill size={10} color="#9b59b6" /> Drg</>, 
+                  value: member.drugsUsed, 
+                  color: '#9b59b6',
+                  own: userData?.personalstats?.drugsused || 0
+                },
+                { 
+                  label: <><IconBolt size={10} color="#3498db" /> Ref</>, 
+                  value: member.totalRefills, 
+                  color: '#3498db',
+                  own: (userData?.personalstats?.refills || 0) + (userData?.personalstats?.nerverefills || 0) + (userData?.personalstats?.tokenrefills || 0)
+                },
+                { 
+                  label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>, 
+                  value: member.boostersUsed, 
+                  color: '#2ecc71',
+                  own: userData?.personalstats?.boostersused || 0
+                },
+              ].map(({ label, value, color, own }) => {
+                const valNum = Number(value) || 0;
+                const ownNum = Number(own) || 0;
+                const diff = valNum - ownNum;
+                const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+                const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
+
+                return (
+                  <span key={color} style={{
+                    backgroundColor: 'rgba(0,0,0,0.15)',
+                    border: `1px solid ${color}22`,
+                    color: '#aaa',
+                    padding: '2px 5px',
+                    borderRadius: '10px',
+                    fontSize: '0.65rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    flexGrow: 1,
+                    justifyContent: 'center'
+                  }}>
+                    {label}: <strong style={{ color }}>
+                      {compareMode ? diffStr : valNum.toLocaleString()}
+                    </strong>
+                    {compareMode && (
+                      <span style={{ fontSize: '0.6rem', color: diffColor, fontStyle: 'italic' }}>
+                        ({diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'})
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Compact Action Buttons */}
+          <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigateTo(`https://www.torn.com/profiles.php?XID=${member.id}`);
+              }}
+              style={{
+                flex: 1,
+                backgroundColor: '#2c2c2c',
+                border: 'none',
+                borderRadius: '4px',
+                color: '#ccc',
+                padding: '3px 0',
+                fontSize: '0.68rem',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                transition: 'all 0.15s'
+              }}
+            >
+              Profile
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigateTo(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`);
+              }}
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(231, 76, 60, 0.15)',
+                border: '1px solid rgba(231, 76, 60, 0.4)',
+                borderRadius: '4px',
+                color: '#e74c3c',
+                padding: '2px 0',
+                fontSize: '0.68rem',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                transition: 'all 0.15s'
+              }}
+            >
+              Attack
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -1813,6 +1874,12 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [dismissedWarnings, setDismissedWarnings] = useState({});
 
   const [sidebarTab, setSidebarTab] = useLocalStorage('torn_sidebar_tab', 'player');
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useLocalStorage('torn_sidebar_header_collapsed', false);
+  const [isWarOverviewCollapsed, setIsWarOverviewCollapsed] = useLocalStorage('torn_sidebar_war_overview_collapsed', false);
+  const [isControlsCollapsed, setIsControlsCollapsed] = useLocalStorage('torn_sidebar_controls_collapsed', false);
+  const [isLiveStatsCollapsed, setIsLiveStatsCollapsed] = useLocalStorage('torn_sidebar_live_stats_collapsed', false);
+  const [isFinancesCollapsed, setIsFinancesCollapsed] = useLocalStorage('torn_sidebar_finances_collapsed', false);
+  const [isQuickActionsCollapsed, setIsQuickActionsCollapsed] = useLocalStorage('torn_sidebar_quick_actions_collapsed', false);
 
   // Faction War Targets state
   const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
@@ -2432,24 +2499,64 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
           {!sidebarCollapsed && (
             <div className={`torn-sidebar-inner ${sidebarTab === 'war' ? 'war-tab-active' : ''}`}>
               {/* Player header */}
-              <div className="torn-sidebar-header">
-                <div className="torn-sidebar-avatar">
-                  {userData?.name?.[0] ?? '?'}
+              <div 
+                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                className="torn-sidebar-header"
+                style={{ 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  paddingBottom: isHeaderCollapsed ? '8px' : '12px',
+                  userSelect: 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                  {!isHeaderCollapsed ? (
+                    <>
+                      <div className="torn-sidebar-avatar">
+                        {userData?.name?.[0] ?? '?'}
+                      </div>
+                      <div className="torn-sidebar-player" style={{ minWidth: 0 }}>
+                        <div className="torn-sidebar-name">{userData?.name ?? 'Unknown'}</div>
+                        <div className="torn-sidebar-meta">
+                          <span className="torn-sidebar-level">Lv {userData?.level}</span>
+                          <span
+                            className="torn-sidebar-status-dot"
+                            style={{ backgroundColor: statusColor }}
+                            title={userData?.status?.description}
+                          />
+                          <span className="torn-sidebar-status-text" style={{ color: statusColor }}>
+                            {userData?.status?.state}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      <span
+                        className="torn-sidebar-status-dot"
+                        style={{ backgroundColor: statusColor, width: '8px', height: '8px', margin: 0 }}
+                        title={userData?.status?.description}
+                      />
+                      <span style={{ fontWeight: 'bold', fontSize: '0.82rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {userData?.name ?? 'Unknown'}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#666', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '8px' }}>
+                        Lv {userData?.level}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="torn-sidebar-player">
-                  <div className="torn-sidebar-name">{userData?.name ?? 'Unknown'}</div>
-                  <div className="torn-sidebar-meta">
-                    <span className="torn-sidebar-level">Lv {userData?.level}</span>
-                    <span
-                      className="torn-sidebar-status-dot"
-                      style={{ backgroundColor: statusColor }}
-                      title={userData?.status?.description}
-                    />
-                    <span className="torn-sidebar-status-text" style={{ color: statusColor }}>
-                      {userData?.status?.state}
-                    </span>
-                  </div>
-                </div>
+                <span style={{
+                  fontSize: '0.65rem',
+                  color: '#666',
+                  transform: isHeaderCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                  transition: 'transform 0.2s',
+                  paddingLeft: '6px'
+                }}>
+                  ▶
+                </span>
               </div>
 
               {/* Sidebar Tabs */}
@@ -2539,357 +2646,447 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                   {/* Live Stats */}
                   <div className="torn-sidebar-section">
-                    <div className="torn-sidebar-section-title">Live Stats</div>
-                    <SidebarStatBar
-                      label={<><IconBolt size={12} color="#f1c40f" /> Energy</>}
-                      current={userData?.energy?.current}
-                      max={userData?.energy?.maximum}
-                      color="#f1c40f"
-                      timeRemaining={energyTimer}
-                      href="https://www.torn.com/gym.php"
-                      onNavigate={navigateTo}
-                    />
-                    <SidebarStatBar
-                      label={<><IconDot size={10} color="#e74c3c" /> Nerve</>}
-                      current={userData?.nerve?.current}
-                      max={userData?.nerve?.maximum}
-                      color="#e74c3c"
-                      timeRemaining={nerveTimer}
-                      href="https://www.torn.com/crimes.php"
-                      onNavigate={navigateTo}
-                    />
-                    <SidebarStatBar
-                      label={<><IconSmile size={12} color="#3498db" /> Happy</>}
-                      current={userData?.happy?.current}
-                      max={userData?.happy?.maximum}
-                      color="#3498db"
-                      timeRemaining={happyTimer}
-                      href="https://www.torn.com/properties.php"
-                      onNavigate={navigateTo}
-                    />
-                    <SidebarStatBar
-                      label={<><IconHeart size={12} color="#2ecc71" /> Life</>}
-                      current={userData?.life?.current}
-                      max={userData?.life?.maximum}
-                      color="#2ecc71"
-                      timeRemaining={lifeTimer}
-                      href="https://www.torn.com/hospitalview.php"
-                      onNavigate={navigateTo}
-                    />
+                    <div 
+                      onClick={() => setIsLiveStatsCollapsed(!isLiveStatsCollapsed)}
+                      className="torn-sidebar-section-title" 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          fontSize: '0.55rem',
+                          color: '#555',
+                          transform: isLiveStatsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                          transition: 'transform 0.2s',
+                          display: 'inline-block'
+                        }}>
+                          ▶
+                        </span>
+                        <span>Live Stats</span>
+                      </div>
+                      {isLiveStatsCollapsed && userData && (
+                        <span style={{ fontSize: '0.62rem', color: '#666', fontWeight: 'normal' }}>
+                          ⚡{userData.energy?.current} • 🎯{userData.nerve?.current} • ❤️{userData.life?.current}
+                        </span>
+                      )}
+                    </div>
+                    {!isLiveStatsCollapsed && (
+                      <>
+                        <SidebarStatBar
+                          label={<><IconBolt size={12} color="#f1c40f" /> Energy</>}
+                          current={userData?.energy?.current}
+                          max={userData?.energy?.maximum}
+                          color="#f1c40f"
+                          timeRemaining={energyTimer}
+                          href="https://www.torn.com/gym.php"
+                          onNavigate={navigateTo}
+                        />
+                        <SidebarStatBar
+                          label={<><IconDot size={10} color="#e74c3c" /> Nerve</>}
+                          current={userData?.nerve?.current}
+                          max={userData?.nerve?.maximum}
+                          color="#e74c3c"
+                          timeRemaining={nerveTimer}
+                          href="https://www.torn.com/crimes.php"
+                          onNavigate={navigateTo}
+                        />
+                        <SidebarStatBar
+                          label={<><IconSmile size={12} color="#3498db" /> Happy</>}
+                          current={userData?.happy?.current}
+                          max={userData?.happy?.maximum}
+                          color="#3498db"
+                          timeRemaining={happyTimer}
+                          href="https://www.torn.com/properties.php"
+                          onNavigate={navigateTo}
+                        />
+                        <SidebarStatBar
+                          label={<><IconHeart size={12} color="#2ecc71" /> Life</>}
+                          current={userData?.life?.current}
+                          max={userData?.life?.maximum}
+                          color="#2ecc71"
+                          timeRemaining={lifeTimer}
+                          href="https://www.torn.com/hospitalview.php"
+                          onNavigate={navigateTo}
+                        />
+                      </>
+                    )}
                   </div>
 
                   {/* Money */}
                   {moneyFormatted && (
                     <div className="torn-sidebar-section">
-                      <div className="torn-sidebar-section-title">Finances</div>
-                      <div
-                        className="torn-money-card"
-                        onClick={() => navigateTo('https://www.torn.com/bank.php')}
-                        title="Open Bank"
+                      <div 
+                        onClick={() => setIsFinancesCollapsed(!isFinancesCollapsed)}
+                        className="torn-sidebar-section-title" 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
                       >
-                        <span className="torn-money-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><IconCoin size={13} color="#f1c40f" /> Cash on Hand</span>
-                        <span className="torn-money-value">{moneyFormatted}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.55rem',
+                            color: '#555',
+                            transform: isFinancesCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                            transition: 'transform 0.2s',
+                            display: 'inline-block'
+                          }}>
+                            ▶
+                          </span>
+                          <span>Finances</span>
+                        </div>
+                        {isFinancesCollapsed && (
+                          <span style={{ fontSize: '0.65rem', color: '#2ecc71', fontWeight: 'bold' }}>
+                            {moneyFormatted}
+                          </span>
+                        )}
                       </div>
+                      {!isFinancesCollapsed && (
+                        <div
+                          className="torn-money-card"
+                          onClick={() => navigateTo('https://www.torn.com/bank.php')}
+                          title="Open Bank"
+                        >
+                          <span className="torn-money-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><IconCoin size={13} color="#f1c40f" /> Cash on Hand</span>
+                          <span className="torn-money-value">{moneyFormatted}</span>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Quick links */}
+                  {/* Quick actions */}
                   <div className="torn-sidebar-section">
-                    <div className="torn-sidebar-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span>Quick Actions</span>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => {
-                            const activeTab = tabs.find(t => t.id === activeTabId);
-                            if (activeTab) {
-                              setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
-                            }
-                          }}
-                          title="Add current tab to quick actions"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#2ecc71',
-                            fontSize: '0.7rem',
-                            cursor: 'pointer',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          + Add Current
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsEditingQuick(!isEditingQuick);
-                            setIsAddingNew(false);
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#3498db',
-                            fontSize: '0.7rem',
-                            cursor: 'pointer',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          {isEditingQuick ? 'Done' : 'Edit'}
-                        </button>
+                    <div 
+                      onClick={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                      className="torn-sidebar-section-title" 
+                      style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        marginBottom: isQuickActionsCollapsed ? '0' : '8px',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          fontSize: '0.55rem',
+                          color: '#555',
+                          transform: isQuickActionsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                          transition: 'transform 0.2s',
+                          display: 'inline-block'
+                        }}>
+                          ▶
+                        </span>
+                        <span>Quick Actions</span>
                       </div>
-                    </div>
-
-                    <div className="torn-sidebar-quicklinks">
-                      {quickActions.map((action, index) => (
-                        isEditingQuick ? (
-                          <div
-                            key={index}
+                      {!isQuickActionsCollapsed && (
+                        <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => {
+                              const activeTab = tabs.find(t => t.id === activeTabId);
+                              if (activeTab) {
+                                setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
+                              }
+                            }}
+                            title="Add current tab to quick actions"
                             style={{
-                              position: 'relative',
-                              background: 'rgba(255,255,255,0.02)',
-                              border: '1px solid #333',
-                              borderRadius: '7px',
-                              padding: '16px 4px 6px 4px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '4px'
+                              background: 'none',
+                              border: 'none',
+                              color: '#2ecc71',
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                              borderRadius: '3px',
+                              backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                              transition: 'all 0.2s'
                             }}
                           >
-                            {/* Delete button */}
-                            <button
-                              onClick={() => handleRemoveAction(index)}
-                              style={{
-                                position: 'absolute',
-                                top: '2px',
-                                right: '4px',
-                                background: 'none',
-                                border: 'none',
-                                color: '#e74c3c',
-                                fontSize: '0.85rem',
-                                cursor: 'pointer',
-                                padding: 0,
-                                lineHeight: '1'
-                              }}
-                              title="Remove"
-                            >
-                              ×
-                            </button>
-
-                            {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={16} color="#888" />; })()}
-
-                            <input
-                              type="text"
-                              value={action.label}
-                              onChange={(e) => {
-                                const newLabel = e.target.value;
-                                setQuickActions(prev => prev.map((qa, i) => i === index ? { ...qa, label: newLabel } : qa));
-                              }}
-                              style={{
-                                width: '90%',
-                                fontSize: '0.68rem',
-                                backgroundColor: '#111',
-                                border: '1px solid #444',
-                                color: '#fff',
-                                borderRadius: '4px',
-                                padding: '2px 4px',
-                                textAlign: 'center',
-                                boxSizing: 'border-box',
-                                fontFamily: 'inherit'
-                              }}
-                              placeholder="Label"
-                            />
-
-                            {/* Rearrange arrows */}
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
-                              <button
-                                onClick={() => handleMoveAction(index, -1)}
-                                disabled={index === 0}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: index === 0 ? '#444' : '#3498db',
-                                  fontSize: '0.7rem',
-                                  cursor: index === 0 ? 'default' : 'pointer',
-                                  padding: '0 4px'
-                                }}
-                              >
-                                ◀
-                              </button>
-                              <button
-                                onClick={() => handleMoveAction(index, 1)}
-                                disabled={index === quickActions.length - 1}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: index === quickActions.length - 1 ? '#444' : '#3498db',
-                                  fontSize: '0.7rem',
-                                  cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
-                                  padding: '0 4px'
-                                }}
-                              >
-                                ▶
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            key={action.href}
-                            className="torn-sidebar-quicklink-btn"
-                            onClick={() => navigateTo(action.href)}
-                          >
-                            {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
-                            <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1 }}>{action.label}</span>
+                            + Add Current
                           </button>
-                        )
-                      ))}
-
-                      {isEditingQuick && (
-                        <>
-                          {isAddingNew ? (
-                            <div style={{
-                              gridColumn: 'span 2',
-                              padding: '8px',
-                              backgroundColor: '#161616',
-                              border: '1px solid #333',
-                              borderRadius: '6px',
-                              marginTop: '6px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '6px'
-                            }}>
-                              <input
-                                type="text"
-                                placeholder="Label (e.g. 🏋️ Gym)"
-                                value={newLabel}
-                                onChange={e => setNewLabel(e.target.value)}
-                                style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
-                              />
-                              <input
-                                type="text"
-                                placeholder="URL (e.g. https://www.torn.com/...)"
-                                value={newUrl}
-                                onChange={e => setNewUrl(e.target.value)}
-                                style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
-                              />
-
-                              {/* Live Icon & Button Preview */}
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '6px 8px',
-                                backgroundColor: 'rgba(255,255,255,0.02)',
-                                borderRadius: '4px',
-                                border: '1px dashed #333',
-                                marginTop: '2px'
-                              }}>
-                                <span style={{ fontSize: '0.65rem', color: '#666' }}>Preview:</span>
-                                <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                                  <div className="torn-sidebar-quicklink-btn" style={{ width: '100%', minHeight: '48px', cursor: 'default', pointerEvents: 'none' }}>
-                                    {(() => {
-                                      const Icon = getQuickActionIcon(newUrl, newLabel);
-                                      return <Icon size={15} color="#3498db" style={{ marginBottom: '3px' }} />;
-                                    })()}
-                                    <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1, color: '#fff' }}>
-                                      {newLabel.trim() || 'Preview'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
-                                <button
-                                  onClick={() => setIsAddingNew(false)}
-                                  style={{ backgroundColor: 'transparent', border: 'none', color: '#aaa', fontSize: '0.7rem', cursor: 'pointer' }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={handleSaveNewAction}
-                                  style={{ backgroundColor: '#3498db', border: 'none', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                                >
-                                  Add
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ gridColumn: 'span 2', display: 'flex', gap: '6px', marginTop: '4px' }}>
-                              <button
-                                onClick={() => {
-                                  const activeTab = tabs.find(t => t.id === activeTabId);
-                                  if (activeTab) {
-                                    setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
-                                  }
-                                }}
-                                style={{
-                                  flex: 1,
-                                  background: 'none',
-                                  border: '1px dashed #2ecc71',
-                                  borderRadius: '7px',
-                                  color: '#2ecc71',
-                                  fontSize: '0.7rem',
-                                  padding: '6px',
-                                  cursor: 'pointer',
-                                  textAlign: 'center',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                + Add Current
-                              </button>
-                              <button
-                                onClick={() => setIsAddingNew(true)}
-                                style={{
-                                  flex: 1,
-                                  background: 'none',
-                                  border: '1px dashed #444',
-                                  borderRadius: '7px',
-                                  color: '#888',
-                                  fontSize: '0.7rem',
-                                  padding: '6px',
-                                  cursor: 'pointer',
-                                  textAlign: 'center',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                + Custom Action
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Presets suggestions */}
-                          {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).length > 0 && (
-                            <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                              <span style={{ fontSize: '0.65rem', color: '#666' }}>Suggestions:</span>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).slice(0, 6).map(preset => (
-                                  <button
-                                    key={preset.href}
-                                    onClick={() => {
-                                      setQuickActions(prev => [...prev, preset]);
-                                    }}
-                                    style={{
-                                      backgroundColor: 'rgba(255,255,255,0.03)',
-                                      border: '1px solid #222',
-                                      borderRadius: '4px',
-                                      color: '#aaa',
-                                      fontSize: '0.65rem',
-                                      padding: '2px 5px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    {preset.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </>
+                          <button
+                            onClick={() => {
+                              setIsEditingQuick(!isEditingQuick);
+                              setIsAddingNew(false);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#3498db',
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              padding: '2px 6px',
+                              borderRadius: '3px',
+                              backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {isEditingQuick ? 'Done' : 'Edit'}
+                          </button>
+                        </div>
                       )}
                     </div>
+
+                    {!isQuickActionsCollapsed && (
+                      <>
+                        <div className="torn-sidebar-quicklinks">
+                          {quickActions.map((action, index) => (
+                            isEditingQuick ? (
+                              <div
+                                key={index}
+                                style={{
+                                  position: 'relative',
+                                  background: 'rgba(255,255,255,0.02)',
+                                  border: '1px solid #333',
+                                  borderRadius: '7px',
+                                  padding: '16px 4px 6px 4px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                {/* Delete button */}
+                                <button
+                                  onClick={() => handleRemoveAction(index)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '2px',
+                                    right: '4px',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#e74c3c',
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    lineHeight: '1'
+                                  }}
+                                  title="Remove"
+                                >
+                                  ×
+                                </button>
+
+                                {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={16} color="#888" />; })()}
+
+                                <input
+                                  type="text"
+                                  value={action.label}
+                                  onChange={(e) => {
+                                    const newLabel = e.target.value;
+                                    setQuickActions(prev => prev.map((qa, i) => i === index ? { ...qa, label: newLabel } : qa));
+                                  }}
+                                  style={{
+                                    width: '90%',
+                                    fontSize: '0.68rem',
+                                    backgroundColor: '#111',
+                                    border: '1px solid #444',
+                                    color: '#fff',
+                                    borderRadius: '4px',
+                                    padding: '2px 4px',
+                                    textAlign: 'center',
+                                    boxSizing: 'border-box',
+                                    fontFamily: 'inherit'
+                                  }}
+                                  placeholder="Label"
+                                />
+
+                                {/* Rearrange arrows */}
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                                  <button
+                                    onClick={() => handleMoveAction(index, -1)}
+                                    disabled={index === 0}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: index === 0 ? '#444' : '#3498db',
+                                      fontSize: '0.7rem',
+                                      cursor: index === 0 ? 'default' : 'pointer',
+                                      padding: '0 4px'
+                                    }}
+                                  >
+                                    ◀
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveAction(index, 1)}
+                                    disabled={index === quickActions.length - 1}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: index === quickActions.length - 1 ? '#444' : '#3498db',
+                                      fontSize: '0.7rem',
+                                      cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
+                                      padding: '0 4px'
+                                    }}
+                                  >
+                                    ▶
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                key={action.href}
+                                className="torn-sidebar-quicklink-btn"
+                                onClick={() => navigateTo(action.href)}
+                              >
+                                {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
+                                <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1 }}>{action.label}</span>
+                              </button>
+                            )
+                          ))}
+
+                          {isEditingQuick && (
+                            <>
+                              {isAddingNew ? (
+                                <div style={{
+                                  gridColumn: 'span 2',
+                                  padding: '8px',
+                                  backgroundColor: '#161616',
+                                  border: '1px solid #333',
+                                  borderRadius: '6px',
+                                  marginTop: '6px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '6px'
+                                }}>
+                                  <input
+                                    type="text"
+                                    placeholder="Label (e.g. 🏋️ Gym)"
+                                    value={newLabel}
+                                    onChange={e => setNewLabel(e.target.value)}
+                                    style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="URL (e.g. https://www.torn.com/...)"
+                                    value={newUrl}
+                                    onChange={e => setNewUrl(e.target.value)}
+                                    style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
+                                  />
+
+                                  {/* Live Icon & Button Preview */}
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '6px 8px',
+                                    backgroundColor: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '4px',
+                                    border: '1px dashed #333',
+                                    marginTop: '2px'
+                                  }}>
+                                    <span style={{ fontSize: '0.65rem', color: '#666' }}>Preview:</span>
+                                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                                      <div className="torn-sidebar-quicklink-btn" style={{ width: '100%', minHeight: '48px', cursor: 'default', pointerEvents: 'none' }}>
+                                        {(() => {
+                                          const Icon = getQuickActionIcon(newUrl, newLabel);
+                                          return <Icon size={15} color="#3498db" style={{ marginBottom: '3px' }} />;
+                                        })()}
+                                        <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1, color: '#fff' }}>
+                                          {newLabel.trim() || 'Preview'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
+                                    <button
+                                      onClick={() => setIsAddingNew(false)}
+                                      style={{ backgroundColor: 'transparent', border: 'none', color: '#aaa', fontSize: '0.7rem', cursor: 'pointer' }}
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={handleSaveNewAction}
+                                      style={{ backgroundColor: '#3498db', border: 'none', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                      Add
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ gridColumn: 'span 2', display: 'flex', gap: '6px', marginTop: '4px' }}>
+                                  <button
+                                    onClick={() => {
+                                      const activeTab = tabs.find(t => t.id === activeTabId);
+                                      if (activeTab) {
+                                        setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
+                                      }
+                                    }}
+                                    style={{
+                                      flex: 1,
+                                      background: 'none',
+                                      border: '1px dashed #2ecc71',
+                                      borderRadius: '7px',
+                                      color: '#2ecc71',
+                                      fontSize: '0.7rem',
+                                      padding: '6px',
+                                      cursor: 'pointer',
+                                      textAlign: 'center',
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    + Add Current
+                                  </button>
+                                  <button
+                                    onClick={() => setIsAddingNew(true)}
+                                    style={{
+                                      flex: 1,
+                                      background: 'none',
+                                      border: '1px dashed #444',
+                                      borderRadius: '7px',
+                                      color: '#888',
+                                      fontSize: '0.7rem',
+                                      padding: '6px',
+                                      cursor: 'pointer',
+                                      textAlign: 'center',
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    + Custom Action
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Presets suggestions */}
+                              {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).length > 0 && (
+                                <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                                  <span style={{ fontSize: '0.65rem', color: '#666' }}>Suggestions:</span>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                    {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).slice(0, 6).map(preset => (
+                                      <button
+                                        key={preset.href}
+                                        onClick={() => {
+                                          setQuickActions(prev => [...prev, preset]);
+                                        }}
+                                        style={{
+                                          backgroundColor: 'rgba(255,255,255,0.03)',
+                                          border: '1px solid #222',
+                                          borderRadius: '4px',
+                                          color: '#aaa',
+                                          fontSize: '0.65rem',
+                                          padding: '2px 5px',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        {preset.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="torn-sidebar-footer">
@@ -2927,81 +3124,230 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                     </div>
                   ) : (
                     <>
-                      {/* War Status Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy Faction'}
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <IconTarget size={10} color="#888" /> Target: {currentWar?.war?.target || 'N/A'} pts
-                          </div>
+                      {/* War Status Header / Collapsible Overview Toggle */}
+                      <div 
+                        onClick={() => setIsWarOverviewCollapsed(!isWarOverviewCollapsed)}
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          paddingBottom: '6px',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.6rem',
+                            color: '#666',
+                            transform: isWarOverviewCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                            transition: 'transform 0.2s',
+                            display: 'inline-block'
+                          }}>
+                            ▶
+                          </span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            WAR OVERVIEW
+                          </span>
                         </div>
-
-                        <button
-                          onClick={handleForceRefresh}
-                          disabled={isLoadingTargets || isSyncingTargets}
-                          style={{
-                            background: 'transparent',
-                            border: '1px solid #444',
-                            borderRadius: '20px',
-                            padding: '3px 8px',
-                            cursor: (isLoadingTargets || isSyncingTargets) ? 'not-allowed' : 'pointer',
-                            color: (isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db',
-                            fontWeight: 'bold',
-                            fontSize: '0.68rem',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <IconRefresh
-                            size={10}
-                            color={(isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db'}
-                            className={isSyncingTargets ? 'spin-animation' : ''}
-                          />
-                        </button>
+                        {isWarOverviewCollapsed && (
+                          <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#e74c3c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                            vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}
+                          </div>
+                        )}
+                        {!isWarOverviewCollapsed && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleForceRefresh();
+                            }}
+                            disabled={isLoadingTargets || isSyncingTargets}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid #444',
+                              borderRadius: '20px',
+                              padding: '2px 8px',
+                              cursor: (isLoadingTargets || isSyncingTargets) ? 'not-allowed' : 'pointer',
+                              color: (isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db',
+                              fontWeight: 'bold',
+                              fontSize: '0.62rem',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <IconRefresh
+                              size={8}
+                              color={(isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db'}
+                              className={isSyncingTargets ? 'spin-animation' : ''}
+                            />
+                          </button>
+                        )}
                       </div>
 
-                      {/* Scores Progress Bar */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px' }}>
-                        {(() => {
-                          const factionsEntries = Object.entries(currentWar?.factions || {}).map(([id, f]) => ({ id, ...f }));
-                          const ourFactionInfoObj = factionsEntries.find(f => f.name === factionData?.name) || {};
-                          const ourFactionScore = ourFactionInfoObj.score || 0;
-                          const enemyFactionInfoObj = factionsEntries.find(f => f.name !== factionData?.name) || {};
-                          const enemyFactionScore = enemyFactionInfoObj.score || 0;
-
-                          const totalScore = ourFactionScore + enemyFactionScore;
-                          const ourPct = totalScore > 0 ? (ourFactionScore / totalScore) * 100 : 50;
-
-                          return (
-                            <>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                <span style={{ color: '#3498db' }}>{ourFactionScore.toLocaleString()}</span>
-                                <span style={{ color: '#e74c3c' }}>{enemyFactionScore.toLocaleString()}</span>
+                      {!isWarOverviewCollapsed && (
+                        <>
+                          {/* War Details */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy Faction'}
                               </div>
-                              <div style={{ height: '6px', backgroundColor: '#222', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
-                                <div style={{ width: `${ourPct}%`, backgroundColor: '#3498db', height: '100%' }} />
-                                <div style={{ flex: 1, backgroundColor: '#e74c3c', height: '100%' }} />
+                              <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <IconTarget size={10} color="#888" /> Target: {currentWar?.war?.target || 'N/A'} pts
                               </div>
-                            </>
-                          );
-                        })()}
+                            </div>
+                          </div>
+
+                          {/* Scores Progress Bar */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px' }}>
+                            {(() => {
+                              const factionsEntries = Object.entries(currentWar?.factions || {}).map(([id, f]) => ({ id, ...f }));
+                              const ourFactionInfoObj = factionsEntries.find(f => f.name === factionData?.name) || {};
+                              const ourFactionScore = ourFactionInfoObj.score || 0;
+                              const enemyFactionInfoObj = factionsEntries.find(f => f.name !== factionData?.name) || {};
+                              const enemyFactionScore = enemyFactionInfoObj.score || 0;
+
+                              const totalScore = ourFactionScore + enemyFactionScore;
+                              const ourPct = totalScore > 0 ? (ourFactionScore / totalScore) * 100 : 50;
+
+                              return (
+                                <>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                    <span style={{ color: '#3498db' }}>{ourFactionScore.toLocaleString()}</span>
+                                    <span style={{ color: '#e74c3c' }}>{enemyFactionScore.toLocaleString()}</span>
+                                  </div>
+                                  <div style={{ height: '6px', backgroundColor: '#222', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                                    <div style={{ width: `${ourPct}%`, backgroundColor: '#3498db', height: '100%' }} />
+                                    <div style={{ flex: 1, backgroundColor: '#e74c3c', height: '100%' }} />
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Chain Watcher */}
+                          <ChainWatcher factionData={factionData} />
+                        </>
+                      )}
+
+                      {/* Sorting & Import Panel Header */}
+                      <div 
+                        onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          paddingBottom: '4px',
+                          marginTop: '4px',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.6rem',
+                            color: '#666',
+                            transform: isControlsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                            transition: 'transform 0.2s',
+                            display: 'inline-block'
+                          }}>
+                            ▶
+                          </span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            CONTROLS & SETTINGS
+                          </span>
+                        </div>
+                        {isControlsCollapsed && (
+                          <span style={{ fontSize: '0.65rem', color: '#666' }}>
+                            Sort: {sortBy} • Auto Sync: {syncInterval > 0 ? `${syncInterval}s` : 'Off'}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Chain Watcher */}
-                      <ChainWatcher factionData={factionData} />
+                      {!isControlsCollapsed && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid #222' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SORT BY:</span>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                style={{
+                                  backgroundColor: '#111',
+                                  border: '1px solid #333',
+                                  borderRadius: '4px',
+                                  color: '#fff',
+                                  padding: '2px 4px',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer',
+                                  outline: 'none'
+                                }}
+                              >
+                                <option value="default">Status & Lvl</option>
+                                <option value="level">Level</option>
+                                {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP</option>}
+                                <option value="age">Days Playing</option>
+                                <option value="winrate">Win Rate</option>
+                              </select>
 
-                      {/* Sorting & Import Panel */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid #222' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                          <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SORT BY:</span>
-                          <div style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                style={{
+                                  backgroundColor: '#111',
+                                  border: '1px solid #333',
+                                  borderRadius: '4px',
+                                  color: '#aaa',
+                                  padding: '2px 6px',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                {sortOrder === 'asc' ? '▲' : '▼'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>COMPARE STATS:</span>
+                            <div
+                              onClick={() => setCompareMode(!compareMode)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: 'pointer',
+                                backgroundColor: '#111',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                border: `1px solid ${compareMode ? '#e74c3c' : '#333'}`,
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <div style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: compareMode ? '#e74c3c' : '#555',
+                                transition: 'all 0.2s'
+                              }} />
+                              <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: compareMode ? '#fff' : '#888' }}>
+                                {compareMode ? 'ON' : 'OFF'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>AUTO SYNC:</span>
                             <select
-                              value={sortBy}
-                              onChange={(e) => setSortBy(e.target.value)}
+                              value={syncInterval}
+                              onChange={(e) => setSyncInterval(Number(e.target.value))}
                               style={{
                                 backgroundColor: '#111',
                                 border: '1px solid #333',
@@ -3013,210 +3359,141 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 outline: 'none'
                               }}
                             >
-                              <option value="default">Status & Lvl</option>
-                              <option value="level">Level</option>
-                              {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP</option>}
-                              <option value="age">Days Playing</option>
-                              <option value="winrate">Win Rate</option>
+                              <option value={0}>Off</option>
+                              <option value={30}>30s</option>
+                              <option value={60}>1m</option>
+                              <option value={120}>2m</option>
+                              <option value={300}>5m</option>
                             </select>
-
-                            <button
-                              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                              style={{
-                                backgroundColor: '#111',
-                                border: '1px solid #333',
-                                borderRadius: '4px',
-                                color: '#aaa',
-                                padding: '2px 6px',
-                                fontSize: '0.72rem',
-                                cursor: 'pointer',
-                                fontWeight: 'bold'
-                              }}
-                            >
-                              {sortOrder === 'asc' ? '▲' : '▼'}
-                            </button>
                           </div>
-                        </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
-                          <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>COMPARE STATS:</span>
-                          <div
-                            onClick={() => setCompareMode(!compareMode)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              cursor: 'pointer',
-                              backgroundColor: '#111',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              border: `1px solid ${compareMode ? '#e74c3c' : '#333'}`,
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            <div style={{
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              backgroundColor: compareMode ? '#e74c3c' : '#555',
-                              transition: 'all 0.2s'
-                            }} />
-                            <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: compareMode ? '#fff' : '#888' }}>
-                              {compareMode ? 'ON' : 'OFF'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
-                          <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>AUTO SYNC:</span>
-                          <select
-                            value={syncInterval}
-                            onChange={(e) => setSyncInterval(Number(e.target.value))}
-                            style={{
-                              backgroundColor: '#111',
-                              border: '1px solid #333',
-                              borderRadius: '4px',
-                              color: '#fff',
-                              padding: '2px 4px',
-                              fontSize: '0.72rem',
-                              cursor: 'pointer',
-                              outline: 'none'
-                            }}
-                          >
-                            <option value={0}>Off</option>
-                            <option value={30}>30s</option>
-                            <option value={60}>1m</option>
-                            <option value={120}>2m</option>
-                            <option value={300}>5m</option>
-                          </select>
-                        </div>
-
-                        {/* Import Suspected Stats Trigger */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                          {Object.keys(importedStats).length > 0 ? (
-                            <>
-                              <span style={{ fontSize: '0.68rem', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                📊 Suspected XP loaded
-                              </span>
-                              <div style={{ display: 'flex', gap: '4px' }}>
-                                <button
-                                  onClick={() => setIsImportOpen(!isImportOpen)}
-                                  style={{
-                                    backgroundColor: 'transparent',
-                                    border: '1px solid #3498db',
-                                    borderRadius: '4px',
-                                    color: '#3498db',
-                                    padding: '2px 6px',
-                                    fontSize: '0.68rem',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold'
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={handleClearStats}
-                                  style={{
-                                    backgroundColor: 'transparent',
-                                    border: '1px solid #e74c3c',
-                                    borderRadius: '4px',
-                                    color: '#e74c3c',
-                                    padding: '2px 6px',
-                                    fontSize: '0.68rem',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold'
-                                  }}
-                                >
-                                  Clear
-                                </button>
-                              </div>
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => setIsImportOpen(!isImportOpen)}
-                              style={{
-                                width: '100%',
-                                backgroundColor: '#e74c3c',
-                                border: 'none',
-                                borderRadius: '4px',
-                                color: '#fff',
-                                padding: '4px 8px',
-                                fontSize: '0.7rem',
-                                cursor: 'pointer',
-                                fontWeight: 'bold',
-                                textAlign: 'center'
-                              }}
-                            >
-                              📥 Import Suspected Stats
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Compact Import Text Area */}
-                        {isImportOpen && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid #222', paddingTop: '6px' }}>
-                            <textarea
-                              value={importText}
-                              onChange={(e) => setImportText(e.target.value)}
-                              placeholder="Lion Force&#10;No.&#9;Name&#9;XP&#10;1&#9;Johan1&#9;559m"
-                              style={{
-                                width: '100%',
-                                height: '80px',
-                                backgroundColor: '#050505',
-                                border: '1px solid #222',
-                                borderRadius: '4px',
-                                color: '#fff',
-                                padding: '4px',
-                                fontSize: '0.72rem',
-                                fontFamily: 'monospace',
-                                resize: 'vertical',
-                                boxSizing: 'border-box',
-                                outline: 'none'
-                              }}
-                            />
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          {/* Import Suspected Stats Trigger */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                            {Object.keys(importedStats).length > 0 ? (
+                              <>
+                                <span style={{ fontSize: '0.68rem', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  📊 Suspected XP loaded
+                                </span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <button
+                                    onClick={() => setIsImportOpen(!isImportOpen)}
+                                    style={{
+                                      backgroundColor: 'transparent',
+                                      border: '1px solid #3498db',
+                                      borderRadius: '4px',
+                                      color: '#3498db',
+                                      padding: '2px 6px',
+                                      fontSize: '0.68rem',
+                                      cursor: 'pointer',
+                                      fontWeight: 'bold'
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={handleClearStats}
+                                    style={{
+                                      backgroundColor: 'transparent',
+                                      border: '1px solid #e74c3c',
+                                      borderRadius: '4px',
+                                      color: '#e74c3c',
+                                      padding: '2px 6px',
+                                      fontSize: '0.68rem',
+                                      cursor: 'pointer',
+                                      fontWeight: 'bold'
+                                    }}
+                                  >
+                                    Clear
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
                               <button
-                                onClick={() => {
-                                  setIsImportOpen(false);
-                                  setImportText('');
-                                }}
+                                onClick={() => setIsImportOpen(!isImportOpen)}
                                 style={{
-                                  backgroundColor: 'transparent',
-                                  border: '1px solid #444',
-                                  color: '#aaa',
-                                  padding: '2px 8px',
-                                  borderRadius: '3px',
-                                  fontSize: '0.68rem',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleImportStats(importText);
-                                  setIsImportOpen(false);
-                                  setImportText('');
-                                  setSortBy('xp');
-                                  setSortOrder('desc');
-                                }}
-                                style={{
+                                  width: '100%',
                                   backgroundColor: '#e74c3c',
                                   border: 'none',
+                                  borderRadius: '4px',
                                   color: '#fff',
-                                  padding: '2px 8px',
-                                  borderRadius: '3px',
-                                  fontSize: '0.68rem',
+                                  padding: '4px 8px',
+                                  fontSize: '0.7rem',
                                   cursor: 'pointer',
-                                  fontWeight: 'bold'
+                                  fontWeight: 'bold',
+                                  textAlign: 'center'
                                 }}
                               >
-                                Import
+                                📥 Import Suspected Stats
                               </button>
-                            </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+
+                          {/* Compact Import Text Area */}
+                          {isImportOpen && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid #222', paddingTop: '6px' }}>
+                              <textarea
+                                value={importText}
+                                onChange={(e) => setImportText(e.target.value)}
+                                placeholder="Lion Force&#10;No.&#9;Name&#9;XP&#10;1&#9;Johan1&#9;559m"
+                                style={{
+                                  width: '100%',
+                                  height: '80px',
+                                  backgroundColor: '#050505',
+                                  border: '1px solid #222',
+                                  borderRadius: '4px',
+                                  color: '#fff',
+                                  padding: '4px',
+                                  fontSize: '0.72rem',
+                                  fontFamily: 'monospace',
+                                  resize: 'vertical',
+                                  boxSizing: 'border-box',
+                                  outline: 'none'
+                                }}
+                              />
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                <button
+                                  onClick={() => {
+                                    setIsImportOpen(false);
+                                    setImportText('');
+                                  }}
+                                  style={{
+                                    backgroundColor: 'transparent',
+                                    border: '1px solid #444',
+                                    color: '#aaa',
+                                    padding: '2px 8px',
+                                    borderRadius: '3px',
+                                    fontSize: '0.68rem',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleImportStats(importText);
+                                    setIsImportOpen(false);
+                                    setImportText('');
+                                    setSortBy('xp');
+                                    setSortOrder('desc');
+                                  }}
+                                  style={{
+                                    backgroundColor: '#e74c3c',
+                                    border: 'none',
+                                    color: '#fff',
+                                    padding: '2px 8px',
+                                    borderRadius: '3px',
+                                    fontSize: '0.68rem',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  Import
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Members List */}
                       {isLoadingTargets ? (

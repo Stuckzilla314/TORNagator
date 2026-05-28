@@ -401,7 +401,11 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
             </div>
             <div style={{ marginTop: '4px' }}>
               <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.9rem' }}>{currentStatusState}</span>
-              <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>{currentDescription?.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '') || ''}</span>
+              {currentDescription && currentDescription !== currentStatusState && (
+                <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>
+                  {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                </span>
+              )}
             </div>
           </div>
 
