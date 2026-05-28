@@ -216,6 +216,81 @@ const parseTornDescriptionTime = (description) => {
 };
 
 /**
+ * A collapsible section wrapper used to group faction member cards.
+ */
+const CollapsibleSection = ({ title, count, statusColor, defaultOpen = false, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ marginBottom: '8px' }}>
+      {/* Section header / toggle */}
+      <div
+        onClick={() => setIsOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '8px 14px',
+          backgroundColor: '#1a1a1a',
+          border: `1px solid ${statusColor}55`,
+          borderRadius: isOpen ? '8px 8px 0 0' : '8px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#222'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1a1a1a'}
+      >
+        {/* Chevron */}
+        <span style={{
+          display: 'inline-block',
+          transition: 'transform 0.25s',
+          transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+          fontSize: '0.8rem',
+          color: statusColor
+        }}>▶</span>
+
+        {/* Title */}
+        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: statusColor, textTransform: 'uppercase', letterSpacing: '1px' }}>
+          {title}
+        </span>
+
+        {/* Badge */}
+        <span style={{
+          marginLeft: 'auto',
+          backgroundColor: `${statusColor}22`,
+          border: `1px solid ${statusColor}55`,
+          color: statusColor,
+          borderRadius: '12px',
+          padding: '1px 10px',
+          fontSize: '0.78rem',
+          fontWeight: 'bold',
+          minWidth: '28px',
+          textAlign: 'center'
+        }}>
+          {count}
+        </span>
+      </div>
+
+      {/* Collapsible body */}
+      {isOpen && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          padding: '6px 0 0 0',
+          borderLeft: `2px solid ${statusColor}33`,
+          marginLeft: '4px',
+          paddingLeft: '4px'
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * Component for rendering an individual Faction Member Card with real-time countdown timer.
  */
 const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn }) => {
@@ -1045,61 +1120,77 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
           ) : errorTargets ? (
             <div style={{ color: '#e74c3c', textAlign: 'center', padding: '2rem' }}>{errorTargets}</div>
           ) : enemyFactionData && enemyFactionData.members ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {(() => {
                 const hasImportedStats = Object.keys(importedStats).length > 0;
-                
-                const sortedMembers = Object.entries(enemyFactionData.members)
-                  .map(([id, member]) => {
-                    const profile = memberProfiles[id] || {};
-                    const ps = profile.personalstats || {};
-                    const nameKey = member.name.trim().toLowerCase();
-                    const suspect = importedStats[nameKey] || null;
 
-                    const attacksWon = ps.attackswon || 0;
-                    const attacksLost = ps.attackslost || 0;
-                    const defendsWon = ps.defendswon || 0;
-                    const defendsLost = ps.defendslost || 0;
-                    const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
-                    const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
+                const buildMember = ([id, member]) => {
+                  const profile = memberProfiles[id] || {};
+                  const ps = profile.personalstats || {};
+                  const nameKey = member.name.trim().toLowerCase();
+                  const suspect = importedStats[nameKey] || null;
 
-                    return {
-                      id,
-                      ...member,
-                      profile,
-                      age: profile.age || 0,
-                      winRate,
-                      suspectedVal: suspect ? suspect.value : -1,
-                      suspectedRaw: suspect ? suspect.raw : null,
-                      suspectedIndex: suspect ? suspect.index : null
-                    };
-                  })
-                  .sort((a, b) => {
-                    if (sortBy === 'default') {
-                      const aOkay = a.status.state === 'Okay' ? 0 : 1;
-                      const bOkay = b.status.state === 'Okay' ? 0 : 1;
-                      if (aOkay !== bOkay) return aOkay - bOkay;
-                      return a.level - b.level;
-                    }
+                  const attacksWon = ps.attackswon || 0;
+                  const attacksLost = ps.attackslost || 0;
+                  const defendsWon = ps.defendswon || 0;
+                  const defendsLost = ps.defendslost || 0;
+                  const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
+                  const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
 
-                    let comparison = 0;
-                    if (sortBy === 'level') {
-                      comparison = a.level - b.level;
-                    } else if (sortBy === 'xp') {
-                      if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
-                      else if (a.suspectedVal === -1) return 1;
-                      else if (b.suspectedVal === -1) return -1;
-                      else comparison = a.suspectedVal - b.suspectedVal;
-                    } else if (sortBy === 'age') {
-                      comparison = a.age - b.age;
-                    } else if (sortBy === 'winrate') {
-                      comparison = a.winRate - b.winRate;
-                    }
+                  return {
+                    id,
+                    ...member,
+                    profile,
+                    age: profile.age || 0,
+                    winRate,
+                    suspectedVal: suspect ? suspect.value : -1,
+                    suspectedRaw: suspect ? suspect.raw : null,
+                    suspectedIndex: suspect ? suspect.index : null
+                  };
+                };
 
-                    return sortOrder === 'asc' ? comparison : -comparison;
-                  });
+                const applySortOrder = (arr) => arr.sort((a, b) => {
+                  if (sortBy === 'default') {
+                    return a.level - b.level;
+                  }
+                  let comparison = 0;
+                  if (sortBy === 'level') {
+                    comparison = a.level - b.level;
+                  } else if (sortBy === 'xp') {
+                    if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
+                    else if (a.suspectedVal === -1) return 1;
+                    else if (b.suspectedVal === -1) return -1;
+                    else comparison = a.suspectedVal - b.suspectedVal;
+                  } else if (sortBy === 'age') {
+                    comparison = a.age - b.age;
+                  } else if (sortBy === 'winrate') {
+                    comparison = a.winRate - b.winRate;
+                  }
+                  return sortOrder === 'asc' ? comparison : -comparison;
+                });
 
-                return sortedMembers.map((member) => (
+                const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
+
+                // Group by status
+                const groups = {
+                  okay: { label: '⚔️ Okay — Attackable', color: '#2ecc71', members: [] },
+                  hospital: { label: '🏥 Hospitalized', color: '#e74c3c', members: [] },
+                  jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
+                  other: { label: '✈️ Other', color: '#3498db', members: [] },
+                };
+
+                allMembers.forEach(m => {
+                  const state = m.status?.state || '';
+                  if (state === 'Okay') groups.okay.members.push(m);
+                  else if (state === 'Hospital') groups.hospital.members.push(m);
+                  else if (state === 'Jail') groups.jail.members.push(m);
+                  else groups.other.members.push(m);
+                });
+
+                // Sort within each group
+                Object.values(groups).forEach(g => applySortOrder(g.members));
+
+                const renderCards = (members) => members.map((member) => (
                   <FactionMemberCard
                     key={member.id}
                     member={member}
@@ -1109,6 +1200,20 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     onOpenInTorn={onOpenInTorn}
                   />
                 ));
+
+                return Object.entries(groups)
+                  .filter(([, g]) => g.members.length > 0)
+                  .map(([key, g]) => (
+                    <CollapsibleSection
+                      key={key}
+                      title={g.label}
+                      count={g.members.length}
+                      statusColor={g.color}
+                      defaultOpen={key === 'okay'}
+                    >
+                      {renderCards(g.members)}
+                    </CollapsibleSection>
+                  ));
               })()}
             </div>
           ) : (

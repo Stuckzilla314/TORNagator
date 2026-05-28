@@ -1462,6 +1462,73 @@ const parseTornDescriptionTime = (description) => {
 };
 
 /**
+ * A compact collapsible section wrapper used in the sidebar.
+ */
+const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = false, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ marginBottom: '6px' }}>
+      <div
+        onClick={() => setIsOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 10px',
+          backgroundColor: '#1b1b1b',
+          border: `1px solid ${statusColor}44`,
+          borderRadius: isOpen ? '6px 6px 0 0' : '6px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#222'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1b1b1b'}
+      >
+        <span style={{
+          display: 'inline-block',
+          transition: 'transform 0.25s',
+          transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+          fontSize: '0.7rem',
+          color: statusColor
+        }}>▶</span>
+        <span style={{ fontWeight: 'bold', fontSize: '0.75rem', color: statusColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {title}
+        </span>
+        <span style={{
+          marginLeft: 'auto',
+          backgroundColor: `${statusColor}18`,
+          border: `1px solid ${statusColor}33`,
+          color: statusColor,
+          borderRadius: '10px',
+          padding: '0px 6px',
+          fontSize: '0.7rem',
+          fontWeight: 'bold',
+          minWidth: '20px',
+          textAlign: 'center'
+        }}>
+          {count}
+        </span>
+      </div>
+      {isOpen && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          padding: '4px 0 0 0',
+          borderLeft: `2px solid ${statusColor}22`,
+          marginLeft: '4px',
+          paddingLeft: '4px'
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * Component for rendering a single member sidebar row with real-time ticking timer.
  */
 const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
@@ -3164,68 +3231,86 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                       ) : errorTargets ? (
                         <div style={{ color: '#e74c3c', textAlign: 'center', fontSize: '0.75rem', padding: '10px 0' }}>{errorTargets}</div>
                       ) : enemyFactionData && enemyFactionData.members ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
                           {(() => {
-                            const sortedMembers = Object.entries(enemyFactionData.members)
-                              .map(([id, member]) => {
-                                const profile = memberProfiles[id] || {};
-                                const ps = profile.personalstats || {};
-                                const nameKey = member.name.trim().toLowerCase();
-                                const suspect = importedStats[nameKey] || null;
+                            const buildMember = ([id, member]) => {
+                              const profile = memberProfiles[id] || {};
+                              const ps = profile.personalstats || {};
+                              const nameKey = member.name.trim().toLowerCase();
+                              const suspect = importedStats[nameKey] || null;
 
-                                const attacksWon = ps.attackswon || 0;
-                                const attacksLost = ps.attackslost || 0;
-                                const defendsWon = ps.defendswon || 0;
-                                const defendsLost = ps.defendslost || 0;
-                                const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
-                                const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
+                              const attacksWon = ps.attackswon || 0;
+                              const attacksLost = ps.attackslost || 0;
+                              const defendsWon = ps.defendswon || 0;
+                              const defendsLost = ps.defendslost || 0;
+                              const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
+                              const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
 
-                                const criminalOffenses = ps.criminaloffenses || 0;
-                                const drugsUsed = ps.drugsused || 0;
-                                const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
-                                const boostersUsed = ps.boostersused || 0;
+                              const criminalOffenses = ps.criminaloffenses || 0;
+                              const drugsUsed = ps.drugsused || 0;
+                              const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
+                              const boostersUsed = ps.boostersused || 0;
 
-                                return {
-                                  id,
-                                  ...member,
-                                  profile,
-                                  age: profile.age || 0,
-                                  winRate,
-                                  suspectedVal: suspect ? suspect.value : -1,
-                                  suspectedRaw: suspect ? suspect.raw : null,
-                                  suspectedIndex: suspect ? suspect.index : null,
-                                  criminalOffenses,
-                                  drugsUsed,
-                                  totalRefills,
-                                  boostersUsed
-                                };
-                              })
-                              .sort((a, b) => {
-                                if (sortBy === 'default') {
-                                  const aOkay = a.status?.state === 'Okay' ? 0 : 1;
-                                  const bOkay = b.status?.state === 'Okay' ? 0 : 1;
-                                  if (aOkay !== bOkay) return aOkay - bOkay;
-                                  return a.level - b.level;
-                                }
+                              return {
+                                id,
+                                ...member,
+                                profile,
+                                age: profile.age || 0,
+                                winRate,
+                                suspectedVal: suspect ? suspect.value : -1,
+                                suspectedRaw: suspect ? suspect.raw : null,
+                                suspectedIndex: suspect ? suspect.index : null,
+                                criminalOffenses,
+                                drugsUsed,
+                                totalRefills,
+                                boostersUsed
+                              };
+                            };
 
-                                let comparison = 0;
-                                if (sortBy === 'level') {
-                                  comparison = a.level - b.level;
-                                } else if (sortBy === 'xp') {
-                                  if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
-                                  else if (a.suspectedVal === -1) return 1;
-                                  else if (b.suspectedVal === -1) return -1;
-                                  else comparison = a.suspectedVal - b.suspectedVal;
-                                } else if (sortBy === 'age') {
-                                  comparison = a.age - b.age;
-                                } else if (sortBy === 'winrate') {
-                                  comparison = a.winRate - b.winRate;
-                                }
+                            const applySortOrder = (arr) => arr.sort((a, b) => {
+                              if (sortBy === 'default') {
+                                return a.level - b.level;
+                              }
 
-                                return sortOrder === 'asc' ? comparison : -comparison;
-                              });
+                              let comparison = 0;
+                              if (sortBy === 'level') {
+                                comparison = a.level - b.level;
+                              } else if (sortBy === 'xp') {
+                                if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
+                                else if (a.suspectedVal === -1) return 1;
+                                else if (b.suspectedVal === -1) return -1;
+                                else comparison = a.suspectedVal - b.suspectedVal;
+                              } else if (sortBy === 'age') {
+                                comparison = a.age - b.age;
+                              } else if (sortBy === 'winrate') {
+                                comparison = a.winRate - b.winRate;
+                              }
 
-                            return sortedMembers.map((member) => (
+                              return sortOrder === 'asc' ? comparison : -comparison;
+                            });
+
+                            const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
+
+                            // Group by status
+                            const groups = {
+                              okay: { label: '⚔️ Okay — Attackable', color: '#2ecc71', members: [] },
+                              hospital: { label: '🏥 Hospitalized', color: '#e74c3c', members: [] },
+                              jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
+                              other: { label: '✈️ Other', color: '#3498db', members: [] },
+                            };
+
+                            allMembers.forEach(m => {
+                              const state = m.status?.state || '';
+                              if (state === 'Okay') groups.okay.members.push(m);
+                              else if (state === 'Hospital') groups.hospital.members.push(m);
+                              else if (state === 'Jail') groups.jail.members.push(m);
+                              else groups.other.members.push(m);
+                            });
+
+                            // Sort within each group
+                            Object.values(groups).forEach(g => applySortOrder(g.members));
+
+                            const renderRows = (members) => members.map((member) => (
                               <MemberSidebarRow
                                 key={member.id}
                                 member={member}
@@ -3234,6 +3319,20 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 navigateTo={navigateTo}
                               />
                             ));
+
+                            return Object.entries(groups)
+                              .filter(([, g]) => g.members.length > 0)
+                              .map(([key, g]) => (
+                                <CollapsibleSidebarSection
+                                  key={key}
+                                  title={g.label}
+                                  count={g.members.length}
+                                  statusColor={g.color}
+                                  defaultOpen={key === 'okay'}
+                                >
+                                  {renderRows(g.members)}
+                                </CollapsibleSidebarSection>
+                              ));
                           })()}
                         </div>
                       ) : (
