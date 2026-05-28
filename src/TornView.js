@@ -712,7 +712,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       });
     }
 
-    const userApiKey = apiKey || '';
     const script = `
       (() => {
         try {
@@ -725,7 +724,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           const marketValues = ${JSON.stringify(itemsMarketValues)};
           const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
           const cargoCapacity = ${cargoCapacity || 5};
-          const userApiKey = ${JSON.stringify(userApiKey)};
 
           // 1. Find and update header cells
           const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
@@ -951,30 +949,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 tempDiv.style.zIndex = '5';
                 cell.appendChild(tempDiv);
 
-                window._tornagator_fetching_catalog = true;
-                console.log("[TORNagator Webview] Fetching Torn items catalog on-demand for itemId:", itemId);
-
-                fetch(\`https://api.torn.com/torn/?selections=items&key=\${userApiKey}\`)
-                  .then(r => r.json())
-                  .then(data => {
-                    if (data && data.items) {
-                      Object.entries(data.items).forEach(([id, item]) => {
-                        marketValuesById[id] = item.market_value || 0;
-                      });
-                      console.log("[TORNagator Webview] On-demand catalog loaded. Total items:", Object.keys(marketValuesById).length);
-                      const newVal = marketValuesById[itemId] || 0;
-                      renderBadge(newVal);
-                    } else {
-                      renderBadge(0);
-                    }
-                  })
-                  .catch(err => {
-                    console.error("[TORNagator Webview] On-demand catalog fetch failed:", err);
-                    renderBadge(0);
-                  })
-                  .finally(() => {
-                    window._tornagator_fetching_catalog = false;
-                  });
+                renderBadge(0);
               }
             }
           }

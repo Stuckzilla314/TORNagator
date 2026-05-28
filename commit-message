@@ -1,0 +1,7 @@
+Fix XSS vulnerability by removing API key injection in Webview
+
+🚨 Severity: CRITICAL
+💡 Vulnerability: The user's Torn API key was being injected directly into a string literal evaluated inside an untrusted Electron <webview> guest page context (Torn.com).
+🎯 Impact: Scripts running on the guest page (Torn.com) could potentially access the API key through prototype pollution, logging, or DOM inspection.
+🔧 Fix: Removed the API key injection and the fallback on-demand `fetch` from the webview context entirely, ensuring the API key never leaves the main host environment. The application now correctly relies entirely on the pre-loaded items catalog for market values.
+✅ Verification: Confirmed `executeJavaScript` no longer accepts `userApiKey`, `npm test` passes, and the application builds successfully.
