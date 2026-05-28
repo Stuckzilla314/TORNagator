@@ -24,7 +24,7 @@ const SettingsMenu = ({
       border: '1px solid #333',
       borderRadius: '8px',
       padding: '10px',
-      minWidth: '200px',
+      width: '230px',
       boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
       display: 'flex',
       flexDirection: 'column',
@@ -76,14 +76,16 @@ const SettingsMenu = ({
       <label 
         style={{
           padding: '8px 12px',
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           borderRadius: '4px',
+          backgroundColor: pollInterval > 0 ? 'rgba(52, 152, 219, 0.1)' : 'transparent',
           transition: 'background-color 0.2s'
         }}
       >
-        <span style={{ fontSize: '0.9rem' }}>Dashboard Poll</span>
+        <span style={{ fontSize: '0.9rem' }}>Sync Rate</span>
         <select
           value={pollInterval}
           onChange={(e) => setPollInterval(parseInt(e.target.value, 10))}
@@ -92,16 +94,33 @@ const SettingsMenu = ({
             color: '#fff',
             border: '1px solid #444',
             borderRadius: '4px',
-            padding: '2px 4px',
+            padding: '4px 26px 4px 10px',
             fontSize: '0.8rem',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            outline: 'none',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none',
+            backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 8px center',
+            backgroundSize: '12px',
+            transition: 'border-color 0.2s, background-color 0.2s'
+          }}
+          onMouseEnter={e => {
+            e.target.style.borderColor = '#3498db';
+            e.target.style.backgroundColor = '#333';
+          }}
+          onMouseLeave={e => {
+            e.target.style.borderColor = '#444';
+            e.target.style.backgroundColor = '#2b2b2b';
           }}
         >
           <option value={30}>30s</option>
           <option value={60}>1m</option>
           <option value={120}>2m</option>
           <option value={300}>5m</option>
-          <option value={0}>Manual Only</option>
+          <option value={0}>Manual</option>
         </select>
       </label>
 
