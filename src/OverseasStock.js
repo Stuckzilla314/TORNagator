@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { db, getDoc, getDocs } from './firebase';
 import { collection, addDoc, query, where, orderBy, limit, Timestamp, startAfter, doc, onSnapshot } from "firebase/firestore";
+import { IconWarning } from './Icons';
 
 /**
  * A mapping of country names to their respective item IDs available in the foreign item market.
@@ -659,6 +660,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <select
+            aria-label="Filter by country"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
@@ -667,6 +669,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select
+            aria-label="Filter by item category"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
@@ -675,6 +678,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
           </select>
           <input
+            aria-label="Filter by maximum bag cost"
             type="number"
             placeholder="Max Bag Cost ($)"
             value={maxBagCost}
@@ -682,6 +686,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '150px' }}
           />
           <input
+            aria-label="Filter by maximum round trip time in minutes"
             type="number"
             placeholder="Max RT (mins)"
             value={maxRoundTripMinutes}
@@ -841,8 +846,37 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
       </div>
 
       {sortedItems.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-          No items found for this selection.
+        <div style={{ textAlign: 'center', padding: '4rem', color: '#666', border: '1px dashed #444', borderRadius: '12px', marginTop: '2rem', backgroundColor: '#1a1a1a' }}>
+          <IconWarning size={48} color="#555" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+          <h3 style={{ margin: '0 0 1rem 0', color: '#aaa' }}>No items found for this selection</h3>
+          <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem' }}>Try adjusting your filters to see more results.</p>
+          <button
+            onClick={() => {
+              setFilter('All');
+              setCategoryFilter('All');
+              setMaxBagCost('');
+              setMaxRoundTripMinutes('');
+            }}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: 'transparent',
+              color: '#3498db',
+              border: '1px solid #3498db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              transition: 'all 0.2s',
+              fontSize: '0.9rem'
+            }}
+            onMouseEnter={e => {
+              e.target.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+            }}
+            onMouseLeave={e => {
+              e.target.style.backgroundColor = 'transparent';
+            }}
+          >
+            Clear All Filters
+          </button>
         </div>
       )}
 

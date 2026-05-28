@@ -149,6 +149,7 @@ function App() {
     setActiveTab('torn');
   }, [setActiveTab]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
+  const [showNavControls, setShowNavControls] = useLocalStorage('tornagator_show_nav_controls', true);
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
   const [pollInterval, setPollInterval] = useLocalStorage('dashboard_poll_interval', 30);
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
@@ -206,6 +207,40 @@ function App() {
     } catch (err) {
       console.warn("Faction data fetch failed", err);
     }
+  }, [apiKey]);
+
+  // IPC listener for fetching catalog items securely in the host
+  useEffect(() => {
+    if (!window.require || !apiKey) return;
+    const { ipcRenderer } = window.require('electron');
+
+    const handleFetchRequest = async (event, itemId) => {
+      try {
+        const items = await fetchTornItems(apiKey);
+        if (items) {
+          itemsDataRef.current = items;
+          setItemsData(items);
+
+          // Format specific items like TornView expects, using itemsMarketValues
+          const itemsMarketValues = {};
+          const itemsMarketValuesById = {};
+          Object.values(items).forEach(item => {
+            if (item.name && item.market_value) {
+              itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+            }
+            if (item.id && item.market_value) {
+              itemsMarketValuesById[item.id] = item.market_value;
+            }
+          });
+
+          ipcRenderer.send('catalog-item-fetched', { items: itemsMarketValuesById });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    ipcRenderer.on('fetch-catalog-item', handleFetchRequest);
+    return () => ipcRenderer.removeListener('fetch-catalog-item', handleFetchRequest);
   }, [apiKey]);
 
   // Load cached items/inventory on mount, and fetch items if cache is empty/expired
@@ -576,6 +611,8 @@ function App() {
               userData={userData}
               showTabTimer={showTabTimer}
               setShowTabTimer={setShowTabTimer}
+              showNavControls={showNavControls}
+              setShowNavControls={setShowNavControls}
               stockAutoSync={stockAutoSync}
               setStockAutoSync={setStockAutoSync}
               cargoCapacity={cargoCapacity}
@@ -643,6 +680,7 @@ function App() {
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
                 cargoCapacity={cargoCapacity}
+                showNavControls={showNavControls}
               />
             ) : activeTab === 'apilogs' ? (
               <ApiLogsView />
