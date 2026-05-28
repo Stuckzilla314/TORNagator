@@ -694,6 +694,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     };
   }, [isActive, targetCountry, trySelectCountry, updateNavigationState]);
 
+  // Handle catalog updates from IPC
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv || !window.require) return;
+    const { ipcRenderer } = window.require('electron');
+
+    const handleCatalogUpdate = (event, { items }) => {
+      wv.executeJavaScript(`
+        if (window._tornagator_market_values_by_id) {
+          Object.assign(window._tornagator_market_values_by_id, ${JSON.stringify(items)});
+          window._tornagator_fetching_catalog = false;
+        }
+      `).catch(console.error);
+    };
+
+    ipcRenderer.on('catalog-updated', handleCatalogUpdate);
+    return () => ipcRenderer.removeListener('catalog-updated', handleCatalogUpdate);
+  }, []);
+
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isActive) return;
@@ -949,7 +968,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 tempDiv.style.zIndex = '5';
                 cell.appendChild(tempDiv);
 
-                renderBadge(0);
+                window._tornagator_fetching_catalog = true;
+                console.log("[TORNagator Webview] Requesting Torn items catalog on-demand for itemId:", itemId);
+
+                // Instead of fetching directly with an API key here, we request it from the host environment via IPC
+                if (window.require) {
+                  const { ipcRenderer } = window.require('electron');
+                  ipcRenderer.send('request-catalog-update', itemId);
+                }
               }
             }
           }
