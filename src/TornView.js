@@ -427,6 +427,148 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
   </div>
 );
 
+// ─── New Tab Page ──────────────────────────────────────────────────────────────
+const DEFAULT_FAVORITES = [
+  { label: 'Home', url: 'https://www.torn.com/index.php' },
+  { label: 'Gym', url: 'https://www.torn.com/gym.php' },
+  { label: 'Crimes', url: 'https://www.torn.com/crimes.php' },
+  { label: 'Hospital', url: 'https://www.torn.com/hospitalview.php' },
+  { label: 'Faction', url: 'https://www.torn.com/factions.php' },
+  { label: 'Travel', url: 'https://www.torn.com/travelagency.php' },
+  { label: 'Forums', url: 'https://www.torn.com/forums.php' },
+  { label: 'Bazaar', url: 'https://www.torn.com/bazaar.php' },
+  { label: 'City', url: 'https://www.torn.com/city.php' },
+];
+
+const NewTabPage = ({ tabId, onNavigate }) => {
+  const [favorites, setFavorites] = useLocalStorage('tornagator_favorites', DEFAULT_FAVORITES);
+  const [urlInput, setUrlInput] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newUrl, setNewUrl] = useState('');
+
+  const handleGo = (urlToGo) => {
+    let url = (urlToGo || urlInput).trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+    onNavigate(url);
+  };
+
+  const handleAddFavorite = (e) => {
+    e.preventDefault();
+    if (!newLabel.trim() || !newUrl.trim()) return;
+
+    let url = newUrl.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+
+    const newFav = { label: newLabel.trim(), url };
+    setFavorites([...favorites, newFav]);
+    setNewLabel('');
+    setNewUrl('');
+  };
+
+  const handleRemoveFavorite = (indexToRemove) => {
+    setFavorites(favorites.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  return (
+    <div className="new-tab-container">
+      <div className="new-tab-content">
+        <div className="new-tab-logo-container">
+          <span className="new-tab-logo-icon">🐊</span>
+          <h1 className="new-tab-title">TORNagator</h1>
+        </div>
+
+        {/* URL Paste Bar */}
+        <div className="new-tab-search-box">
+          <input
+            type="text"
+            className="new-tab-url-input"
+            placeholder="Enter TORN URL (e.g. torn.com/gym.php) or paste custom link..."
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleGo();
+            }}
+          />
+          <button className="new-tab-go-btn" onClick={() => handleGo()}>
+            Go
+          </button>
+        </div>
+
+        {/* Favorites Header */}
+        <div className="new-tab-favorites-header">
+          <h2>Favorite Pages</h2>
+          <button 
+            className={`new-tab-edit-btn ${isEditing ? 'active' : ''}`}
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? 'Done' : 'Edit'}
+          </button>
+        </div>
+
+        {/* Favorites Grid */}
+        <div className="new-tab-favorites-grid">
+          {favorites.map((fav, index) => {
+            const FavIcon = getQuickActionIcon(fav.url, fav.label) || IconLink;
+            return (
+              <div key={index} className={`new-tab-fav-card-wrapper ${isEditing ? 'editing' : ''}`}>
+                <div 
+                  className="new-tab-fav-card"
+                  onClick={() => !isEditing && handleGo(fav.url)}
+                >
+                  <div className="new-tab-fav-icon">
+                    <FavIcon size={18} />
+                  </div>
+                  <div className="new-tab-fav-label">{fav.label}</div>
+                </div>
+                {isEditing && (
+                  <button 
+                    className="new-tab-fav-delete-btn"
+                    onClick={() => handleRemoveFavorite(index)}
+                    aria-label={`Remove ${fav.label}`}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Add New Favorite inline card in edit mode */}
+          {isEditing && (
+            <form onSubmit={handleAddFavorite} className="new-tab-add-fav-card">
+              <input
+                type="text"
+                placeholder="Label (e.g. Gym)"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                required
+                className="new-tab-add-input"
+              />
+              <input
+                type="text"
+                placeholder="URL (e.g. torn.com/gym.php)"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                required
+                className="new-tab-add-input"
+              />
+              <button type="submit" className="new-tab-add-btn">
+                + Add
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── WebviewTab Component ────────────────────────────────────────────────────────
 /**
  * Renders a hidden or active Electron webview element representing a browser tab.
@@ -449,6 +591,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   const initialUrlRef = useRef(tab.url);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
+
+  const isNewTab = tab.url === 'newtab';
+  if (initialUrlRef.current === 'newtab' && tab.url !== 'newtab') {
+    initialUrlRef.current = tab.url;
+  }
 
   const updateNavigationState = useCallback(() => {
     const wv = webviewRef.current;
@@ -605,7 +752,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tab.id, onUpdate, updateNavigationState]);
+  }, [tab.id, onUpdate, updateNavigationState, isNewTab]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -835,7 +982,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     return () => {
       wv.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [isActive, targetCountry, trySelectCountry, updateNavigationState]);
+  }, [isActive, targetCountry, trySelectCountry, updateNavigationState, isNewTab]);
 
   // Handle catalog updates from IPC
   useEffect(() => {
@@ -1146,7 +1293,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }, 1000);
 
     return () => clearInterval(profitInterval);
-  }, [isActive, itemsData, cargoCapacity, apiKey]);
+  }, [isActive, itemsData, cargoCapacity, apiKey, isNewTab]);
 
   const handleGoBack = () => {
     const wv = webviewRef.current;
@@ -1172,8 +1319,26 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }
   };
 
+  if (isNewTab) {
+    return (
+      <div style={{ display: isActive ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0 }}>
+        <NewTabPage tabId={tab.id} onNavigate={(url) => onUpdate(tab.id, { url, title: 'Torn' })} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: isActive ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0 }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'absolute',
+      inset: 0,
+      width: isActive ? '100%' : '0',
+      height: isActive ? '100%' : '0',
+      opacity: isActive ? 1 : 0,
+      pointerEvents: isActive ? 'auto' : 'none',
+      overflow: 'hidden'
+    }}>
       {/* Navigation Toolbar */}
       {showNavControls && (
         <div className="torn-browser-toolbar">
@@ -1221,7 +1386,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
           title={tab.title}
           className="torn-iframe"
-          allowpopups="true"
+          style={{ visibility: isActive ? 'visible' : 'hidden' }}
         />
       </div>
     </div>
@@ -1997,9 +2162,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     });
   };
 
-  const handleNewTab = (initialUrl = 'https://www.torn.com/index.php') => {
+  const handleNewTab = (initialUrl) => {
+    // Guard: when called from onClick, initialUrl is a SyntheticEvent — ignore it
+    const url = (typeof initialUrl === 'string') ? initialUrl : 'newtab';
     const id = `tab-${Date.now()}`;
-    setTabs(prev => [...prev, { id, url: initialUrl, title: 'New Tab' }]);
+    setTabs(prev => [...prev, { id, url, title: 'New Tab' }]);
     setActiveTabId(id);
   };
 
