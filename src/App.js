@@ -11,6 +11,14 @@ import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData }
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
 
+/**
+ * Custom hook to manage state synchronized with the browser's localStorage.
+ * Safely handles parsing JSON and provides fallback defaults.
+ *
+ * @param {string} key - The key under which to store the value in localStorage.
+ * @param {*} initialValue - The initial value to use if none is found.
+ * @returns {Array} An array containing the current stored value and a setter function.
+ */
 function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -70,6 +78,13 @@ function useLocalStorage(key, initialValue) {
   } catch (e) { /* ignore */ }
 })();
 
+/**
+ * The main application component.
+ * Handles top-level state including user authentication (API key), data fetching intervals,
+ * and routing between the main dashboard, game view, and API logs view.
+ *
+ * @returns {React.JSX.Element} The rendered Application component.
+ */
 function App() {
   // On mount: purge stale/orphaned localStorage keys from old app versions
   useEffect(() => {

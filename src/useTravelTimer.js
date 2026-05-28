@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 
+/**
+ * A custom React hook that calculates and formats the remaining travel time.
+ *
+ * @param {number} until - The Unix timestamp (in seconds) when the travel is expected to finish.
+ * @returns {string|null} A formatted string representing the time remaining (HH:MM:SS), or null if the timer is finished or no target timestamp is provided.
+ */
 export const useTravelTimer = (until) => {
   const [secondsRemaining, setSecondsRemaining] = useState(0);
 

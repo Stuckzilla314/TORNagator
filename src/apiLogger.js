@@ -8,7 +8,11 @@ let sessionCounters = {
   Firebase: 0
 };
 
-// Initialize lifetime counters from localStorage
+/**
+ * Retrieves the lifetime API counters from local storage.
+ *
+ * @returns {{TORN: number, YATA: number, Firebase: number}} An object containing the lifetime counters for each service.
+ */
 const getLifetimeCounters = () => {
   try {
     return {
@@ -21,6 +25,11 @@ const getLifetimeCounters = () => {
   }
 };
 
+/**
+ * Saves the lifetime API counters to local storage.
+ *
+ * @param {{TORN: number, YATA: number, Firebase: number}} counters - The current lifetime counters to persist.
+ */
 const saveLifetimeCounters = (counters) => {
   try {
     localStorage.setItem('tornagator_lifetime_torn', counters.TORN.toString());
@@ -32,10 +41,19 @@ const saveLifetimeCounters = (counters) => {
 };
 
 const subscribers = new Set();
+/**
+ * Notifies all active subscribers that the logs or counters have updated.
+ */
 const notifySubscribers = () => {
   subscribers.forEach(cb => cb());
 };
 
+/**
+ * Subscribes a callback to be invoked whenever a new log entry is added or counters are updated.
+ *
+ * @param {Function} callback - The function to call on log updates.
+ * @returns {Function} An unsubscribe function to remove the listener.
+ */
 export const subscribeToLogs = (callback) => {
   subscribers.add(callback);
   return () => {
@@ -43,8 +61,18 @@ export const subscribeToLogs = (callback) => {
   };
 };
 
+/**
+ * Retrieves a shallow copy of the current API logs array.
+ *
+ * @returns {Array<Object>} The array of log entries.
+ */
 export const getApiLogs = () => [...logs];
 
+/**
+ * Retrieves the current session and lifetime API call counters.
+ *
+ * @returns {{session: {TORN: number, YATA: number, Firebase: number}, lifetime: {TORN: number, YATA: number, Firebase: number}}} The nested counter stats object.
+ */
 export const getApiCounters = () => {
   return {
     session: { ...sessionCounters },
@@ -52,17 +80,33 @@ export const getApiCounters = () => {
   };
 };
 
+/**
+ * Clears the current session logs array and notifies subscribers.
+ */
 export const clearLogs = () => {
   logs = [];
   notifySubscribers();
 };
 
+/**
+ * Resets the lifetime API counters to zero in local storage and notifies subscribers.
+ */
 export const resetLifetimeCounters = () => {
   const zeroCounters = { TORN: 0, YATA: 0, Firebase: 0 };
   saveLifetimeCounters(zeroCounters);
   notifySubscribers();
 };
 
+/**
+ * Logs an API call, increments the relevant counters, and updates subscribers.
+ * Keeps the log array size within the defined maximum.
+ *
+ * @param {string} type - The service type (e.g., 'TORN', 'YATA', 'Firebase').
+ * @param {string} action - The endpoint or action name.
+ * @param {string} status - The result status ('SUCCESS' or 'ERROR').
+ * @param {number} duration - The duration of the call in milliseconds.
+ * @param {string|null} [errorMsg=null] - The error message, if applicable.
+ */
 export const logApiCall = (type, action, status, duration, errorMsg = null) => {
   // Increment session counter
   if (sessionCounters[type] !== undefined) {
@@ -95,7 +139,10 @@ export const logApiCall = (type, action, status, duration, errorMsg = null) => {
   notifySubscribers();
 };
 
-// Global interceptor for fetch
+/**
+ * Initializes the global `window.fetch` interceptor to capture and log all outbound API requests.
+ * Only initializes once. Safely ignores non-API calls and masks sensitive API keys.
+ */
 let isInterceptorInitialized = false;
 export const initApiInterceptor = () => {
   if (isInterceptorInitialized) return;

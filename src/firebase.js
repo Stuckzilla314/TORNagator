@@ -34,7 +34,13 @@ enableMultiTabIndexedDbPersistence(db).catch((err) => {
     }
 });
 
-// Wrapped firestore methods for tracking and logging API calls
+/**
+ * Wrapper for Firestore getDoc that logs the API call for debugging and profiling.
+ *
+ * @param {import("firebase/firestore").DocumentReference} docRef - The Firestore document reference to fetch.
+ * @returns {Promise<import("firebase/firestore").DocumentSnapshot>} A promise that resolves with the document snapshot.
+ * @throws {Error} If the getDoc call fails, it logs the error and rethrows.
+ */
 export const getDoc = async (docRef) => {
   const startTime = Date.now();
   const path = docRef?.path || "unknown";
@@ -50,6 +56,13 @@ export const getDoc = async (docRef) => {
   }
 };
 
+/**
+ * Wrapper for Firestore getDocs that logs the API call for debugging and profiling.
+ *
+ * @param {import("firebase/firestore").Query} queryRef - The Firestore query to execute.
+ * @returns {Promise<import("firebase/firestore").QuerySnapshot>} A promise that resolves with the query snapshot.
+ * @throws {Error} If the getDocs call fails, it logs the error and rethrows.
+ */
 export const getDocs = async (queryRef) => {
   const startTime = Date.now();
   let path = "unknown";

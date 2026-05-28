@@ -3,7 +3,13 @@ import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
 import { IconPlane, IconHospital, IconScales, IconChevronRight } from './Icons';
 
-// Helper to decode HTML entities like &#039;
+/**
+ * Helper utility to decode HTML entities (like `&#039;`) safely.
+ * Relies on the browser's DOM text extraction.
+ *
+ * @param {string} html - The string containing HTML entities.
+ * @returns {string} The decoded plain text string.
+ */
 const decodeHtml = (html) => {
   if (!html) return '';
   const txt = document.createElement("textarea");
@@ -33,6 +39,20 @@ const valueStyle = {
   color: '#fff'
 };
 
+/**
+ * Renders a visual progress bar for user stats (e.g., Energy, Nerve, Life, Happiness).
+ * Includes an optional countdown timer and an optional link to open a specific Torn page.
+ *
+ * @param {Object} props - The component props.
+ * @param {string|React.ReactNode} props.label - The title/label of the stat bar.
+ * @param {number} props.current - The current value of the stat.
+ * @param {number} props.max - The maximum value of the stat.
+ * @param {string} props.color - The CSS color to use for the progress fill.
+ * @param {string} [props.timeRemaining] - Formatted countdown string (HH:MM:SS) until the bar is full.
+ * @param {string} [props.link] - The URL to open in Torn when the bar is clicked.
+ * @param {Function} [props.onOpenInTorn] - Callback to handle navigation to the link.
+ * @returns {React.JSX.Element} The rendered StatBar component.
+ */
 const StatBar = ({ label, current, max, color, timeRemaining, link, onOpenInTorn }) => {
   const content = (
     <>
@@ -98,6 +118,16 @@ const StatBar = ({ label, current, max, color, timeRemaining, link, onOpenInTorn
   );
 };
 
+/**
+ * Renders the main user dashboard, summarizing basic profile info, active states
+ * (travel, hospital, jail), and current stat bars (Energy, Nerve, etc.).
+ *
+ * @param {Object} props - The component props.
+ * @param {Object} props.userData - The current user's profile, travel, and basic data.
+ * @param {Function} props.onLogout - Callback to clear the user's API key and log out.
+ * @param {Function} props.onOpenInTorn - Callback to open links within the Torn view.
+ * @returns {React.JSX.Element} The rendered User Dashboard component.
+ */
 const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
 
   const statusColor = userData.status?.color === 'blue' ? '#3498db' :

@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
 
+/**
+ * A custom React hook that tracks the time remaining until a war starts, or the time elapsed since it started.
+ *
+ * @param {number} start - The Unix timestamp (in seconds) for when the war is scheduled to start.
+ * @returns {{status: string, display: string, isFuture: boolean}} An object containing the current status ('Starts in' or 'War Time'), the formatted time string, and a boolean indicating if the war is still in the future.
+ */
 export const useWarTimer = (start) => {
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
 

@@ -702,6 +702,14 @@ export const QUICK_ACTION_ICONS = {
   'step=bitsnbobs':    IconBox,
 };
 
+/**
+ * Determines the most appropriate icon component to use based on an action's URL and label.
+ * Looks through pre-defined URL path mappings and keyword mappings to match the intent of the action.
+ *
+ * @param {string} [href=''] - The URL of the quick action.
+ * @param {string} [label=''] - The display text of the quick action.
+ * @returns {React.FC} The React icon component best matching the action, or a fallback icon if none match.
+ */
 export const getQuickActionIcon = (href = '', label = '') => {
   const safeHref = (href || '').toLowerCase();
   const safeLabel = (label || '').toLowerCase();

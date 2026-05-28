@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 
+/**
+ * Renders the login form for the user to input their TORN API key.
+ *
+ * @param {Object} props - The component props.
+ * @param {Function} props.onLogin - The callback function invoked with the valid API key upon successful form submission.
+ * @returns {React.JSX.Element} The rendered login form component.
+ */
 const LoginForm = ({ onLogin }) => {
   const [key, setKey] = useState('');
   const [error, setError] = useState('');
 
+  /**
+   * Handles the form submission.
+   * Validates the length of the API key, clears errors on success and invokes the onLogin callback.
+   * Sets an error message if the key is invalid.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submission event.
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
     if (key.trim().length === 16) {
@@ -14,6 +28,12 @@ const LoginForm = ({ onLogin }) => {
     }
   };
 
+  /**
+   * Boolean flag indicating if the current trimmed key is exactly 16 characters long.
+   * Used to enable or disable the submit button.
+   *
+   * @type {boolean}
+   */
   const isKeyValid = key.trim().length === 16;
 
   return (
