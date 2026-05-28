@@ -3650,16 +3650,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                             // Group by status
                             const groups = {
-                              okay: { label: '⚔️ Okay — Attackable', color: '#2ecc71', members: [] },
-                              hospital: { label: '🏥 Hospitalized', color: '#e74c3c', members: [] },
+                              okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
                               jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
                               other: { label: '✈️ Other', color: '#3498db', members: [] },
                             };
 
                             allMembers.forEach(m => {
                               const state = m.status?.state || '';
-                              if (state === 'Okay') groups.okay.members.push(m);
-                              else if (state === 'Hospital') groups.hospital.members.push(m);
+                              if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
                               else if (state === 'Jail') groups.jail.members.push(m);
                               else groups.other.members.push(m);
                             });
