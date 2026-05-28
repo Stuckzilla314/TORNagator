@@ -149,6 +149,7 @@ function App() {
     setActiveTab('torn');
   }, [setActiveTab]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
+  const [showNavControls, setShowNavControls] = useLocalStorage('tornagator_show_nav_controls', true);
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
   const [pollInterval, setPollInterval] = useLocalStorage('dashboard_poll_interval', 30);
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
@@ -576,6 +577,8 @@ function App() {
               userData={userData}
               showTabTimer={showTabTimer}
               setShowTabTimer={setShowTabTimer}
+              showNavControls={showNavControls}
+              setShowNavControls={setShowNavControls}
               stockAutoSync={stockAutoSync}
               setStockAutoSync={setStockAutoSync}
               cargoCapacity={cargoCapacity}
@@ -643,6 +646,7 @@ function App() {
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
                 cargoCapacity={cargoCapacity}
+                showNavControls={showNavControls}
               />
             ) : activeTab === 'apilogs' ? (
               <ApiLogsView />

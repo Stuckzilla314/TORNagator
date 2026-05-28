@@ -23,6 +23,8 @@ const SettingsMenu = ({
   userData, 
   showTabTimer, 
   setShowTabTimer, 
+  showNavControls,
+  setShowNavControls,
   stockAutoSync,
   setStockAutoSync,
   cargoCapacity, 
@@ -67,6 +69,27 @@ const SettingsMenu = ({
           type="checkbox" 
           checked={showTabTimer} 
           onChange={(e) => setShowTabTimer(e.target.checked)}
+          style={{ cursor: 'pointer' }}
+        />
+      </label>
+
+      <label
+        style={{
+          padding: '8px 12px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: '4px',
+          backgroundColor: showNavControls ? 'rgba(52, 152, 219, 0.1)' : 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <span style={{ fontSize: '0.9rem' }}>Show Nav Controls</span>
+        <input
+          type="checkbox"
+          checked={showNavControls}
+          onChange={(e) => setShowNavControls(e.target.checked)}
           style={{ cursor: 'pointer' }}
         />
       </label>
