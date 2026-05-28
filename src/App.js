@@ -209,6 +209,40 @@ function App() {
     }
   }, [apiKey]);
 
+  // IPC listener for fetching catalog items securely in the host
+  useEffect(() => {
+    if (!window.require || !apiKey) return;
+    const { ipcRenderer } = window.require('electron');
+
+    const handleFetchRequest = async (event, itemId) => {
+      try {
+        const items = await fetchTornItems(apiKey);
+        if (items) {
+          itemsDataRef.current = items;
+          setItemsData(items);
+
+          // Format specific items like TornView expects, using itemsMarketValues
+          const itemsMarketValues = {};
+          const itemsMarketValuesById = {};
+          Object.values(items).forEach(item => {
+            if (item.name && item.market_value) {
+              itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+            }
+            if (item.id && item.market_value) {
+              itemsMarketValuesById[item.id] = item.market_value;
+            }
+          });
+
+          ipcRenderer.send('catalog-item-fetched', { items: itemsMarketValuesById });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    ipcRenderer.on('fetch-catalog-item', handleFetchRequest);
+    return () => ipcRenderer.removeListener('fetch-catalog-item', handleFetchRequest);
+  }, [apiKey]);
+
   // Load cached items/inventory on mount, and fetch items if cache is empty/expired
   useEffect(() => {
     let cachedData = null;

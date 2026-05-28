@@ -695,6 +695,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     };
   }, [isActive, targetCountry, trySelectCountry, updateNavigationState]);
 
+  // Handle catalog updates from IPC
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (!wv || !window.require) return;
+    const { ipcRenderer } = window.require('electron');
+
+    const handleCatalogUpdate = (event, { items }) => {
+      wv.executeJavaScript(`
+        if (window._tornagator_market_values_by_id) {
+          Object.assign(window._tornagator_market_values_by_id, ${JSON.stringify(items)});
+          window._tornagator_fetching_catalog = false;
+        }
+      `).catch(console.error);
+    };
+
+    ipcRenderer.on('catalog-updated', handleCatalogUpdate);
+    return () => ipcRenderer.removeListener('catalog-updated', handleCatalogUpdate);
+  }, []);
+
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isActive) return;
@@ -713,7 +732,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       });
     }
 
-    const userApiKey = apiKey || '';
     const script = `
       (() => {
         try {
@@ -726,7 +744,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           const marketValues = ${JSON.stringify(itemsMarketValues)};
           const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
           const cargoCapacity = ${cargoCapacity || 5};
-          const userApiKey = ${JSON.stringify(userApiKey)};
 
           // 1. Find and update header cells
           const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
@@ -953,29 +970,13 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 cell.appendChild(tempDiv);
 
                 window._tornagator_fetching_catalog = true;
-                console.log("[TORNagator Webview] Fetching Torn items catalog on-demand for itemId:", itemId);
+                console.log("[TORNagator Webview] Requesting Torn items catalog on-demand for itemId:", itemId);
 
-                fetch(\`https://api.torn.com/torn/?selections=items&key=\${userApiKey}\`)
-                  .then(r => r.json())
-                  .then(data => {
-                    if (data && data.items) {
-                      Object.entries(data.items).forEach(([id, item]) => {
-                        marketValuesById[id] = item.market_value || 0;
-                      });
-                      console.log("[TORNagator Webview] On-demand catalog loaded. Total items:", Object.keys(marketValuesById).length);
-                      const newVal = marketValuesById[itemId] || 0;
-                      renderBadge(newVal);
-                    } else {
-                      renderBadge(0);
-                    }
-                  })
-                  .catch(err => {
-                    console.error("[TORNagator Webview] On-demand catalog fetch failed:", err);
-                    renderBadge(0);
-                  })
-                  .finally(() => {
-                    window._tornagator_fetching_catalog = false;
-                  });
+                // Instead of fetching directly with an API key here, we request it from the host environment via IPC
+                if (window.require) {
+                  const { ipcRenderer } = window.require('electron');
+                  ipcRenderer.send('request-catalog-update', itemId);
+                }
               }
             }
           }

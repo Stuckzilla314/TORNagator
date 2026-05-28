@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, ipcMain } = require('electron');
 const path = require('path');
 function createWindow() {
   const win = new BrowserWindow({
@@ -46,6 +46,20 @@ function createWindow() {
 
   // Load the React app
   win.loadFile(path.join(__dirname, '../build/index.html'));
+
+  // Handle catalog update requests from guest
+  ipcMain.on('request-catalog-update', async (event, itemId) => {
+    // Pass the request back to the main React app to fetch using its API key
+    // The React app should listen for 'fetch-catalog-item' and reply with 'catalog-updated'
+    win.webContents.send('fetch-catalog-item', itemId);
+  });
+
+  // Handle the reply from the React app
+  ipcMain.on('catalog-item-fetched', (event, data) => {
+    // Send the data back to the guest
+    // In our setup, the guest and host share the same IPC due to nodeIntegration
+    win.webContents.send('catalog-updated', data);
+  });
 }
 
 app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
