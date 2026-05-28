@@ -1375,6 +1375,23 @@ const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
             {member.name}
           </span>
           <span style={{ color: '#555', fontSize: '0.7rem', marginLeft: '4px' }}>[{member.id}]</span>
+          {member.last_action?.status && (
+            <span
+              title={member.last_action.status}
+              style={{
+                display: 'inline-block',
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                 member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                marginLeft: '6px',
+                verticalAlign: 'middle',
+                boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' :
+                           member.last_action.status === 'Idle' ? '0 0 4px #f39c12' : 'none'
+              }}
+            />
+          )}
 
           <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
             Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}

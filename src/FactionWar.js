@@ -304,6 +304,23 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
               {member.name}
             </span>
             <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
+            {member.last_action?.status && (
+              <span
+                title={member.last_action.status}
+                style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                   member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                  marginLeft: '8px',
+                  verticalAlign: 'middle',
+                  boxShadow: member.last_action.status === 'Online' ? '0 0 5px #2ecc71' :
+                             member.last_action.status === 'Idle' ? '0 0 5px #f39c12' : 'none'
+                }}
+              />
+            )}
             <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
               Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
             </div>
