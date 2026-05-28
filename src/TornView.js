@@ -299,9 +299,10 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
  * @param {Object} props.itemsData - Static items mapping for market overlays.
  * @param {number} props.cargoCapacity - Estimated max cargo items user can hold.
  * @param {string} props.apiKey - The user API key (used for auto-injecting some scripts or data if needed).
+ * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered WebviewTab component.
  */
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -1018,42 +1019,44 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   return (
     <div style={{ display: isActive ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0 }}>
       {/* Navigation Toolbar */}
-      <div className="torn-browser-toolbar">
-        <button
-          className="torn-browser-nav-btn"
-          onClick={handleGoBack}
-          disabled={!canGoBack}
-          title="Back"
-          aria-label="Back"
-        >
-          <IconChevronLeft size={16} />
-        </button>
-        <button
-          className="torn-browser-nav-btn"
-          onClick={handleGoForward}
-          disabled={!canGoForward}
-          title="Forward"
-          aria-label="Forward"
-        >
-          <IconChevronRight size={16} />
-        </button>
-        <button
-          className="torn-browser-nav-btn"
-          onClick={handleReload}
-          title="Reload"
-          aria-label="Reload"
-        >
-          <IconRefresh size={16} />
-        </button>
-        <input
-          type="text"
-          className="torn-browser-url-bar"
-          value={tab.url}
-          readOnly
-          onClick={(e) => e.target.select()}
-          title="Click to select/copy URL"
-        />
-      </div>
+      {showNavControls && (
+        <div className="torn-browser-toolbar">
+          <button
+            className="torn-browser-nav-btn"
+            onClick={handleGoBack}
+            disabled={!canGoBack}
+            title="Back"
+            aria-label="Back"
+          >
+            <IconChevronLeft size={16} />
+          </button>
+          <button
+            className="torn-browser-nav-btn"
+            onClick={handleGoForward}
+            disabled={!canGoForward}
+            title="Forward"
+            aria-label="Forward"
+          >
+            <IconChevronRight size={16} />
+          </button>
+          <button
+            className="torn-browser-nav-btn"
+            onClick={handleReload}
+            title="Reload"
+            aria-label="Reload"
+          >
+            <IconRefresh size={16} />
+          </button>
+          <input
+            type="text"
+            className="torn-browser-url-bar"
+            value={tab.url}
+            readOnly
+            onClick={(e) => e.target.select()}
+            title="Click to select/copy URL"
+          />
+        </div>
+      )}
 
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         <webview
@@ -1084,9 +1087,10 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
  * @param {Function} props.setTargetCountry - Setter for target country.
  * @param {Object} props.itemsData - Full items map for reference.
  * @param {number} props.cargoCapacity - Max items user can bring back.
+ * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered TornView component.
  */
-const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity }) => {
+const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -1384,6 +1388,7 @@ const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCount
                 itemsData={itemsData}
                 cargoCapacity={cargoCapacity}
                 apiKey={apiKey}
+                showNavControls={showNavControls}
               />
             ))}
           </div>
