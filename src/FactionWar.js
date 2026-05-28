@@ -194,23 +194,6 @@ const parseSuspectedStats = (text) => {
 };
 
 const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
-  const [activeSubTab, setActiveSubTab] = useState(() => {
-    return localStorage.getItem('tornagator_faction_active_subtab') || 'overview';
-  });
-  const [compareMode, setCompareMode] = useState(false);
-  const [enemyFactionData, setEnemyFactionData] = useState(null);
-  const [memberProfiles, setMemberProfiles] = useState({});
-  const [isLoadingTargets, setIsLoadingTargets] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
-  const [errorTargets, setErrorTargets] = useState(null);
-  const [cachedAt, setCachedAt] = useState(null);
-  const [isImportOpen, setIsImportOpen] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [sortBy, setSortBy] = useState('default');
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [importedStats, setImportedStats] = useState({});
-  const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
-
   // Derive war state from factionData (safe to do before the guard — factionData may be null)
   const rankedWars = factionData?.ranked_wars || {};
   const activeWars = Object.values(rankedWars);
@@ -225,7 +208,38 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
   const cacheKey = firstEnemyFactionId ? `tornagator_targets_${firstEnemyFactionId}` : null;
 
-  // Load from sessionStorage cache on mount (or when cacheKey changes)
+  // Helper to load cache synchronously
+  const getCachedData = () => {
+    if (!cacheKey) return null;
+    try {
+      const raw = sessionStorage.getItem(cacheKey);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      sessionStorage.removeItem(cacheKey);
+    }
+    return null;
+  };
+
+  const cachedData = getCachedData();
+
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    return localStorage.getItem('tornagator_faction_active_subtab') || 'overview';
+  });
+  const [compareMode, setCompareMode] = useState(false);
+  const [enemyFactionData, setEnemyFactionData] = useState(() => cachedData?.factionData || null);
+  const [memberProfiles, setMemberProfiles] = useState(() => cachedData?.profiles || {});
+  const [isLoadingTargets, setIsLoadingTargets] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
+  const [errorTargets, setErrorTargets] = useState(null);
+  const [cachedAt, setCachedAt] = useState(() => cachedData?.fetchedAt || null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [importedStats, setImportedStats] = useState({});
+  const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
+
+  // Sync cache if key changes later
   useEffect(() => {
     if (!cacheKey) return;
     try {
@@ -235,6 +249,10 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
         setEnemyFactionData(cached.factionData);
         setMemberProfiles(cached.profiles);
         setCachedAt(cached.fetchedAt);
+      } else {
+        setEnemyFactionData(null);
+        setMemberProfiles({});
+        setCachedAt(null);
       }
     } catch (e) {
       sessionStorage.removeItem(cacheKey);
