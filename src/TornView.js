@@ -1618,7 +1618,8 @@ const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCount
                             padding: 0,
                             lineHeight: '1'
                           }}
-                          title="Remove"
+                          title={`Remove ${action.label}`}
+                          aria-label={`Remove quick action ${action.label}`}
                         >
                           ×
                         </button>
@@ -1645,6 +1646,7 @@ const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCount
                             fontFamily: 'inherit'
                           }}
                           placeholder="Label"
+                          aria-label={`Rename quick action ${action.label}`}
                         />
 
                         {/* Rearrange arrows */}
@@ -1660,6 +1662,8 @@ const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCount
                               cursor: index === 0 ? 'default' : 'pointer',
                               padding: '0 4px'
                             }}
+                            title={`Move ${action.label} left`}
+                            aria-label={`Move ${action.label} left`}
                           >
                             ◀
                           </button>
@@ -1674,6 +1678,8 @@ const TornView = ({ userData, apiKey, requestedUrl, setRequestedUrl, targetCount
                               cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
                               padding: '0 4px'
                             }}
+                            title={`Move ${action.label} right`}
+                            aria-label={`Move ${action.label} right`}
                           >
                             ▶
                           </button>
