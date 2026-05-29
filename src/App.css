@@ -973,3 +973,91 @@
   background: rgba(46, 204, 113, 0.25);
   color: #fff;
 }
+
+/* ── Mobile Responsiveness (Screen size < 768px) ── */
+@media (max-width: 768px) {
+  /* Flex wrap navigation items to prevent overflow */
+  nav {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  nav > div {
+    padding: 12px 14px !important; /* Touch target size optimization */
+    font-size: 0.85rem !important;
+  }
+
+  /* Page layout adjustment */
+  .torn-view-root {
+    height: calc(100vh - 50px);
+  }
+  
+  /* Sidebar stacking on mobile */
+  .torn-main-layout {
+    flex-direction: column-reverse !important; 
+  }
+
+  .torn-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 250px;
+    border-left: none !important;
+    border-top: 1px solid rgba(52, 152, 219, 0.2) !important;
+  }
+
+  .torn-sidebar.collapsed {
+    height: 0px !important;
+    max-height: 0px !important;
+    border-top: none !important;
+    overflow: hidden;
+  }
+
+  /* Toggle button repositioned for vertical layout */
+  .torn-sidebar-toggle {
+    left: auto !important;
+    right: 20px !important;
+    top: -24px !important;
+    transform: none !important;
+    width: 60px !important;
+    height: 24px !important;
+    border-radius: 6px 6px 0 0 !important;
+    border-bottom: none !important;
+    border-right: 1px solid rgba(52, 152, 219, 0.3) !important;
+  }
+  
+  /* Touch target optimizations */
+  .torn-browser-nav-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .settings-gear-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .new-tab-url-input {
+    padding: 14px 16px !important;
+  }
+
+  .new-tab-go-btn {
+    padding: 0 30px !important;
+    height: 44px !important;
+  }
+  
+  .new-tab-favorites-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+  }
+  
+  .new-tab-fav-card {
+    min-height: 80px !important;
+    padding: 12px 6px !important;
+  }
+
+  .torn-sidebar-quicklink-btn {
+    min-height: 48px !important;
+    padding: 12px 8px !important;
+  }
+}
+

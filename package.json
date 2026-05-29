@@ -5,6 +5,8 @@
   "main": "public/electron.js",
   "homepage": "./",
   "dependencies": {
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/core": "^8.3.4",
     "axios": "^1.16.0",
     "cheerio": "^1.2.0",
     "firebase": "^12.13.0",
@@ -19,7 +21,10 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "electron:serve": "npm run build && electron ."
+    "electron:serve": "npm run build && electron .",
+    "cap:sync": "npx cap sync",
+    "cap:open-android": "npx cap open android",
+    "android:run": "npm run build && npx cap run android"
   },
   "eslintConfig": {
     "extends": [
@@ -39,6 +44,8 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
     "electron": "^42.2.0"
   }
 }

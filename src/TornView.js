@@ -11,6 +11,7 @@ import {
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
+import { isElectron, isCapacitor } from './utils';
 
 /**
  * Custom hook to safely sync state with localStorage.
@@ -681,18 +682,21 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   const updateNavigationState = useCallback(() => {
     const wv = webviewRef.current;
-    if (wv) {
+    if (wv && isElectron) {
       try {
         setCanGoBack(wv.canGoBack());
         setCanGoForward(wv.canGoForward());
       } catch (err) {
         // Can fail if webview isn't fully ready
       }
+    } else {
+      setCanGoBack(false);
+      setCanGoForward(false);
     }
   }, []);
 
   const injectMarketValues = useCallback((wvInstance) => {
-    if (!wvInstance || !itemsData || !domReadyRef.current) return;
+    if (!wvInstance || !itemsData || !domReadyRef.current || !isElectron) return;
     const itemsMarketValues = {};
     const itemsMarketValuesById = {};
     Object.entries(itemsData).forEach(([id, item]) => {
@@ -717,7 +721,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   const trySelectCountry = useCallback((attempt = 1) => {
     const wv = webviewRef.current;
-    if (!wv || !targetCountry) return;
+    if (!wv || !targetCountry || !isElectron) return;
 
     let currentUrl = '';
     try {
@@ -828,7 +832,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   useEffect(() => {
     const wv = webviewRef.current;
-    if (!wv) return;
+    if (!wv || !isElectron) return;
 
     const handleNavigate = (e) => {
       if (e.url.includes('__cf_chl_') || e.url.includes('/cdn-cgi/')) {
@@ -879,7 +883,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   }, [isActive, targetCountry, trySelectCountry]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || !isElectron) return;
 
     const handleDump = () => {
       const wv = webviewRef.current;
@@ -959,7 +963,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   useEffect(() => {
     const wv = webviewRef.current;
-    if (!wv) return;
+    if (!wv || !isElectron) return;
 
 
     const handleDomReady = () => {
@@ -1128,7 +1132,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   // Handle catalog updates from IPC
   useEffect(() => {
     const wv = webviewRef.current;
-    if (!wv || !window.require) return;
+    if (!wv || !isElectron || !window.require) return;
     const { ipcRenderer } = window.require('electron');
 
     const handleCatalogUpdate = (event, { items }) => {
@@ -1149,14 +1153,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   // (e.g. when a newly-opened tab is immediately made active via navigateTo).
   useEffect(() => {
     const wv = webviewRef.current;
-    if (wv && isActive && domReadyRef.current) {
+    if (wv && isActive && domReadyRef.current && isElectron) {
       injectMarketValues(wv);
     }
   }, [isActive, injectMarketValues]);
 
   useEffect(() => {
     const wv = webviewRef.current;
-    if (!wv || !isActive) return;
+    if (!wv || !isActive || !isElectron) return;
 
     const script = `
       (() => {
@@ -1463,7 +1467,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   const handleGoBack = () => {
     const wv = webviewRef.current;
-    if (wv && wv.canGoBack()) {
+    if (wv && isElectron && wv.canGoBack()) {
       wv.goBack();
       updateNavigationState();
     }
@@ -1471,7 +1475,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   const handleGoForward = () => {
     const wv = webviewRef.current;
-    if (wv && wv.canGoForward()) {
+    if (wv && isElectron && wv.canGoForward()) {
       wv.goForward();
       updateNavigationState();
     }
@@ -1480,7 +1484,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   const handleReload = () => {
     const wv = webviewRef.current;
     if (wv) {
-      wv.reload();
+      if (isElectron) {
+        wv.reload();
+      } else {
+        try {
+          // eslint-disable-next-line no-self-assign
+          wv.src = wv.src;
+        } catch (e) {}
+      }
       updateNavigationState();
     }
   };
@@ -1548,14 +1559,31 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       )}
 
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
-        <webview
-          ref={webviewRef}
-          src={initialUrlRef.current}
-          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-          title={tabTitle}
-          className="torn-iframe"
-          style={{ visibility: isActive ? 'visible' : 'hidden' }}
-        />
+        {isElectron ? (
+          <webview
+            ref={webviewRef}
+            src={initialUrlRef.current}
+            useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            title={tabTitle}
+            className="torn-iframe"
+            style={{ visibility: isActive ? 'visible' : 'hidden' }}
+          />
+        ) : (
+          <iframe
+            ref={webviewRef}
+            src={tabUrl}
+            title={tabTitle}
+            className="torn-iframe"
+            style={{
+              visibility: isActive ? 'visible' : 'hidden',
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              background: '#1a1a1a'
+            }}
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          />
+        )}
       </div>
     </div>
   );
@@ -2568,6 +2596,15 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   useEffect(() => {
     if (requestedUrl) {
+      if (isCapacitor) {
+        import('@capacitor/browser').then(({ Browser }) => {
+          Browser.open({ url: requestedUrl });
+        }).catch(err => {
+          console.error("Failed to open Capacitor Browser:", err);
+        });
+        setRequestedUrl(null);
+        return;
+      }
       const existingTab = tabs.find(t => areUrlsEqual(t.url, requestedUrl));
       if (existingTab) {
         setActiveTabId(existingTab.id);
@@ -2673,6 +2710,15 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     }
     if (!/^https?:\/\//i.test(safeHref) && safeHref.trim() !== '') {
       safeHref = 'https://' + safeHref;
+    }
+
+    if (isCapacitor) {
+      import('@capacitor/browser').then(({ Browser }) => {
+        Browser.open({ url: safeHref });
+      }).catch(err => {
+        console.error("Failed to open Capacitor Browser:", err);
+      });
+      return;
     }
 
     const existingTab = tabs.find(t => areUrlsEqual(t.url, safeHref));
