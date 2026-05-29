@@ -159,6 +159,13 @@ app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
 
 app.whenReady().then(() => {
   session.defaultSession.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+  
+  app.on('web-contents-created', (event, contents) => {
+    contents.on('will-attach-webview', (event, webPreferences, params) => {
+      webPreferences.preload = path.join(__dirname, 'preload.js');
+    });
+  });
+
   createWindow();
 
   app.on('activate', () => {

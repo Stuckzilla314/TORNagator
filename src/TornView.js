@@ -1473,9 +1473,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     if (!isActive) return;
 
     const handleTornUrlChange = (e) => {
-      const { url, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail;
-      setCanGoBack(nativeCanGoBack);
-      setCanGoForward(nativeCanGoForward);
+      const { url, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail || {};
+      setCanGoBack(!!nativeCanGoBack);
+      setCanGoForward(!!nativeCanGoForward);
 
       if (tabId && url && url !== tabUrl) {
         onUpdate(tabId, { url });
