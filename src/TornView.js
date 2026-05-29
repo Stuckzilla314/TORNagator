@@ -2043,6 +2043,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   const defaultQuickActions = [
     { label: 'Crimes', href: 'https://www.torn.com/crimes.php' },
@@ -2600,6 +2601,31 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     setActiveTabId(id);
   };
 
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e, index) => {
+    if (draggedIndex === null || draggedIndex === index) return;
+    setTabs(prev => {
+      const newTabs = [...prev];
+      const [draggedTab] = newTabs.splice(draggedIndex, 1);
+      newTabs.splice(index, 0, draggedTab);
+      return newTabs;
+    });
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   // ── Stat timers
   const lifeTimer = useBarTimer(userData?.life);
   const energyTimer = useBarTimer(userData?.energy);
@@ -2683,11 +2709,16 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
           {/* Tab Bar UI */}
           <div className="torn-tab-bar" style={{ display: 'flex', backgroundColor: '#1a1a1a', borderBottom: '1px solid #333', padding: '0 8px', overflowX: 'auto' }}>
-            {tabs.map(tab => (
+            {tabs.map((tab, index) => (
               <div
                 key={tab.id}
                 onClick={() => setActiveTabId(tab.id)}
                 onContextMenu={(e) => handleTabContextMenu(e, tab)}
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={handleDragOver}
+                onDragEnter={(e) => handleDragEnter(e, index)}
+                onDragEnd={handleDragEnd}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -2695,19 +2726,39 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   backgroundColor: activeTabId === tab.id ? '#2c2c2c' : 'transparent',
                   borderTopLeftRadius: '6px',
                   borderTopRightRadius: '6px',
-                  cursor: 'pointer',
+                  cursor: draggedIndex === index ? 'grabbing' : 'grab',
                   minWidth: '120px',
                   maxWidth: '200px',
                   borderRight: '1px solid #333',
-                  borderTop: activeTabId === tab.id ? '2px solid #e74c3c' : '2px solid transparent'
+                  borderTop: activeTabId === tab.id ? '2px solid #e74c3c' : '2px solid transparent',
+                  opacity: draggedIndex === index ? 0.4 : 1,
+                  userSelect: 'none',
+                  transition: 'opacity 0.15s ease'
                 }}
               >
-                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem', color: activeTabId === tab.id ? '#fff' : '#aaa' }}>
+                <span style={{
+                  flex: 1,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontSize: '0.75rem',
+                  color: activeTabId === tab.id ? '#fff' : '#aaa',
+                  pointerEvents: draggedIndex !== null ? 'none' : 'auto'
+                }}>
                   {tab.title || 'Torn'}
                 </span>
                 <button
                   onClick={(e) => handleCloseTab(e, tab.id)}
-                  style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: '8px', fontSize: '1rem', lineHeight: '1' }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#888',
+                    cursor: 'pointer',
+                    marginLeft: '8px',
+                    fontSize: '1rem',
+                    lineHeight: '1',
+                    pointerEvents: draggedIndex !== null ? 'none' : 'auto'
+                  }}
                   aria-label={`Close ${tab.title || 'tab'}`}
                 >×</button>
               </div>
@@ -2738,7 +2789,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
               </div>
             )}
 
-            {tabs.map(tab => (
+            {[...tabs].sort((a, b) => a.id.localeCompare(b.id)).map(tab => (
               <WebviewTab
                 key={tab.id}
                 tab={tab}
