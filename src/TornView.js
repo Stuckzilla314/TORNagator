@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
 import {
@@ -663,9 +663,10 @@ const NewTabPage = ({ tabId, onNavigate }) => {
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered WebviewTab component.
  */
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData }) => {
   const webviewRef = useRef(null);
   const initialUrlRef = useRef(tab.url);
+  const domReadyRef = useRef(false); // true once dom-ready fires; reset on navigation
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
 
@@ -685,6 +686,30 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       }
     }
   }, []);
+
+  const injectMarketValues = useCallback((wvInstance) => {
+    if (!wvInstance || !itemsData || !domReadyRef.current) return;
+    const itemsMarketValues = {};
+    const itemsMarketValuesById = {};
+    Object.entries(itemsData).forEach(([id, item]) => {
+      if (item.name && item.market_value) {
+        itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+      }
+      if (id && item.market_value) {
+        itemsMarketValuesById[id] = item.market_value;
+      }
+    });
+
+    const injectScript = `
+      (() => {
+        window._tornagator_market_values = ${JSON.stringify(itemsMarketValues)};
+        window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+        window._tornagator_cargo_capacity = ${cargoCapacity || 5};
+        window._tornagator_sorted_names = null;
+      })()
+    `;
+    wvInstance.executeJavaScript(injectScript).catch(() => {});
+  }, [itemsData, cargoCapacity]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
     const wv = webviewRef.current;
@@ -805,6 +830,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       if (e.url.includes('__cf_chl_') || e.url.includes('/cdn-cgi/')) {
         return;
       }
+      // Reset dom-ready flag on full navigations so we don't call executeJavaScript
+      // on a webview that has torn down its renderer context.
+      domReadyRef.current = false;
       onUpdate(tab.id, { url: e.url });
       updateNavigationState();
     };
@@ -925,7 +953,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
 
     const handleDomReady = () => {
+      domReadyRef.current = true;
       updateNavigationState();
+      injectMarketValues(wv);
       wv.insertCSS(`
         [class*="swiper-slide"][class*="slide___"] {
           width: 60px !important;
@@ -958,6 +988,19 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       const redirScript = `
         (() => {
           const handleStatsClicks = () => {
+            const hasEnergy = window._tornagator_bound_energy && document.body && document.body.contains(window._tornagator_bound_energy);
+            const hasNerve = window._tornagator_bound_nerve && document.body && document.body.contains(window._tornagator_bound_nerve);
+            
+            if (hasEnergy && hasNerve) {
+              return;
+            }
+
+            const now = Date.now();
+            if (now - (window._tornagator_last_stats_search || 0) < 2000) {
+              return;
+            }
+            window._tornagator_last_stats_search = now;
+
             const energySelectors = [
               '[class*="energyContainer___"]',
               '[class*="energy___"]',
@@ -974,38 +1017,46 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               'div[class*="sidebar"] [class*="nerve" i]',
             ];
 
-            let energyEl = null;
-            for (const selector of energySelectors) {
-              const found = document.querySelector(selector);
-              if (found) {
-                energyEl = found;
-                break;
-              }
-            }
-
-            let nerveEl = null;
-            for (const selector of nerveSelectors) {
-              const found = document.querySelector(selector);
-              if (found) {
-                nerveEl = found;
-                break;
-              }
-            }
-
+            let energyEl = hasEnergy ? window._tornagator_bound_energy : null;
             if (!energyEl) {
-              const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
-              energyEl = allElements.find(el => {
-                const text = (el.textContent || '').trim();
-                return text.startsWith('Energy:') && el.children.length < 8;
-              });
+              for (const selector of energySelectors) {
+                const found = document.querySelector(selector);
+                if (found) {
+                  energyEl = found;
+                  break;
+                }
+              }
+              if (!energyEl) {
+                const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
+                energyEl = allElements.find(el => {
+                  const text = (el.textContent || '').trim();
+                  return text.startsWith('Energy:') && el.children.length < 8;
+                });
+              }
+              if (energyEl) {
+                window._tornagator_bound_energy = energyEl;
+              }
             }
 
+            let nerveEl = hasNerve ? window._tornagator_bound_nerve : null;
             if (!nerveEl) {
-              const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
-              nerveEl = allElements.find(el => {
-                const text = (el.textContent || '').trim();
-                return text.startsWith('Nerve:') && el.children.length < 8;
-              });
+              for (const selector of nerveSelectors) {
+                const found = document.querySelector(selector);
+                if (found) {
+                  nerveEl = found;
+                  break;
+                }
+              }
+              if (!nerveEl) {
+                const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
+                nerveEl = allElements.find(el => {
+                  const text = (el.textContent || '').trim();
+                  return text.startsWith('Nerve:') && el.children.length < 8;
+                });
+              }
+              if (nerveEl) {
+                window._tornagator_bound_nerve = nerveEl;
+              }
             }
 
             if (energyEl && !energyEl.dataset.redirBound) {
@@ -1046,8 +1097,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           };
 
           handleStatsClicks();
-          const obs = new MutationObserver(handleStatsClicks);
-          obs.observe(document.body, { childList: true, subtree: true });
+          const targetNode = document.body || document.documentElement;
+          if (targetNode) {
+            const obs = new MutationObserver(handleStatsClicks);
+            obs.observe(targetNode, { childList: true, subtree: true });
+          }
         })()
       `;
       wv.executeJavaScript(redirScript).catch(err => {
@@ -1059,7 +1113,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     return () => {
       wv.removeEventListener('dom-ready', handleDomReady);
     };
-  }, [isActive, targetCountry, trySelectCountry, updateNavigationState, isNewTab]);
+  }, [isActive, targetCountry, trySelectCountry, updateNavigationState, isNewTab, injectMarketValues]);
 
   // Handle catalog updates from IPC
   useEffect(() => {
@@ -1080,173 +1134,187 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     return () => ipcRenderer.removeListener('catalog-updated', handleCatalogUpdate);
   }, []);
 
+  // Inject items data whenever they change or when this tab is active.
+  // Guard on domReadyRef so we never call executeJavaScript before dom-ready fires
+  // (e.g. when a newly-opened tab is immediately made active via navigateTo).
+  useEffect(() => {
+    const wv = webviewRef.current;
+    if (wv && isActive && domReadyRef.current) {
+      injectMarketValues(wv);
+    }
+  }, [isActive, injectMarketValues]);
+
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isActive) return;
-
-    // Map item names and IDs to their market values from the database if they exist
-    const itemsMarketValues = {};
-    const itemsMarketValuesById = {};
-    if (itemsData) {
-      Object.entries(itemsData).forEach(([id, item]) => {
-        if (item.name && item.market_value) {
-          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
-        }
-        if (id && item.market_value) {
-          itemsMarketValuesById[id] = item.market_value;
-        }
-      });
-    }
 
     const script = `
       (() => {
         try {
           // Initialize local cache from React props if not already set, or fall back to empty
-          if (!window._tornagator_market_values_by_id) {
-            window._tornagator_market_values_by_id = {};
+          if (!window._tornagator_market_values || !window._tornagator_market_values_by_id) {
+            return null;
           }
-          Object.assign(window._tornagator_market_values_by_id, ${JSON.stringify(itemsMarketValuesById)});
           const marketValuesById = window._tornagator_market_values_by_id;
+          const marketValues = window._tornagator_market_values;
 
-          const marketValues = ${JSON.stringify(itemsMarketValues)};
-          const sortedNames = Object.keys(marketValues).sort((a, b) => b.length - a.length);
-          const cargoCapacity = ${cargoCapacity || 5};
+          const isTravel = window.location.href.includes('travelagency.php') || window.location.href.includes('sid=travel') || window.location.href.includes('index.php');
+          const isCrimes = window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes');
+          
+          if (!isTravel && !isCrimes) {
+            return null;
+          }
+
+          const hasTravelTable = !!document.querySelector('[class*="stockTableWrapper___"]');
+          const hasCrimesOutcome = !!document.querySelector('div[class*=outcomeReward___]');
+
+          if (!hasTravelTable && !hasCrimesOutcome) {
+            return null;
+          }
+
+          if (!window._tornagator_sorted_names) {
+            window._tornagator_sorted_names = Object.keys(marketValues).sort((a, b) => b.length - a.length);
+          }
+          const sortedNames = window._tornagator_sorted_names;
+          const cargoCapacity = window._tornagator_cargo_capacity || 5;
 
           // 1. Find and update header cells
-          const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
-            const text = el.textContent || '';
-            return text.includes('Cost') && text.includes('Stock');
-          });
-
-          for (const headerRow of headers) {
-            const cells = Array.from(headerRow.children);
-            const costHeaderCell = cells.find(cell => cell.textContent.trim().toLowerCase().includes('cost'));
-            if (!costHeaderCell) continue;
-
-            const costBtn = costHeaderCell.querySelector('button');
-            if (costBtn && !costBtn.querySelector('.injected-profit-header-span')) {
-              const profitHeaderSpan = document.createElement('span');
-              profitHeaderSpan.className = 'injected-profit-header-span';
-              profitHeaderSpan.textContent = ' (Profit)';
-              profitHeaderSpan.style.color = '#888888';
-              profitHeaderSpan.style.fontWeight = 'normal';
-              profitHeaderSpan.style.fontSize = '0.85em';
-              profitHeaderSpan.style.marginLeft = '4px';
-              costBtn.appendChild(profitHeaderSpan);
-            }
-          }
-
-          // Cleanup any previously injected profit columns/headers if they exist in DOM
-          document.querySelectorAll('.injected-profit-header, .injected-profit-cell').forEach(el => el.remove());
-
-          // 2. Find and update item rows
-          const rows = Array.from(document.querySelectorAll('[class*="row___"]')).filter(row => {
-            const hasInput = Array.from(row.querySelectorAll('input')).some(inp => {
-              const type = (inp.getAttribute('type') || 'text').toLowerCase();
-              return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
+          if (hasTravelTable) {
+            const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
+              const text = el.textContent || '';
+              return text.includes('Cost') && text.includes('Stock');
             });
-            const hasButton = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
-            return hasInput && hasButton && row.children.length >= 5;
-          });
 
-          for (const row of rows) {
-            // Find header row for this item row
-            const tableWrapper = row.closest('[class*="stockTableWrapper___"]') || row.parentElement?.parentElement;
-            const headerRow = tableWrapper ? tableWrapper.querySelector('[class*="itemsHeader___"]') : null;
-            if (!headerRow) continue;
+            for (const headerRow of headers) {
+              const cells = Array.from(headerRow.children);
+              const costHeaderCell = cells.find(cell => cell.textContent.trim().toLowerCase().includes('cost'));
+              if (!costHeaderCell) continue;
 
-            const originalHeaderCells = Array.from(headerRow.children);
-            const costHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('cost'));
-            const nameHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('name'));
-            const stockHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('stock'));
-            if (costHeaderIdx === -1 || nameHeaderIdx === -1) continue;
-
-            const originalRowCells = Array.from(row.children);
-            const costCell = originalRowCells[costHeaderIdx];
-            const nameCell = originalRowCells[nameHeaderIdx];
-            if (!costCell || !nameCell) continue;
-
-            const nameSpan = nameCell.querySelector('.injected-market-price');
-            let itemName = nameCell.textContent;
-            if (nameSpan) {
-              itemName = itemName.replace(nameSpan.textContent, '');
-            }
-            itemName = itemName.trim().toLowerCase();
-
-            let marketValue = 0;
-            let matchedName = '';
-            for (const name of sortedNames) {
-              if (itemName.includes(name)) {
-                marketValue = marketValues[name];
-                matchedName = name;
-                break;
+              const costBtn = costHeaderCell.querySelector('button');
+              if (costBtn && !costBtn.querySelector('.injected-profit-header-span')) {
+                const profitHeaderSpan = document.createElement('span');
+                profitHeaderSpan.className = 'injected-profit-header-span';
+                profitHeaderSpan.textContent = ' (Profit)';
+                profitHeaderSpan.style.color = '#888888';
+                profitHeaderSpan.style.fontWeight = 'normal';
+                profitHeaderSpan.style.fontSize = '0.85em';
+                profitHeaderSpan.style.marginLeft = '4px';
+                costBtn.appendChild(profitHeaderSpan);
               }
             }
 
-            if (matchedName) {
-              let priceSpan = nameCell.querySelector('.injected-market-price');
-              if (!priceSpan) {
-                priceSpan = document.createElement('span');
-                priceSpan.className = 'injected-market-price';
-                priceSpan.style.color = '#888888';
-                priceSpan.style.fontSize = '0.8em';
-                priceSpan.style.marginLeft = '8px';
-                nameCell.appendChild(priceSpan);
+            // Cleanup any previously injected profit columns/headers if they exist in DOM
+            document.querySelectorAll('.injected-profit-header, .injected-profit-cell').forEach(el => el.remove());
+
+            // 2. Find and update item rows
+            const rows = Array.from(document.querySelectorAll('[class*="row___"]')).filter(row => {
+              const hasInput = Array.from(row.querySelectorAll('input')).some(inp => {
+                const type = (inp.getAttribute('type') || 'text').toLowerCase();
+                return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
+              });
+              const hasButton = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
+              return hasInput && hasButton && row.children.length >= 5;
+            });
+
+            for (const row of rows) {
+              // Find header row for this item row
+              const tableWrapper = row.closest('[class*="stockTableWrapper___"]') || row.parentElement?.parentElement;
+              const headerRow = tableWrapper ? tableWrapper.querySelector('[class*="itemsHeader___"]') : null;
+              if (!headerRow) continue;
+
+              const originalHeaderCells = Array.from(headerRow.children);
+              const costHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('cost'));
+              const nameHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('name'));
+              const stockHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('stock'));
+              if (costHeaderIdx === -1 || nameHeaderIdx === -1) continue;
+
+              const originalRowCells = Array.from(row.children);
+              const costCell = originalRowCells[costHeaderIdx];
+              const nameCell = originalRowCells[nameHeaderIdx];
+              if (!costCell || !nameCell) continue;
+
+              const nameSpan = nameCell.querySelector('.injected-market-price');
+              let itemName = nameCell.textContent;
+              if (nameSpan) {
+                itemName = itemName.replace(nameSpan.textContent, '');
               }
-              priceSpan.textContent = marketValue > 0 ? '($' + marketValue.toLocaleString() + ')' : '(N/A)';
-            }
+              itemName = itemName.trim().toLowerCase();
 
-            const neededSpaceSpan = costCell.querySelector('[class*="neededSpace___"]');
-            const costText = (neededSpaceSpan || costCell).textContent.replace(/[^0-9]/g, '');
-            const cost = parseInt(costText, 10) || 0;
-            const profitPerItem = marketValue - cost;
-
-            const input = row.querySelector('input');
-            const button = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
-
-            const updateRowProfit = () => {
-              let profitSpan = button.querySelector('.injected-profit-span');
-              if (!profitSpan) {
-                profitSpan = document.createElement('span');
-                profitSpan.className = 'injected-profit-span';
-                profitSpan.style.fontWeight = 'bold';
-                button.appendChild(profitSpan);
+              let marketValue = 0;
+              let matchedName = '';
+              for (const name of sortedNames) {
+                if (itemName.includes(name)) {
+                  marketValue = marketValues[name];
+                  matchedName = name;
+                  break;
+                }
               }
 
-              const qty = parseInt(input?.value || '0', 10) || 0;
-              let stock = 0;
-              if (stockHeaderIdx !== -1 && originalRowCells[stockHeaderIdx]) {
-                const stockText = originalRowCells[stockHeaderIdx].textContent.replace(/[^0-9]/g, '');
-                stock = parseInt(stockText, 10) || 0;
+              if (matchedName) {
+                let priceSpan = nameCell.querySelector('.injected-market-price');
+                if (!priceSpan) {
+                  priceSpan = document.createElement('span');
+                  priceSpan.className = 'injected-market-price';
+                  priceSpan.style.color = '#888888';
+                  priceSpan.style.fontSize = '0.8em';
+                  priceSpan.style.marginLeft = '8px';
+                  nameCell.appendChild(priceSpan);
+                }
+                priceSpan.textContent = marketValue > 0 ? '($' + marketValue.toLocaleString() + ')' : '(N/A)';
               }
 
-              // Calculate profit based on qty, but if stock is 0, base it on cargoCapacity
-              const calcQty = (stock === 0) ? cargoCapacity : qty;
-              const totalProfit = profitPerItem * calcQty;
-              
-              if (marketValue === 0) {
-                profitSpan.textContent = ' (N/A)';
-                profitSpan.style.color = '#888888';
-              } else if (calcQty === 0) {
-                profitSpan.textContent = ' (+$0)';
-                profitSpan.style.color = '#888888';
-              } else {
-                profitSpan.textContent = ' (' + (totalProfit < 0 ? '-' : '+') + '$' + Math.abs(totalProfit).toLocaleString() + ')';
-                profitSpan.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+              const neededSpaceSpan = costCell.querySelector('[class*="neededSpace___"]');
+              const costText = (neededSpaceSpan || costCell).textContent.replace(/[^0-9]/g, '');
+              const cost = parseInt(costText, 10) || 0;
+              const profitPerItem = marketValue - cost;
+
+              const input = row.querySelector('input');
+              const button = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
+
+              const updateRowProfit = () => {
+                let profitSpan = button.querySelector('.injected-profit-span');
+                if (!profitSpan) {
+                  profitSpan = document.createElement('span');
+                  profitSpan.className = 'injected-profit-span';
+                  profitSpan.style.fontWeight = 'bold';
+                  button.appendChild(profitSpan);
+                }
+
+                const qty = parseInt(input?.value || '0', 10) || 0;
+                let stock = 0;
+                if (stockHeaderIdx !== -1 && originalRowCells[stockHeaderIdx]) {
+                  const stockText = originalRowCells[stockHeaderIdx].textContent.replace(/[^0-9]/g, '');
+                  stock = parseInt(stockText, 10) || 0;
+                }
+
+                // Calculate profit based on qty, but if stock is 0, base it on cargoCapacity
+                const calcQty = (stock === 0) ? cargoCapacity : qty;
+                const totalProfit = profitPerItem * calcQty;
+                
+                if (marketValue === 0) {
+                  profitSpan.textContent = ' (N/A)';
+                  profitSpan.style.color = '#888888';
+                } else if (calcQty === 0) {
+                  profitSpan.textContent = ' (+$0)';
+                  profitSpan.style.color = '#888888';
+                } else {
+                  profitSpan.textContent = ' (' + (totalProfit < 0 ? '-' : '+') + '$' + Math.abs(totalProfit).toLocaleString() + ')';
+                  profitSpan.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+                }
+              };
+
+              updateRowProfit();
+
+              if (input && !input.dataset.hasProfitListener) {
+                input.dataset.hasProfitListener = 'true';
+                input.addEventListener('input', updateRowProfit);
+                input.addEventListener('change', updateRowProfit);
               }
-            };
-
-            updateRowProfit();
-
-            if (input && !input.dataset.hasProfitListener) {
-              input.dataset.hasProfitListener = 'true';
-              input.addEventListener('input', updateRowProfit);
-              input.addEventListener('change', updateRowProfit);
             }
           }
 
           // 3. Inject market values for found items on Crimes page (ONLY under outcome reward container)
-          if (window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes')) {
+          if (hasCrimesOutcome) {
             const rewardCells = document.querySelectorAll('div[class*=outcomeReward___] div[class*=itemCell___]');
             
             for (const cell of rewardCells) {
@@ -1339,6 +1407,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 window._tornagator_fetching_catalog = true;
                 console.log("[TORNagator Webview] Requesting Torn items catalog on-demand for itemId:", itemId);
 
+                // Set to 0 to lock and prevent duplicate requests on subsequent seconds
+                marketValuesById[itemId] = 0;
+
                 // Instead of calling ipcRenderer directly (which is unavailable in guest webview),
                 // we set a global variable that the host will read during the interval execution
                 window._tornagator_pending_item_id = itemId;
@@ -1359,6 +1430,20 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     `;
 
     const profitInterval = setInterval(() => {
+      let currentUrl = '';
+      try {
+        if (!wv.isConnected) return;
+        wv.getWebContentsId(); // Ensure webview is attached and ready
+        currentUrl = wv.getURL() || '';
+      } catch (e) {
+        return;
+      }
+
+      const isTravel = currentUrl.includes('travelagency.php') || currentUrl.includes('sid=travel') || (currentUrl.includes('index.php') && userData?.status?.state === 'Traveling');
+      const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
+
+      if (!isTravel && !isCrimes) return;
+
       wv.executeJavaScript(script)
         .then(result => {
           if (result && result.requestFetchItemId && window.require) {
@@ -1370,7 +1455,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }, 1000);
 
     return () => clearInterval(profitInterval);
-  }, [isActive, itemsData, cargoCapacity, apiKey, isNewTab]);
+  }, [isActive, isNewTab, userData]);
 
   const handleGoBack = () => {
     const wv = webviewRef.current;
@@ -1608,7 +1693,7 @@ const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = fa
 /**
  * Component for rendering a single member sidebar row with real-time ticking timer.
  */
-const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
+const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -1910,7 +1995,7 @@ const MemberSidebarRow = ({ member, userData, compareMode, navigateTo }) => {
       )}
     </div>
   );
-};
+});
 
 /**
  * The core wrapper component for the Tornagator experience.
@@ -2080,6 +2165,96 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
+
+  // Memoize the mapping, filtering, and sorting of enemy faction members
+  const sortedAndFilteredGroups = useMemo(() => {
+    if (!enemyFactionData || !enemyFactionData.members) return null;
+
+    const buildMember = ([id, member]) => {
+      const profile = memberProfiles[id] || {};
+      const ps = profile.personalstats || {};
+      const nameKey = member.name.trim().toLowerCase();
+      const suspect = importedStats[nameKey] || null;
+
+      const attacksWon = ps.attackswon || 0;
+      const attacksLost = ps.attackslost || 0;
+      const defendsWon = ps.defendswon || 0;
+      const defendsLost = ps.defendslost || 0;
+      const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
+      const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
+
+      const criminalOffenses = ps.criminaloffenses || 0;
+      const drugsUsed = ps.drugsused || 0;
+      const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
+      const boostersUsed = ps.boostersused || 0;
+
+      return {
+        id,
+        ...member,
+        profile,
+        age: profile.age || 0,
+        winRate,
+        suspectedVal: suspect ? suspect.value : -1,
+        suspectedRaw: suspect ? suspect.raw : null,
+        suspectedIndex: suspect ? suspect.index : null,
+        criminalOffenses,
+        drugsUsed,
+        totalRefills,
+        boostersUsed
+      };
+    };
+
+    const applySortOrder = (arr) => arr.sort((a, b) => {
+      if (sortBy === 'default') {
+        return a.level - b.level;
+      }
+
+      let comparison = 0;
+      if (sortBy === 'level') {
+        comparison = a.level - b.level;
+      } else if (sortBy === 'xp') {
+        if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
+        else if (a.suspectedVal === -1) return 1;
+        else if (b.suspectedVal === -1) return -1;
+        else comparison = a.suspectedVal - b.suspectedVal;
+      } else if (sortBy === 'age') {
+        comparison = a.age - b.age;
+      } else if (sortBy === 'winrate') {
+        comparison = a.winRate - b.winRate;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
+    const filteredMembers = allMembers.filter(m => {
+      const status = m.last_action?.status;
+      if (statusFilter === 'online') {
+        return status === 'Online' || status === 'Idle';
+      }
+      if (statusFilter === 'offline') {
+        return status === 'Offline' || !status;
+      }
+      return true;
+    });
+
+    const groups = {
+      okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
+      jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
+      other: { label: '✈️ Other', color: '#3498db', members: [] },
+    };
+
+    filteredMembers.forEach(m => {
+      const state = m.status?.state || '';
+      if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
+      else if (state === 'Jail') groups.jail.members.push(m);
+      else groups.other.members.push(m);
+    });
+
+    Object.values(groups).forEach(g => applySortOrder(g.members));
+
+    return groups;
+  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter]);
 
   // Sync cache state when cacheKey changes
   useEffect(() => {
@@ -2541,6 +2716,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 cargoCapacity={cargoCapacity}
                 apiKey={apiKey}
                 showNavControls={showNavControls}
+                userData={userData}
               />
             ))}
           </div>
@@ -3622,90 +3798,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                       ) : enemyFactionData && enemyFactionData.members ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
                           {(() => {
-                            const buildMember = ([id, member]) => {
-                              const profile = memberProfiles[id] || {};
-                              const ps = profile.personalstats || {};
-                              const nameKey = member.name.trim().toLowerCase();
-                              const suspect = importedStats[nameKey] || null;
-
-                              const attacksWon = ps.attackswon || 0;
-                              const attacksLost = ps.attackslost || 0;
-                              const defendsWon = ps.defendswon || 0;
-                              const defendsLost = ps.defendslost || 0;
-                              const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
-                              const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
-
-                              const criminalOffenses = ps.criminaloffenses || 0;
-                              const drugsUsed = ps.drugsused || 0;
-                              const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
-                              const boostersUsed = ps.boostersused || 0;
-
-                              return {
-                                id,
-                                ...member,
-                                profile,
-                                age: profile.age || 0,
-                                winRate,
-                                suspectedVal: suspect ? suspect.value : -1,
-                                suspectedRaw: suspect ? suspect.raw : null,
-                                suspectedIndex: suspect ? suspect.index : null,
-                                criminalOffenses,
-                                drugsUsed,
-                                totalRefills,
-                                boostersUsed
-                              };
-                            };
-
-                            const applySortOrder = (arr) => arr.sort((a, b) => {
-                              if (sortBy === 'default') {
-                                return a.level - b.level;
-                              }
-
-                              let comparison = 0;
-                              if (sortBy === 'level') {
-                                comparison = a.level - b.level;
-                              } else if (sortBy === 'xp') {
-                                if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
-                                else if (a.suspectedVal === -1) return 1;
-                                else if (b.suspectedVal === -1) return -1;
-                                else comparison = a.suspectedVal - b.suspectedVal;
-                              } else if (sortBy === 'age') {
-                                comparison = a.age - b.age;
-                              } else if (sortBy === 'winrate') {
-                                comparison = a.winRate - b.winRate;
-                              }
-
-                              return sortOrder === 'asc' ? comparison : -comparison;
-                            });
-
-                            const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
-                            const filteredMembers = allMembers.filter(m => {
-                               const status = m.last_action?.status;
-                               if (statusFilter === 'online') {
-                                 return status === 'Online' || status === 'Idle';
-                               }
-                               if (statusFilter === 'offline') {
-                                 return status === 'Offline' || !status;
-                               }
-                               return true;
-                             });
-
-                            // Group by status
-                            const groups = {
-                              okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
-                              jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
-                              other: { label: '✈️ Other', color: '#3498db', members: [] },
-                            };
-
-                            filteredMembers.forEach(m => {
-                              const state = m.status?.state || '';
-                              if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
-                              else if (state === 'Jail') groups.jail.members.push(m);
-                              else groups.other.members.push(m);
-                            });
-
-                            // Sort within each group
-                            Object.values(groups).forEach(g => applySortOrder(g.members));
+                            if (!sortedAndFilteredGroups) return null;
 
                             const renderRows = (members) => members.map((member) => (
                               <MemberSidebarRow
@@ -3717,7 +3810,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               />
                             ));
 
-                            return Object.entries(groups)
+                            return Object.entries(sortedAndFilteredGroups)
                               .filter(([, g]) => g.members.length > 0)
                               .map(([key, g]) => (
                                 <CollapsibleSidebarSection

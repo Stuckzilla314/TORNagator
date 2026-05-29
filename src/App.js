@@ -79,6 +79,61 @@ function useLocalStorage(key, initialValue) {
 })();
 
 /**
+ * Isolated timer component to show the countdown in the Electron title bar.
+ * This prevents the entire App component tree from re-rendering every second.
+ */
+function TitleBarTimer({ userData, showTabTimer }) {
+  const landingUntil = (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
+    ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
+    : 0;
+
+  const timeLeft = useTravelTimer(landingUntil);
+
+  useEffect(() => {
+    if (showTabTimer && timeLeft) {
+      document.title = `TORNagator | ${timeLeft}`;
+    } else {
+      document.title = 'TORNagator';
+    }
+  }, [timeLeft, showTabTimer]);
+
+  if (!showTabTimer || !timeLeft) return null;
+
+  const state = userData?.status?.state;
+
+  return (
+    <span style={{
+      marginLeft: '12px',
+      padding: '2px 8px',
+      backgroundColor: state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
+                       state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
+                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+      border: `1px solid ${
+                       state === 'Traveling' ? '#3498db' :
+                       state === 'Hospital' ? '#e74c3c' :
+                       state === 'Jail' ? '#f39c12' : '#888'
+      }`,
+      borderRadius: '4px',
+      fontSize: '0.8rem',
+      fontWeight: 'bold',
+      color: state === 'Traveling' ? '#3498db' :
+             state === 'Hospital' ? '#e74c3c' :
+             state === 'Jail' ? '#f39c12' : '#e0e0e0',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
+    }}>
+      <span style={{ display: 'flex', alignItems: 'center' }}>
+        {state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
+         state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
+         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> : <IconClock size={13} color={"#aaa"} />}
+      </span>
+      <span>{timeLeft}</span>
+    </span>
+  );
+}
+
+/**
  * The main application component.
  * Handles top-level state including user authentication (API key), data fetching intervals,
  * and routing between the main dashboard, game view, and API logs view.
@@ -157,22 +212,7 @@ function App() {
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
 
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
-  // Track travel time for the browser tab title
-  const travelTimeLeft = useTravelTimer(
-    (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
-      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
-      : 0
-  );
-
   const isElectron = typeof window !== 'undefined' && window.process && window.process.versions && window.process.versions.electron;
-
-  useEffect(() => {
-    if (showTabTimer && travelTimeLeft) {
-      document.title = `TORNagator | ${travelTimeLeft}`;
-    } else {
-      document.title = 'TORNagator';
-    }
-  }, [travelTimeLeft, showTabTimer]);
 
   // Fetch Dashboard data (user only — faction is fetched separately on-demand)
   const loadDashboardData = useCallback(async (isInitial = false) => {
@@ -222,18 +262,31 @@ function App() {
 
     const handleFetchRequest = async (event, itemId) => {
       try {
-        const items = await fetchTornItems(apiKey);
+        let items = itemsDataRef.current;
+        if (!items) {
+          const cachedItemsRaw = localStorage.getItem('tornagator_items_cache');
+          if (cachedItemsRaw) {
+            try {
+              const { data } = JSON.parse(cachedItemsRaw);
+              items = data;
+            } catch (e) {}
+          }
+        }
+        if (!items) {
+          items = await fetchTornItems(apiKey);
+          if (items) {
+            try {
+              localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
+            } catch (e) {}
+          }
+        }
         if (items) {
           itemsDataRef.current = items;
           setItemsData(items);
 
           // Format specific items like TornView expects, using itemsMarketValues
-          const itemsMarketValues = {};
           const itemsMarketValuesById = {};
           Object.entries(items).forEach(([id, item]) => {
-            if (item.name && item.market_value) {
-              itemsMarketValues[item.name.toLowerCase()] = item.market_value;
-            }
             if (id && item.market_value) {
               itemsMarketValuesById[id] = item.market_value;
             }
@@ -242,7 +295,7 @@ function App() {
           ipcRenderer.send('catalog-item-fetched', { items: itemsMarketValuesById });
         }
       } catch (e) {
-        console.error(e);
+        console.error("IPC handleFetchRequest error:", e);
       }
     };
     ipcRenderer.on('fetch-catalog-item', handleFetchRequest);
@@ -546,36 +599,7 @@ function App() {
               style={{ width: '28px', height: '28px', objectFit: 'contain', imageRendering: 'auto' }}
             />
             <span style={{ fontWeight: 'bold', letterSpacing: '0.5px', color: '#ffffff', fontSize: '0.95rem' }}>TORNagator</span>
-            {showTabTimer && travelTimeLeft && (
-              <span style={{
-                marginLeft: '12px',
-                padding: '2px 8px',
-                backgroundColor: userData?.status?.state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
-                                 userData?.status?.state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
-                                 userData?.status?.state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                border: `1px solid ${
-                                 userData?.status?.state === 'Traveling' ? '#3498db' :
-                                 userData?.status?.state === 'Hospital' ? '#e74c3c' :
-                                 userData?.status?.state === 'Jail' ? '#f39c12' : '#888'
-                }`,
-                borderRadius: '4px',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                color: userData?.status?.state === 'Traveling' ? '#3498db' :
-                       userData?.status?.state === 'Hospital' ? '#e74c3c' :
-                       userData?.status?.state === 'Jail' ? '#f39c12' : '#e0e0e0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span style={{ display: 'flex', alignItems: 'center' }}>
-                  {userData?.status?.state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
-                   userData?.status?.state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
-                   userData?.status?.state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> : <IconClock size={13} color={"#aaa"} />}
-                </span>
-                <span>{travelTimeLeft}</span>
-              </span>
-            )}
+            <TitleBarTimer userData={userData} showTabTimer={showTabTimer} />
           </div>
         </div>
       )}
