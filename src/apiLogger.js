@@ -8,6 +8,10 @@ let sessionCounters = {
   Firebase: 0
 };
 
+// Track timestamps of TORN API calls for calculating the 5-hour rolling average
+let tornCallTimestamps = [];
+const sessionStartTime = Date.now();
+
 /**
  * Retrieves the lifetime API counters from local storage.
  *
@@ -74,9 +78,21 @@ export const getApiLogs = () => [...logs];
  * @returns {{session: {TORN: number, YATA: number, Firebase: number}, lifetime: {TORN: number, YATA: number, Firebase: number}}} The nested counter stats object.
  */
 export const getApiCounters = () => {
+  const now = Date.now();
+  const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+  // Filter out timestamps older than 5 hours to keep history accurate and memory footprint small
+  tornCallTimestamps = tornCallTimestamps.filter(t => t >= fiveHoursAgo);
+
+  const sessionDurationMs = now - sessionStartTime;
+  // Calculate rolling average calls per hour over the last 5 hours.
+  // We use effective hours (capped at 5, and at least 1/60th of an hour to avoid division by zero or huge spikes in first minute)
+  const effectiveHours = Math.min(5, Math.max(1 / 60, sessionDurationMs / 3600000));
+  const avgTornCallsPerHour = tornCallTimestamps.length / effectiveHours;
+
   return {
     session: { ...sessionCounters },
-    lifetime: getLifetimeCounters()
+    lifetime: getLifetimeCounters(),
+    avgTornCallsPerHour
   };
 };
 
@@ -111,6 +127,15 @@ export const logApiCall = (type, action, status, duration, errorMsg = null) => {
   // Increment session counter
   if (sessionCounters[type] !== undefined) {
     sessionCounters[type] += 1;
+  }
+  
+  // Track TORN API call timestamp
+  if (type === 'TORN') {
+    const now = Date.now();
+    tornCallTimestamps.push(now);
+    // Keep timestamps updated
+    const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+    tornCallTimestamps = tornCallTimestamps.filter(t => t >= fiveHoursAgo);
   }
   
   // Increment lifetime counter

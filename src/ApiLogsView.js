@@ -21,7 +21,16 @@ const ApiLogsView = () => {
       setLogs(getApiLogs());
       setCounters(getApiCounters());
     });
-    return unsubscribe;
+
+    // Periodically refresh counters to update the 5-hour average decay
+    const interval = setInterval(() => {
+      setCounters(getApiCounters());
+    }, 10000); // every 10 seconds
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   /**
@@ -318,6 +327,9 @@ const ApiLogsView = () => {
           <div className="api-card-number">
             {counters.session.TORN}
             <span className="api-card-unit">Session Calls</span>
+            <span className="api-card-unit" style={{ color: '#3498db', fontWeight: '600' }} title="Average TORN API calls per hour over the last 5 hours">
+              ({(counters.avgTornCallsPerHour || 0).toFixed(1)}/hr)
+            </span>
           </div>
           <div className="api-card-stats">
             <span style={{ color: '#666' }}>Lifetime cumulative:</span>
