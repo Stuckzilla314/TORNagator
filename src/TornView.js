@@ -1626,13 +1626,25 @@ const parseTornDescriptionTime = (description) => {
 /**
  * A compact collapsible section wrapper used in the sidebar.
  */
-const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = false, children }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+// CollapsibleSidebarSection supports controlled mode (isOpen + onToggle) so the
+// parent can own state that survives data syncs, while still accepting a
+// defaultOpen prop for uncontrolled usage.
+const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = false, isOpen: controlledIsOpen, onToggle, children }) => {
+  const [internalIsOpen, setInternalIsOpen] = useState(defaultOpen);
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+  const toggle = () => {
+    if (isControlled) {
+      onToggle && onToggle();
+    } else {
+      setInternalIsOpen(o => !o);
+    }
+  };
 
   return (
     <div style={{ marginBottom: '6px' }}>
       <div
-        onClick={() => setIsOpen(o => !o)}
+        onClick={toggle}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -1693,7 +1705,9 @@ const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = fa
 /**
  * Component for rendering a single member sidebar row with real-time ticking timer.
  */
-const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo }) => {
+// MemberSidebarRow supports controlled open mode (isOpen + onToggle) so the
+// parent can persist expanded state across data syncs.
+const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -1740,7 +1754,16 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
     return () => clearInterval(interval);
   }, [currentStatusState, statusUntil]);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+  const toggleOpen = () => {
+    if (isControlled) {
+      onToggle && onToggle();
+    } else {
+      setInternalIsOpen(o => !o);
+    }
+  };
   const isOkay = currentStatusState === 'Okay';
   const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
   const profile = member.profile || {};
@@ -1748,7 +1771,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
 
   return (
     <div
-      onClick={() => setIsOpen(!isOpen)}
+      onClick={toggleOpen}
       style={{
         padding: '6px 8px',
         backgroundColor: 'rgba(255,255,255,0.02)',
@@ -2165,6 +2188,17 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
+
+  // Stable maps (useRef) that track open/closed state for sidebar sections and
+  // individual member rows across data syncs.  We use refs (not state) so that
+  // updating them never triggers a re-render — the open state is read directly
+  // during render via the controlled-component props on each child.
+  const sectionOpenState = useRef({});
+  const memberOpenState = useRef({});
+
+  // Force a re-render after toggling so the controlled children update.
+  const [, forceRerender] = useState(0);
+  const bumpRender = useCallback(() => forceRerender(n => n + 1), []);
 
   // Memoize the mapping, filtering, and sorting of enemy faction members
   const sortedAndFilteredGroups = useMemo(() => {
@@ -3800,6 +3834,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                           {(() => {
                             if (!sortedAndFilteredGroups) return null;
 
+                            // Seed default section-open state on first render
+                            Object.entries(sortedAndFilteredGroups).forEach(([key]) => {
+                              if (sectionOpenState.current[key] === undefined) {
+                                sectionOpenState.current[key] = key === 'okay';
+                              }
+                            });
+
                             const renderRows = (members) => members.map((member) => (
                               <MemberSidebarRow
                                 key={member.id}
@@ -3807,6 +3848,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                 userData={userData}
                                 compareMode={compareMode}
                                 navigateTo={navigateTo}
+                                isOpen={memberOpenState.current[member.id] === true}
+                                onToggle={() => {
+                                  memberOpenState.current[member.id] = !memberOpenState.current[member.id];
+                                  bumpRender();
+                                }}
                               />
                             ));
 
@@ -3818,7 +3864,11 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                   title={g.label}
                                   count={g.members.length}
                                   statusColor={g.color}
-                                  defaultOpen={key === 'okay'}
+                                  isOpen={sectionOpenState.current[key] === true}
+                                  onToggle={() => {
+                                    sectionOpenState.current[key] = !sectionOpenState.current[key];
+                                    bumpRender();
+                                  }}
                                 >
                                   {renderRows(g.members)}
                                 </CollapsibleSidebarSection>
