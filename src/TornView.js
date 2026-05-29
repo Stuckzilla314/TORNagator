@@ -44,6 +44,65 @@ function useLocalStorage(key, initialValue) {
 }
 
 /**
+ * Helper to synthesize warning sounds for chain statuses using Web Audio API.
+ * 
+ * @param {string} status - The warning status ('yellow' or 'red').
+ */
+const playChainWarningSound = (status) => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    const audioCtx = new AudioContextClass();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+
+    if (status === 'yellow') {
+      // Play a single medium-high pitch warning beep (D5)
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.3);
+    } else if (status === 'red') {
+      // Play three rapid, piercing high-pitch warning beeps (B5) using a triangle wave
+      const playBeep = (delay, freq, duration) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + duration);
+      };
+
+      playBeep(0, 987.77, 0.12);    // B5
+      playBeep(0.16, 987.77, 0.12); // B5
+      playBeep(0.32, 987.77, 0.12); // B5
+    }
+  } catch (err) {
+    console.warn('Failed to play chain alert audio:', err);
+  }
+};
+
+/**
  * Component for monitoring and displaying the active faction chain and countdown timer.
  */
 const ChainWatcher = ({ factionData }) => {
@@ -55,6 +114,7 @@ const ChainWatcher = ({ factionData }) => {
 
   const [localTimeout, setLocalTimeout] = useState(timeout);
   const [localCooldown, setLocalCooldown] = useState(cooldown);
+  const lastWarnedStatusRef = useRef('none');
 
   // Sync with API updates
   useEffect(() => {
@@ -93,6 +153,23 @@ const ChainWatcher = ({ factionData }) => {
   const hasActiveChain = current > 0 || localTimeout > 0;
   const hasCooldown = localCooldown > 0;
 
+  // Warning status for audio/visual alerts
+  const currentStatus = useMemo(() => {
+    if (!hasActiveChain || localTimeout <= 0) return 'none';
+    if (localTimeout < 60) return 'red';
+    if (localTimeout < 120) return 'yellow';
+    return 'green';
+  }, [hasActiveChain, localTimeout]);
+
+  useEffect(() => {
+    if (currentStatus === 'yellow' || currentStatus === 'red') {
+      if (lastWarnedStatusRef.current !== currentStatus) {
+        playChainWarningSound(currentStatus);
+      }
+    }
+    lastWarnedStatusRef.current = currentStatus;
+  }, [currentStatus]);
+
   // Milestone calculation
   const milestones = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
   const nextMilestone = milestones.find(m => m > current) || 10;
@@ -115,8 +192,10 @@ const ChainWatcher = ({ factionData }) => {
     timerColor = '#f39c12'; // Orange
   }
 
+  const containerClass = currentStatus === 'red' ? 'chain-alert-red' : currentStatus === 'yellow' ? 'chain-alert-yellow' : '';
+
   return (
-    <div style={{
+    <div className={containerClass} style={{
       display: 'flex',
       flexDirection: 'column',
       gap: '6px',
@@ -192,6 +271,7 @@ const CompactChainInfo = ({ chain }) => {
 
   const [localTimeout, setLocalTimeout] = useState(timeout);
   const [localCooldown, setLocalCooldown] = useState(cooldown);
+  const lastWarnedStatusRef = useRef('none');
 
   useEffect(() => {
     setLocalTimeout(timeout);
@@ -226,6 +306,23 @@ const CompactChainInfo = ({ chain }) => {
   const hasActiveChain = current > 0 || localTimeout > 0;
   const hasCooldown = localCooldown > 0;
 
+  // Warning status for audio/visual alerts
+  const currentStatus = useMemo(() => {
+    if (!hasActiveChain || localTimeout <= 0) return 'none';
+    if (localTimeout < 60) return 'red';
+    if (localTimeout < 120) return 'yellow';
+    return 'green';
+  }, [hasActiveChain, localTimeout]);
+
+  useEffect(() => {
+    if (currentStatus === 'yellow' || currentStatus === 'red') {
+      if (lastWarnedStatusRef.current !== currentStatus) {
+        playChainWarningSound(currentStatus);
+      }
+    }
+    lastWarnedStatusRef.current = currentStatus;
+  }, [currentStatus]);
+
   if (hasCooldown) {
     return (
       <span style={{ fontSize: '0.72rem', color: '#f39c12', fontWeight: 'bold' }}>
@@ -242,8 +339,10 @@ const CompactChainInfo = ({ chain }) => {
       timerColor = '#f39c12'; // Orange
     }
 
+    const wrapperClass = currentStatus === 'red' ? 'compact-chain-alert-red' : currentStatus === 'yellow' ? 'compact-chain-alert-yellow' : '';
+
     return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+      <span className={wrapperClass} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px' }}>
         <span style={{ color: '#fff' }}>🔗 {current.toLocaleString()}</span>
         <span style={{ color: timerColor, fontFamily: 'monospace' }}>
           ({formatTime(localTimeout)})
@@ -2291,6 +2390,24 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     return localStorage.getItem('tornagator_faction_sort_order') || 'desc';
   });
 
+  // Ticking chain timeout for flashing the sidebar red
+  const chain = factionData?.chain || {};
+  const chainCurrent = chain.current || 0;
+  const chainTimeout = chain.timeout || 0;
+  const [sidebarChainTimeout, setSidebarChainTimeout] = useState(chainTimeout);
+
+  useEffect(() => {
+    setSidebarChainTimeout(chainTimeout);
+  }, [chainTimeout]);
+
+  useEffect(() => {
+    if (sidebarChainTimeout <= 0) return;
+    const timer = setInterval(() => {
+      setSidebarChainTimeout(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [sidebarChainTimeout]);
+
   const [statusFilter, setStatusFilter] = useState(() => {
     return localStorage.getItem('tornagator_faction_status_filter') || 'all';
   });
@@ -2860,6 +2977,9 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       ? null
       : null;
 
+  const isChainDanger = (chainCurrent > 0 || sidebarChainTimeout > 0) && sidebarChainTimeout > 0 && sidebarChainTimeout < 60;
+  const shouldFlashDanger = isChainDanger && sidebarTab === 'war';
+
   return (
     <div className="torn-view-root" style={{ height: '100%', flex: 1, minHeight: 0 }}>
       {isResizing && (
@@ -2987,7 +3107,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
         {/* ── Sidebar ──────────────────────────────────────────────── */}
         {!isCapacitor && (
           <aside
-            className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}
+            className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''} ${shouldFlashDanger ? 'sidebar-danger-flash' : ''}`}
             style={{
               width: sidebarCollapsed ? '0px' : `${sidebarWidth}px`,
               transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
