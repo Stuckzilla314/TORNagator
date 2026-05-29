@@ -10,7 +10,7 @@ import ApiLogsView from './ApiLogsView';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
-import { isCapacitor } from './utils';
+
 
 /**
  * Custom hook to manage state synchronized with the browser's localStorage.
@@ -200,14 +200,6 @@ function App() {
   const [targetCountry, setTargetCountry] = useState(null);
 
   const handleOpenInTorn = useCallback((url, country = null) => {
-    if (isCapacitor) {
-      import('@capacitor/browser').then(({ Browser }) => {
-        Browser.open({ url });
-      }).catch(err => {
-        console.error("Failed to open Capacitor Browser:", err);
-      });
-      return;
-    }
     setRequestedUrl(url);
     setTargetCountry(country);
     setActiveTab('torn');

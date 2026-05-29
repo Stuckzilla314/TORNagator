@@ -1465,34 +1465,130 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     return () => clearInterval(profitInterval);
   }, [isActive, isNewTab, userData]);
 
+  const placeholderRef = useRef(null);
+
+  // Sync back/forward button states and url updates from native WebView
+  useEffect(() => {
+    if (!isCapacitor) return;
+    if (!isActive) return;
+
+    const handleTornUrlChange = (e) => {
+      const { url, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail;
+      setCanGoBack(nativeCanGoBack);
+      setCanGoForward(nativeCanGoForward);
+
+      if (tabId && url && url !== tabUrl) {
+        onUpdate(tabId, { url });
+      }
+    };
+
+    window.addEventListener('tornUrlChange', handleTornUrlChange);
+    return () => {
+      window.removeEventListener('tornUrlChange', handleTornUrlChange);
+    };
+  }, [isActive, tabId, tabUrl, onUpdate]);
+
+  // Sync visibility and position of the native WebView overlay
+  useEffect(() => {
+    if (!isCapacitor) return;
+    if (!isActive) return;
+
+    const updateOverlay = () => {
+      if (!placeholderRef.current) return;
+      const rect = placeholderRef.current.getBoundingClientRect();
+      const hasSize = rect.width > 0 && rect.height > 0;
+
+      console.log(`[TornView Overlay] updateOverlay tabId=${tabId}: rect.w=${rect.width}, rect.h=${rect.height}, hasSize=${hasSize}, url=${tabUrl}`);
+
+      if (hasSize) {
+        const dpr = window.devicePixelRatio || 1;
+        const x = Math.round(rect.left * dpr);
+        const y = Math.round(rect.top * dpr);
+        const width = Math.round(rect.width * dpr);
+        const height = Math.round(rect.height * dpr);
+
+        if (window.AndroidTornBridge) {
+          window.AndroidTornBridge.showTorn(x, y, width, height, tabUrl);
+        }
+      } else {
+        if (window.AndroidTornBridge) {
+          window.AndroidTornBridge.hideTorn();
+        }
+      }
+    };
+
+    updateOverlay();
+
+    let observer;
+    if (placeholderRef.current) {
+      observer = new ResizeObserver(() => {
+        updateOverlay();
+      });
+      observer.observe(placeholderRef.current);
+    }
+
+    window.addEventListener('resize', updateOverlay);
+    window.addEventListener('scroll', updateOverlay, true);
+
+    return () => {
+      console.log(`[TornView Overlay] Cleanup tabId=${tabId}`);
+      if (observer) {
+        observer.disconnect();
+      }
+      window.removeEventListener('resize', updateOverlay);
+      window.removeEventListener('scroll', updateOverlay, true);
+      if (window.AndroidTornBridge) {
+        window.AndroidTornBridge.hideTorn();
+      }
+    };
+  }, [isActive, tabId, tabUrl]);
+
   const handleGoBack = () => {
-    const wv = webviewRef.current;
-    if (wv && isElectron && wv.canGoBack()) {
-      wv.goBack();
-      updateNavigationState();
+    if (isCapacitor) {
+      if (window.AndroidTornBridge) {
+        window.AndroidTornBridge.goBack();
+      }
+    } else {
+      const wv = webviewRef.current;
+      if (wv && isElectron && wv.canGoBack()) {
+        wv.goBack();
+        updateNavigationState();
+      }
     }
   };
 
   const handleGoForward = () => {
-    const wv = webviewRef.current;
-    if (wv && isElectron && wv.canGoForward()) {
-      wv.goForward();
-      updateNavigationState();
+    if (isCapacitor) {
+      if (window.AndroidTornBridge) {
+        window.AndroidTornBridge.goForward();
+      }
+    } else {
+      const wv = webviewRef.current;
+      if (wv && isElectron && wv.canGoForward()) {
+        wv.goForward();
+        updateNavigationState();
+      }
     }
   };
 
   const handleReload = () => {
-    const wv = webviewRef.current;
-    if (wv) {
-      if (isElectron) {
-        wv.reload();
-      } else {
-        try {
-          // eslint-disable-next-line no-self-assign
-          wv.src = wv.src;
-        } catch (e) {}
+    if (isCapacitor) {
+      if (window.AndroidTornBridge) {
+        window.AndroidTornBridge.reload();
       }
-      updateNavigationState();
+    } else {
+      const wv = webviewRef.current;
+      if (wv) {
+        if (isElectron) {
+          wv.reload();
+        } else {
+          try {
+            // eslint-disable-next-line no-self-assign
+            wv.src = wv.src;
+          } catch (e) {}
+        }
+        updateNavigationState();
+      }
     }
   };
 
@@ -1568,21 +1664,60 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             className="torn-iframe"
             style={{ visibility: isActive ? 'visible' : 'hidden' }}
           />
-        ) : (
-          <iframe
-            ref={webviewRef}
-            src={tabUrl}
-            title={tabTitle}
-            className="torn-iframe"
+        ) : isCapacitor ? (
+          <div
+            ref={placeholderRef}
+            className="torn-iframe-placeholder"
             style={{
-              visibility: isActive ? 'visible' : 'hidden',
               width: '100%',
               height: '100%',
-              border: 'none',
               background: '#1a1a1a'
             }}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
           />
+        ) : (
+          <div
+            style={{
+              display: isActive ? 'flex' : 'none',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              background: 'radial-gradient(circle at center, #1b263b 0%, #0d1b2a 100%)',
+              color: '#fff',
+              padding: '24px',
+              textAlign: 'center',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{ fontSize: '3.5rem', marginBottom: '16px', filter: 'drop-shadow(0 0 10px rgba(52, 152, 219, 0.4))' }}>🛡️</div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', margin: '0 0 12px 0', color: '#e0e6ed' }}>
+              Embedded Browsing Blocked
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '320px', lineHeight: '1.5', margin: '0 0 24px 0' }}>
+              Torn.com restricts embedding inside web browsers for security reasons. Tap below to view this tab in a secure native browser.
+            </p>
+            <button
+              onClick={() => {
+                import('@capacitor/browser').then(({ Browser }) => {
+                  Browser.open({ url: tabUrl });
+                }).catch(err => console.error(err));
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #3498db, #2ecc71)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                fontSize: '0.9rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(52,152,219,0.3)',
+                transition: 'transform 0.15s ease'
+              }}
+            >
+              Open in Secure Browser
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -2596,15 +2731,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   useEffect(() => {
     if (requestedUrl) {
-      if (isCapacitor) {
-        import('@capacitor/browser').then(({ Browser }) => {
-          Browser.open({ url: requestedUrl });
-        }).catch(err => {
-          console.error("Failed to open Capacitor Browser:", err);
-        });
-        setRequestedUrl(null);
-        return;
-      }
+
       const existingTab = tabs.find(t => areUrlsEqual(t.url, requestedUrl));
       if (existingTab) {
         setActiveTabId(existingTab.id);
@@ -2712,14 +2839,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       safeHref = 'https://' + safeHref;
     }
 
-    if (isCapacitor) {
-      import('@capacitor/browser').then(({ Browser }) => {
-        Browser.open({ url: safeHref });
-      }).catch(err => {
-        console.error("Failed to open Capacitor Browser:", err);
-      });
-      return;
-    }
+
 
     const existingTab = tabs.find(t => areUrlsEqual(t.url, safeHref));
     if (existingTab) {
