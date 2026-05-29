@@ -2985,13 +2985,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
         </div>
 
         {/* ── Sidebar ──────────────────────────────────────────────── */}
-        <aside
-          className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}
-          style={{
-            width: sidebarCollapsed ? '0px' : `${sidebarWidth}px`,
-            transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
-        >
+        {!isCapacitor && (
+          <aside
+            className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}
+            style={{
+              width: sidebarCollapsed ? '0px' : `${sidebarWidth}px`,
+              transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
           {/* Resize handle */}
           {!sidebarCollapsed && (
             <div
@@ -4135,7 +4136,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
               )}
             </div>
           )}
-        </aside>
+          </aside>
+        )}
       </div>
 
       {contextMenu && (

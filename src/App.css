@@ -976,14 +976,13 @@
 
 /* ── Mobile Responsiveness (Screen size < 768px) ── */
 @media (max-width: 768px) {
-  /* Flex wrap navigation items to prevent overflow */
-  nav {
+  .desktop-nav {
     flex-wrap: wrap !important;
     gap: 6px !important;
     margin-bottom: 15px !important;
   }
   
-  nav > div {
+  .desktop-nav > div {
     padding: 12px 14px !important; /* Touch target size optimization */
     font-size: 0.85rem !important;
   }
@@ -1028,8 +1027,34 @@
   
   /* Touch target optimizations */
   .torn-browser-nav-btn {
-    width: 44px !important;
-    height: 44px !important;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 4px !important;
+  }
+  
+  .torn-browser-toolbar {
+    padding: 4px 8px !important;
+    gap: 4px !important;
+  }
+  
+  .torn-browser-url-bar {
+    padding: 4px 8px !important;
+    font-size: 0.7rem !important;
+  }
+
+  /* Compact tab bar on mobile */
+  .torn-tab-bar {
+    padding: 0 4px !important;
+  }
+
+  .torn-tab-bar > div {
+    padding: 4px 8px !important;
+    min-width: 80px !important;
+    max-width: 140px !important;
+  }
+
+  .torn-tab-bar > div > span {
+    font-size: 0.7rem !important;
   }
 
   .settings-gear-btn {
