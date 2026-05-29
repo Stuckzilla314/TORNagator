@@ -36,6 +36,19 @@ const SettingsMenu = ({
   setPollInterval
 }) => {  
 
+  const handleOpenDevTools = () => {
+    if (window.require) {
+      try {
+        const { ipcRenderer } = window.require('electron');
+        ipcRenderer.send('open-devtools');
+      } catch (e) {
+        console.error('Failed to open DevTools:', e);
+      }
+    } else {
+      alert('Developer Tools can only be opened when running inside the desktop app.');
+    }
+  };
+
   return (
     <div style={{
       position: 'absolute',
@@ -231,7 +244,7 @@ const SettingsMenu = ({
         </div>
       </div>
 
-      <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button
           onClick={() => {
             window.dispatchEvent(new CustomEvent('dump-torn-dom'));
@@ -252,6 +265,26 @@ const SettingsMenu = ({
           onMouseLeave={e => { e.target.style.backgroundColor = '#e74c3c'; }}
         >
           Dump Crimes DOM
+        </button>
+
+        <button
+          onClick={handleOpenDevTools}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#34495e',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '0.8rem',
+            transition: 'background-color 0.2s',
+            textAlign: 'center'
+          }}
+          onMouseEnter={e => { e.target.style.backgroundColor = '#2c3e50'; }}
+          onMouseLeave={e => { e.target.style.backgroundColor = '#34495e'; }}
+        >
+          Open DevTools
         </button>
       </div>
     </div>
