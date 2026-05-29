@@ -664,15 +664,19 @@ const NewTabPage = ({ tabId, onNavigate }) => {
  * @returns {React.JSX.Element} The rendered WebviewTab component.
  */
 const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData }) => {
+  const tabId = tab?.id;
+  const tabUrl = tab?.url || '';
+  const tabTitle = tab?.title || '';
+
   const webviewRef = useRef(null);
-  const initialUrlRef = useRef(tab.url);
+  const initialUrlRef = useRef(tabUrl);
   const domReadyRef = useRef(false); // true once dom-ready fires; reset on navigation
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
 
-  const isNewTab = tab.url === 'newtab';
-  if (initialUrlRef.current === 'newtab' && tab.url !== 'newtab') {
-    initialUrlRef.current = tab.url;
+  const isNewTab = tabUrl === 'newtab';
+  if (initialUrlRef.current === 'newtab' && tabUrl !== 'newtab') {
+    initialUrlRef.current = tabUrl;
   }
 
   const updateNavigationState = useCallback(() => {
@@ -833,15 +837,21 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       // Reset dom-ready flag on full navigations so we don't call executeJavaScript
       // on a webview that has torn down its renderer context.
       domReadyRef.current = false;
-      onUpdate(tab.id, { url: e.url });
+      if (tabId) {
+        onUpdate(tabId, { url: e.url });
+      }
       updateNavigationState();
     };
-    const handleTitle = (e) => onUpdate(tab.id, { title: e.title });
+    const handleTitle = (e) => {
+      if (tabId) {
+        onUpdate(tabId, { title: e.title });
+      }
+    };
     const handleConsole = (e) => {
       if (window.process && window.process.stdout) {
-        window.process.stdout.write(`[Webview-${tab.id}] ${e.message}\n`);
+        window.process.stdout.write(`[Webview-${tabId || 'unknown'}] ${e.message}\n`);
       }
-      console.log(`[Webview-${tab.id}]`, e.message);
+      console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
     };
 
     wv.addEventListener('did-navigate', handleNavigate);
@@ -857,7 +867,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tab.id, onUpdate, updateNavigationState, isNewTab]);
+  }, [tabId, onUpdate, updateNavigationState, isNewTab]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -1481,10 +1491,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }
   };
 
+  if (!tab) return null;
+
   if (isNewTab) {
     return (
       <div style={{ display: isActive ? 'flex' : 'none', flexDirection: 'column', position: 'absolute', inset: 0 }}>
-        <NewTabPage tabId={tab.id} onNavigate={(url) => onUpdate(tab.id, { url, title: 'Torn' })} />
+        <NewTabPage tabId={tabId} onNavigate={(url) => onUpdate(tabId, { url, title: 'Torn' })} />
       </div>
     );
   }
@@ -1533,7 +1545,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           <input
             type="text"
             className="torn-browser-url-bar"
-            value={tab.url}
+            value={tabUrl}
             readOnly
             onClick={(e) => e.target.select()}
             title="Click to select/copy URL"
@@ -1546,7 +1558,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           ref={webviewRef}
           src={initialUrlRef.current}
           useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-          title={tab.title}
+          title={tabTitle}
           className="torn-iframe"
           style={{ visibility: isActive ? 'visible' : 'hidden' }}
         />
@@ -2043,7 +2055,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [draggedTabId, setDraggedTabId] = useState(null);
 
   const defaultQuickActions = [
     { label: 'Crimes', href: 'https://www.torn.com/crimes.php' },
@@ -2601,8 +2613,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     setActiveTabId(id);
   };
 
-  const handleDragStart = (e, index) => {
-    setDraggedIndex(index);
+  const handleDragStart = (e, index, tabId) => {
+    setDraggedTabId(tabId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index);
   };
@@ -2612,18 +2624,22 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   };
 
   const handleDragEnter = (e, index) => {
-    if (draggedIndex === null || draggedIndex === index) return;
+    if (draggedTabId === null) return;
     setTabs(prev => {
-      const newTabs = [...prev];
-      const [draggedTab] = newTabs.splice(draggedIndex, 1);
+      const cleanPrev = (prev || []).filter(t => t && t.id);
+      const dragIdx = cleanPrev.findIndex(t => t.id === draggedTabId);
+      if (dragIdx === -1 || dragIdx === index) return cleanPrev;
+
+      const newTabs = [...cleanPrev];
+      const [draggedTab] = newTabs.splice(dragIdx, 1);
+      if (!draggedTab) return cleanPrev;
       newTabs.splice(index, 0, draggedTab);
       return newTabs;
     });
-    setDraggedIndex(index);
   };
 
   const handleDragEnd = () => {
-    setDraggedIndex(null);
+    setDraggedTabId(null);
   };
 
   // ── Stat timers
@@ -2708,14 +2724,15 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
         <div className={`torn-iframe-panel${sidebarCollapsed ? ' sidebar-hidden' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
 
           {/* Tab Bar UI */}
+          {/* Tab Bar UI */}
           <div className="torn-tab-bar" style={{ display: 'flex', backgroundColor: '#1a1a1a', borderBottom: '1px solid #333', padding: '0 8px', overflowX: 'auto' }}>
-            {tabs.map((tab, index) => (
+            {tabs.filter(t => t && t.id).map((tab, index) => (
               <div
                 key={tab.id}
                 onClick={() => setActiveTabId(tab.id)}
                 onContextMenu={(e) => handleTabContextMenu(e, tab)}
                 draggable={true}
-                onDragStart={(e) => handleDragStart(e, index)}
+                onDragStart={(e) => handleDragStart(e, index, tab.id)}
                 onDragOver={handleDragOver}
                 onDragEnter={(e) => handleDragEnter(e, index)}
                 onDragEnd={handleDragEnd}
@@ -2726,12 +2743,12 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   backgroundColor: activeTabId === tab.id ? '#2c2c2c' : 'transparent',
                   borderTopLeftRadius: '6px',
                   borderTopRightRadius: '6px',
-                  cursor: draggedIndex === index ? 'grabbing' : 'grab',
+                  cursor: draggedTabId === tab.id ? 'grabbing' : 'grab',
                   minWidth: '120px',
                   maxWidth: '200px',
                   borderRight: '1px solid #333',
                   borderTop: activeTabId === tab.id ? '2px solid #e74c3c' : '2px solid transparent',
-                  opacity: draggedIndex === index ? 0.4 : 1,
+                  opacity: draggedTabId === tab.id ? 0.4 : 1,
                   userSelect: 'none',
                   transition: 'opacity 0.15s ease'
                 }}
@@ -2743,7 +2760,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   textOverflow: 'ellipsis',
                   fontSize: '0.75rem',
                   color: activeTabId === tab.id ? '#fff' : '#aaa',
-                  pointerEvents: draggedIndex !== null ? 'none' : 'auto'
+                  pointerEvents: draggedTabId !== null ? 'none' : 'auto'
                 }}>
                   {tab.title || 'Torn'}
                 </span>
@@ -2757,7 +2774,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                     marginLeft: '8px',
                     fontSize: '1rem',
                     lineHeight: '1',
-                    pointerEvents: draggedIndex !== null ? 'none' : 'auto'
+                    pointerEvents: draggedTabId !== null ? 'none' : 'auto'
                   }}
                   aria-label={`Close ${tab.title || 'tab'}`}
                 >×</button>
@@ -2789,7 +2806,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
               </div>
             )}
 
-            {[...tabs].sort((a, b) => a.id.localeCompare(b.id)).map(tab => (
+            {tabs.filter(t => t && t.id).sort((a, b) => a.id.localeCompare(b.id)).map(tab => (
               <WebviewTab
                 key={tab.id}
                 tab={tab}
