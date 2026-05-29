@@ -150,7 +150,7 @@ const ChainWatcher = ({ factionData }) => {
               <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>{current.toLocaleString()}</span>
               <span style={{ fontSize: '0.75rem', color: '#666', marginLeft: '4px' }}>/ {nextMilestone.toLocaleString()}</span>
             </div>
-            <div 
+            <div
               className={localTimeout < 30 ? 'pulse-alert-animation' : ''}
               style={{
                 fontSize: '1.05rem',
@@ -556,7 +556,7 @@ const NewTabPage = ({ tabId, onNavigate }) => {
     <div className="new-tab-container">
       <div className="new-tab-content">
         <div className="new-tab-logo-container">
-          <span className="new-tab-logo-icon">🐊</span>
+          <img src={`${process.env.PUBLIC_URL}/alligator.png`} alt="TORNagator Logo" className="new-tab-logo-icon" style={{ width: '64px', height: '64px' }} />
           <h1 className="new-tab-title">TORNagator</h1>
         </div>
 
@@ -580,7 +580,7 @@ const NewTabPage = ({ tabId, onNavigate }) => {
         {/* Favorites Header */}
         <div className="new-tab-favorites-header">
           <h2>Favorite Pages</h2>
-          <button 
+          <button
             className={`new-tab-edit-btn ${isEditing ? 'active' : ''}`}
             onClick={() => setIsEditing(!isEditing)}
           >
@@ -594,7 +594,7 @@ const NewTabPage = ({ tabId, onNavigate }) => {
             const FavIcon = getQuickActionIcon(fav.url, fav.label) || IconLink;
             return (
               <div key={index} className={`new-tab-fav-card-wrapper ${isEditing ? 'editing' : ''}`}>
-                <div 
+                <div
                   className="new-tab-fav-card"
                   onClick={() => !isEditing && handleGo(fav.url)}
                 >
@@ -604,7 +604,7 @@ const NewTabPage = ({ tabId, onNavigate }) => {
                   <div className="new-tab-fav-label">{fav.label}</div>
                 </div>
                 {isEditing && (
-                  <button 
+                  <button
                     className="new-tab-fav-delete-btn"
                     onClick={() => handleRemoveFavorite(index)}
                     aria-label={`Remove ${fav.label}`}
@@ -708,7 +708,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_sorted_names = null;
       })()
     `;
-    wvInstance.executeJavaScript(injectScript).catch(() => {});
+    wvInstance.executeJavaScript(injectScript).catch(() => { });
   }, [itemsData, cargoCapacity]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
@@ -1609,17 +1609,17 @@ const parseTornDescriptionTime = (description) => {
   if (!description) return 0;
   const clean = description.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '').trim();
   let totalSeconds = 0;
-  
+
   const dayMatch = clean.match(/(\d+)\s*d/i);
   const hourMatch = clean.match(/(\d+)\s*h/i);
   const minuteMatch = clean.match(/(\d+)\s*m/i);
   const secondMatch = clean.match(/(\d+)\s*s/i);
-  
+
   if (dayMatch) totalSeconds += parseInt(dayMatch[1], 10) * 86400;
   if (hourMatch) totalSeconds += parseInt(hourMatch[1], 10) * 3600;
   if (minuteMatch) totalSeconds += parseInt(minuteMatch[1], 10) * 60;
   if (secondMatch) totalSeconds += parseInt(secondMatch[1], 10);
-  
+
   return totalSeconds;
 };
 
@@ -1819,11 +1819,11 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
                 height: '7px',
                 borderRadius: '50%',
                 backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
-                                 member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                  member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
                 marginLeft: '6px',
                 verticalAlign: 'middle',
                 boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' :
-                           member.last_action.status === 'Idle' ? '0 0 4px #f39c12' : 'none'
+                  member.last_action.status === 'Idle' ? '0 0 4px #f39c12' : 'none'
               }}
             />
           )}
@@ -1901,36 +1901,36 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
 
           {/* Activity strip */}
           {hasProfile && (
-            <div style={{ 
-              display: 'flex', 
-              gap: '4px', 
-              flexWrap: 'wrap', 
-              marginTop: '4px', 
-              paddingTop: '4px', 
-              borderTop: '1px dashed rgba(255,255,255,0.05)' 
+            <div style={{
+              display: 'flex',
+              gap: '4px',
+              flexWrap: 'wrap',
+              marginTop: '4px',
+              paddingTop: '4px',
+              borderTop: '1px dashed rgba(255,255,255,0.05)'
             }}>
               {[
-                { 
-                  label: <><IconSwords size={10} color="#e67e22" /> Cri</>, 
-                  value: member.criminalOffenses, 
+                {
+                  label: <><IconSwords size={10} color="#e67e22" /> Cri</>,
+                  value: member.criminalOffenses,
                   color: '#e67e22',
                   own: userData?.personalstats?.criminaloffenses || 0
                 },
-                { 
-                  label: <><IconPill size={10} color="#9b59b6" /> Drg</>, 
-                  value: member.drugsUsed, 
+                {
+                  label: <><IconPill size={10} color="#9b59b6" /> Drg</>,
+                  value: member.drugsUsed,
                   color: '#9b59b6',
                   own: userData?.personalstats?.drugsused || 0
                 },
-                { 
-                  label: <><IconBolt size={10} color="#3498db" /> Ref</>, 
-                  value: member.totalRefills, 
+                {
+                  label: <><IconBolt size={10} color="#3498db" /> Ref</>,
+                  value: member.totalRefills,
                   color: '#3498db',
                   own: (userData?.personalstats?.refills || 0) + (userData?.personalstats?.nerverefills || 0) + (userData?.personalstats?.tokenrefills || 0)
                 },
-                { 
-                  label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>, 
-                  value: member.boostersUsed, 
+                {
+                  label: <><IconMuscle size={10} color="#2ecc71" /> Bst</>,
+                  value: member.boostersUsed,
                   color: '#2ecc71',
                   own: userData?.personalstats?.boostersused || 0
                 },
@@ -2128,7 +2128,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   useEffect(() => {
     try {
       localStorage.setItem('tornagator_faction_status_filter', statusFilter);
-    } catch (e) {}
+    } catch (e) { }
   }, [statusFilter]);
 
   const [syncInterval, setSyncInterval] = useState(() => {
@@ -2143,7 +2143,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   useEffect(() => {
     try {
       localStorage.setItem('tornagator_faction_sync_interval', syncInterval);
-    } catch (e) {}
+    } catch (e) { }
   }, [syncInterval]);
 
   const [compareMode, setCompareMode] = useState(false);
@@ -2757,7 +2757,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
         </div>
 
         {/* ── Sidebar ──────────────────────────────────────────────── */}
-        <aside 
+        <aside
           className={`torn-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}
           style={{
             width: sidebarCollapsed ? '0px' : `${sidebarWidth}px`,
@@ -2796,14 +2796,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
           {!sidebarCollapsed && (
             <div className={`torn-sidebar-inner ${sidebarTab === 'war' ? 'war-tab-active' : ''}`}>
               {/* Player header */}
-              <div 
+              <div
                 onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
                 className="torn-sidebar-header"
-                style={{ 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   paddingBottom: isHeaderCollapsed ? '8px' : '12px',
                   userSelect: 'none'
                 }}
@@ -2943,13 +2943,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                   {/* Live Stats */}
                   <div className="torn-sidebar-section">
-                    <div 
+                    <div
                       onClick={() => setIsLiveStatsCollapsed(!isLiveStatsCollapsed)}
-                      className="torn-sidebar-section-title" 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
+                      className="torn-sidebar-section-title"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         cursor: 'pointer',
                         userSelect: 'none'
                       }}
@@ -3017,13 +3017,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   {/* Money */}
                   {moneyFormatted && (
                     <div className="torn-sidebar-section">
-                      <div 
+                      <div
                         onClick={() => setIsFinancesCollapsed(!isFinancesCollapsed)}
-                        className="torn-sidebar-section-title" 
-                        style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between', 
+                        className="torn-sidebar-section-title"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                           cursor: 'pointer',
                           userSelect: 'none'
                         }}
@@ -3061,13 +3061,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
                   {/* Quick actions */}
                   <div className="torn-sidebar-section">
-                    <div 
+                    <div
                       onClick={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
-                      className="torn-sidebar-section-title" 
-                      style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center', 
+                      className="torn-sidebar-section-title"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         marginBottom: isQuickActionsCollapsed ? '0' : '8px',
                         cursor: 'pointer',
                         userSelect: 'none'
@@ -3422,12 +3422,12 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   ) : (
                     <>
                       {/* War Status Header / Collapsible Overview Toggle */}
-                      <div 
+                      <div
                         onClick={() => setIsWarOverviewCollapsed(!isWarOverviewCollapsed)}
-                        style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                           gap: '8px',
                           cursor: 'pointer',
                           borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -3535,12 +3535,12 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                       )}
 
                       {/* Sorting & Import Panel Header */}
-                      <div 
+                      <div
                         onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
-                        style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                           gap: '8px',
                           cursor: 'pointer',
                           borderBottom: '1px solid rgba(255,255,255,0.05)',
