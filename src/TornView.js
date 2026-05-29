@@ -1325,13 +1325,57 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
           // 3. Inject market values for found items on Crimes page (ONLY under outcome reward container)
           if (hasCrimesOutcome) {
+            if (!document.getElementById('tornagator-crime-styles')) {
+              const style = document.createElement('style');
+              style.id = 'tornagator-crime-styles';
+              style.textContent = \`
+                div[class*=itemCell___] {
+                  position: relative !important;
+                }
+                div[class*=itemCell___][data-crime-value]::after {
+                  content: attr(data-crime-value);
+                  position: absolute;
+                  bottom: 2px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  white-space: nowrap;
+                  pointer-events: none;
+                  text-align: center;
+                  font-size: 0.62rem;
+                  font-weight: bold;
+                  padding: 1px 4px;
+                  border-radius: 3px;
+                  background-color: rgba(0, 0, 0, 0.85);
+                  border: 1px solid rgba(255, 255, 255, 0.15);
+                  display: block;
+                  z-index: 5;
+                }
+                div[class*=itemCell___][data-crime-value="..."]::after {
+                  color: #aaa;
+                }
+                div[class*=itemCell___][data-crime-value="N/A"]::after {
+                  color: #888;
+                }
+                div[class*=itemCell___][data-crime-value^="$"]::after {
+                  color: #10b981;
+                }
+              \`;
+              document.head.appendChild(style);
+            }
+
             const rewardCells = document.querySelectorAll('div[class*=outcomeReward___] div[class*=itemCell___]');
             
             for (const cell of rewardCells) {
-              if (cell.querySelector('.injected-crime-value') || cell.querySelector('.injected-crime-value-loading')) continue;
-
               const img = cell.querySelector('img[class*=image___]');
-              if (!img) continue;
+              if (!img) {
+                if (cell.hasAttribute('data-crime-value')) {
+                  cell.removeAttribute('data-crime-value');
+                }
+                continue;
+              }
+
+              const currentAttr = cell.getAttribute('data-crime-value');
+              if (currentAttr && currentAttr !== '...') continue;
 
               const src = img.getAttribute('src') || img.src || '';
               if (!src) continue;
@@ -1343,85 +1387,35 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
               // Setup badge drawing function
               const renderBadge = (val) => {
-                const temp = cell.querySelector('.injected-crime-value-loading');
-                if (temp) temp.remove();
-
-                if (cell.querySelector('.injected-crime-value')) return;
-
                 // Check quantity
                 const countSpan = cell.querySelector('span[class*=count___]');
                 const qty = countSpan ? (parseInt(countSpan.textContent.replace(/[^0-9]/g, ''), 10) || 1) : 1;
 
-                cell.style.position = 'relative';
-
-                const valDiv = document.createElement('div');
-                valDiv.className = 'injected-crime-value';
-                valDiv.style.position = 'absolute';
-                valDiv.style.bottom = '2px';
-                valDiv.style.left = '50%';
-                valDiv.style.transform = 'translateX(-50%)';
-                valDiv.style.whiteSpace = 'nowrap';
-                valDiv.style.pointerEvents = 'none';
-                valDiv.style.textAlign = 'center';
-                valDiv.style.fontSize = '0.62rem';
-                valDiv.style.fontWeight = 'bold';
-                valDiv.style.padding = '1px 4px';
-                valDiv.style.borderRadius = '3px';
-                valDiv.style.backgroundColor = 'rgba(0,0,0,0.75)';
-                valDiv.style.border = '1px solid rgba(255,255,255,0.15)';
-                valDiv.style.display = 'block';
-                valDiv.style.zIndex = '5';
-                
                 if (val > 0) {
                   const totalVal = val * qty;
-                  valDiv.style.color = '#10b981';
                   if (qty > 1) {
-                    valDiv.textContent = '$' + totalVal.toLocaleString() + ' ($' + val.toLocaleString() + ')';
+                    cell.setAttribute('data-crime-value', '$' + totalVal.toLocaleString() + ' ($' + val.toLocaleString() + ')');
                   } else {
-                    valDiv.textContent = '$' + val.toLocaleString();
+                    cell.setAttribute('data-crime-value', '$' + val.toLocaleString());
                   }
                 } else {
-                  valDiv.style.color = '#888';
-                  valDiv.textContent = 'N/A';
+                  cell.setAttribute('data-crime-value', 'N/A');
                 }
-                cell.appendChild(valDiv);
               };
 
               const marketValue = marketValuesById[itemId];
               if (marketValue !== undefined) {
                 renderBadge(marketValue);
               } else {
-                // If not cached, fetch all items on-demand from Torn API to populate the cache
+                if (currentAttr === '...') continue;
                 if (window._tornagator_fetching_catalog) continue;
 
-                // Add temp loading element
-                cell.style.position = 'relative';
-                const tempDiv = document.createElement('div');
-                tempDiv.className = 'injected-crime-value-loading';
-                tempDiv.textContent = '...';
-                tempDiv.style.position = 'absolute';
-                tempDiv.style.bottom = '2px';
-                tempDiv.style.left = '50%';
-                tempDiv.style.transform = 'translateX(-50%)';
-                tempDiv.style.pointerEvents = 'none';
-                tempDiv.style.textAlign = 'center';
-                tempDiv.style.fontSize = '0.62rem';
-                tempDiv.style.fontWeight = 'bold';
-                tempDiv.style.backgroundColor = 'rgba(0,0,0,0.75)';
-                tempDiv.style.padding = '1px 6px';
-                tempDiv.style.borderRadius = '3px';
-                tempDiv.style.color = '#aaa';
-                tempDiv.style.zIndex = '5';
-                cell.appendChild(tempDiv);
+                cell.setAttribute('data-crime-value', '...');
 
                 window._tornagator_fetching_catalog = true;
                 console.log("[TORNagator Webview] Requesting Torn items catalog on-demand for itemId:", itemId);
 
-                // Set to 0 to lock and prevent duplicate requests on subsequent seconds
                 marketValuesById[itemId] = 0;
-
-                // Instead of calling ipcRenderer directly (which is unavailable in guest webview),
-                // we set a global variable that the host will read during the interval execution
                 window._tornagator_pending_item_id = itemId;
               }
             }

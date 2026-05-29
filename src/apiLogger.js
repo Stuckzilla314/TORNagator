@@ -165,13 +165,113 @@ export const initApiInterceptor = () => {
     }
     
     if (apiType) {
+      if (url.includes('key=mock_key_1234567890123456') || url.includes('key=mock_key')) {
+        const duration = Math.floor(Math.random() * 80) + 20;
+        let mockBody = {};
+        
+        if (url.includes('/user/') && url.includes('selections=')) {
+          const userIdMatch = url.match(/\/user\/(\d+)/);
+          const userId = userIdMatch ? userIdMatch[1] : '12345';
+          mockBody = {
+            player_id: parseInt(userId, 10),
+            name: userId === '12345' ? 'AntigravityMock' : `EnemyMember_${userId}`,
+            level: userId === '12345' ? 42 : Math.floor(Math.random() * 80) + 10,
+            age: 500,
+            money_onhand: 1000000,
+            status: { state: 'Okay', color: 'green', description: 'Okay' },
+            energy: { current: 90, maximum: 100, ticktime: 60, interval: 600, increment: 5 },
+            nerve: { current: 15, maximum: 20, ticktime: 30, interval: 300, increment: 1 },
+            life: { current: 5000, maximum: 5000 },
+            happy: { current: 2500, maximum: 2500 },
+            travel: { destination: 'Mexico', method: 'Airstrip', timestamp: 0 },
+            personalstats: {
+              attackswon: Math.floor(Math.random() * 200) + 50,
+              attackslost: Math.floor(Math.random() * 50) + 5,
+              defendswon: Math.floor(Math.random() * 30) + 2,
+              defendslost: Math.floor(Math.random() * 100) + 20,
+              criminaloffenses: 1500,
+              drugsused: 50,
+              refills: 10,
+              boostersused: 5
+            }
+          };
+        } else if (url.includes('/faction/') && url.includes('selections=')) {
+          mockBody = {
+            ID: 999,
+            name: 'Mock Faction',
+            leader: 12345,
+            'co-leader': 0,
+            members: {
+              '12345': { name: 'AntigravityMock', level: 42 }
+            },
+            ranked_wars: {
+              'war_1': {
+                id: 'war_1',
+                war: { target: 1000, start: Math.floor(Date.now() / 1000) - 3600 },
+                factions: {
+                  '999': { name: 'Mock Faction', score: 450 },
+                  '888': { name: 'Enemy Faction', score: 320 }
+                }
+              }
+            }
+          };
+        } else if (url.includes('/faction/')) {
+          mockBody = {
+            ID: 888,
+            name: 'Enemy Faction',
+            members: {
+              '22222': { name: 'EnemyMember1', level: 50, last_action: { status: 'Online' }, status: { state: 'Okay' } },
+              '33333': { name: 'EnemyMember2', level: 30, last_action: { status: 'Offline' }, status: { state: 'Hospital', until: Math.floor(Date.now() / 1000) + 1200 } }
+            }
+          };
+        } else if (url.includes('/torn/') && url.includes('items')) {
+          mockBody = {
+            items: {
+              '1': { name: 'Plushie', market_value: 500 },
+              '2': { name: 'Flower', market_value: 600 }
+            }
+          };
+        } else if (url.includes('/inventory')) {
+          mockBody = {
+            inventory: {
+              items: [
+                { id: 1, amount: 10 },
+                { id: 2, amount: 5 }
+              ]
+            }
+          };
+        } else {
+          mockBody = { name: 'Mock User', player_id: 12345 };
+        }
+
+        logApiCall(apiType, endpoint, 'SUCCESS', duration);
+        return new Response(JSON.stringify(mockBody), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       try {
         const response = await originalFetch(input, init);
         const duration = Date.now() - startTime;
         
         // Log success/failure based on response status
         if (response.ok) {
-          logApiCall(apiType, endpoint, 'SUCCESS', duration);
+          if (apiType === 'TORN') {
+            try {
+              const clone = response.clone();
+              const data = await clone.json();
+              if (data && data.error) {
+                logApiCall(apiType, endpoint, 'ERROR', duration, data.error.error || `Torn Error Code ${data.error.code}`);
+              } else {
+                logApiCall(apiType, endpoint, 'SUCCESS', duration);
+              }
+            } catch (e) {
+              logApiCall(apiType, endpoint, 'SUCCESS', duration);
+            }
+          } else {
+            logApiCall(apiType, endpoint, 'SUCCESS', duration);
+          }
         } else {
           logApiCall(apiType, endpoint, 'ERROR', duration, `HTTP Status ${response.status}`);
         }
