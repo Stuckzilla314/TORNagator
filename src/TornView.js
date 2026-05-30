@@ -763,7 +763,7 @@ const NewTabPage = ({ tabId, onNavigate }) => {
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered WebviewTab component.
  */
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -815,10 +815,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_sorted_names = null;
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
+        window._tornagator_faction_data = ${JSON.stringify(factionData)};
       })()
     `;
     wvInstance.executeJavaScript(injectScript).catch(() => { });
-  }, [itemsData, cargoCapacity, apiKey, userData]);
+  }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
     const wv = webviewRef.current;
@@ -1269,9 +1270,121 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           const isTravel = window.location.href.includes('travelagency.php') || window.location.href.includes('sid=travel') || window.location.href.includes('index.php');
           const isCrimes = window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes');
           const isItemMarket = window.location.href.includes('imarket.php') || window.location.href.includes('sid=ItemMarket') || window.location.href.includes('sid=itemmarket') || window.location.href.includes('sid=imarket');
+          const isGym = window.location.href.includes('gym.php');
 
-          if (!isTravel && !isCrimes && !isItemMarket) {
+          if (!isTravel && !isCrimes && !isItemMarket && !isGym) {
             return null;
+          }
+
+          if (isGym) {
+            try {
+              const header = document.querySelector('.content-title');
+              if (header) {
+                const factionData = window._tornagator_faction_data;
+                const stats = {
+                  strength: 0,
+                  defense: 0,
+                  speed: 0,
+                  dexterity: 0
+                };
+
+                if (factionData && factionData.upgrades) {
+                  const upgrades = Array.isArray(factionData.upgrades) ? factionData.upgrades : Object.values(factionData.upgrades);
+                  upgrades.forEach(up => {
+                    const branch = up.branch || '';
+                    if (branch.toLowerCase() === 'steadfast') {
+                      const name = (up.name || '').toLowerCase();
+                      const level = up.level || 0;
+                      if (name.includes('strength')) stats.strength = level;
+                      else if (name.includes('defense') || name.includes('defence')) stats.defense = level;
+                      else if (name.includes('speed')) stats.speed = level;
+                      else if (name.includes('dexterity')) stats.dexterity = level;
+                    }
+                  });
+                }
+
+                const dataStr = JSON.stringify(stats);
+                const existing = document.getElementById('tornagator-gym-steadfast');
+                if (existing) {
+                  if (existing.dataset.stats === dataStr) {
+                    return null;
+                  }
+                  existing.remove();
+                }
+
+                if (factionData) {
+                  const container = document.createElement('div');
+                  container.id = 'tornagator-gym-steadfast';
+                  container.dataset.stats = dataStr;
+                  container.style.display = 'inline-flex';
+                  container.style.alignItems = 'center';
+                  container.style.gap = '6px';
+                  container.style.marginLeft = '16px';
+                  container.style.verticalAlign = 'middle';
+                  container.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                  container.style.fontSize = '12px';
+                  container.style.background = 'rgba(20, 20, 20, 0.8)';
+                  container.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                  container.style.borderRadius = '6px';
+                  container.style.padding = '4px 10px';
+                  container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.4)';
+                  container.style.color = '#e0e0e0';
+
+                  const createBadge = (label, val) => {
+                    const badge = document.createElement('div');
+                    badge.style.display = 'flex';
+                    badge.style.alignItems = 'center';
+                    badge.style.gap = '3px';
+                    badge.style.padding = '2px 6px';
+                    badge.style.borderRadius = '4px';
+                    badge.style.background = val > 0 ? 'rgba(46, 204, 113, 0.1)' : 'rgba(255, 255, 255, 0.03)';
+                    badge.style.border = val > 0 ? '1px solid rgba(46, 204, 113, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)';
+
+                    const lblSpan = document.createElement('span');
+                    lblSpan.textContent = label + ':';
+                    lblSpan.style.fontWeight = 'bold';
+                    lblSpan.style.fontSize = '10px';
+                    lblSpan.style.textTransform = 'uppercase';
+                    lblSpan.style.color = val > 0 ? '#2ecc71' : '#888';
+
+                    const valSpan = document.createElement('span');
+                    valSpan.textContent = '+' + val + '%';
+                    valSpan.style.fontWeight = 'bold';
+                    valSpan.style.color = val > 0 ? '#2ecc71' : '#666';
+
+                    badge.appendChild(lblSpan);
+                    badge.appendChild(valSpan);
+                    return badge;
+                  };
+
+                  const labelSpan = document.createElement('span');
+                  labelSpan.textContent = 'Steadfast:';
+                  labelSpan.style.fontWeight = '700';
+                  labelSpan.style.fontSize = '11px';
+                  labelSpan.style.color = '#888';
+                  labelSpan.style.textTransform = 'uppercase';
+                  labelSpan.style.letterSpacing = '0.5px';
+                  labelSpan.style.marginRight = '4px';
+                  container.appendChild(labelSpan);
+
+                  container.appendChild(createBadge('Str', stats.strength));
+                  container.appendChild(createBadge('Def', stats.defense));
+                  container.appendChild(createBadge('Spd', stats.speed));
+                  container.appendChild(createBadge('Dex', stats.dexterity));
+
+                  const h1 = header.querySelector('h1');
+                  if (h1) {
+                    h1.style.display = 'inline-block';
+                    h1.style.verticalAlign = 'middle';
+                    h1.after(container);
+                  } else {
+                    header.appendChild(container);
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator] Steadfast injection error:', err);
+            }
           }
 
           if ((isTravel || isCrimes) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
@@ -1949,8 +2062,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       const isTravel = currentUrl.includes('travelagency.php') || currentUrl.includes('sid=travel') || (currentUrl.includes('index.php') && userData?.status?.state === 'Traveling');
       const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
       const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
+      const isGym = currentUrl.includes('gym.php');
 
-      if (!isTravel && !isCrimes && !isItemMarket) return;
+      if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
 
       wv.executeJavaScript(script)
         .then(result => {
@@ -3500,6 +3614,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 apiKey={apiKey}
                 showNavControls={showNavControls}
                 userData={userData}
+                factionData={factionData}
               />
             ))}
           </div>

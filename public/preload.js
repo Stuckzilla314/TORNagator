@@ -1,44 +1,63 @@
 (function() {
-  // 1. Monkeypatch console log/error/warn to suppress console spam from guest page try-catch blocks
-  const consoleFilters = [
-    {
-      check: (args) => {
-        const fullText = args.map(arg => {
-          if (arg instanceof Error) {
-            return arg.message + '\n' + arg.stack;
-          }
-          if (typeof arg === 'object' && arg !== null) {
-            try {
-              return JSON.stringify(arg);
-            } catch (e) {
-              return String(arg);
-            }
-          }
-          return String(arg);
-        }).join(' ');
+  console.warn("[TORNagator Preload] Preload script loaded in webview context");
 
-        return fullText.includes('[handleReceiveMessage]') && fullText.includes("reading 'url'");
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  const originalInfo = console.info;
+
+  // 1. Diagnostics helper to print call stacks and arguments
+  const handleDiagnostic = (method, args) => {
+    const isTarget = args.some(arg => {
+      if (arg instanceof Error) {
+        return (arg.message && arg.message.includes("reading 'url'")) || 
+               (arg.stack && arg.stack.includes('handleReceiveMessage'));
       }
-    }
-  ];
+      const str = String(arg);
+      return str.includes('[handleReceiveMessage]') || str.includes("reading 'url'");
+    });
 
-  const wrapConsole = (method) => {
-    const original = console[method];
-    if (!original) return;
-    console[method] = function(...args) {
-      for (const filter of consoleFilters) {
-        if (filter.check(args)) {
-          return; // Suppress the log entirely
+    if (isTarget) {
+      originalWarn.call(console, "=== TORNAGATOR DIAGNOSTIC START ===");
+      originalWarn.call(console, `Method: console.${method}`);
+      
+      args.forEach((arg, i) => {
+        if (arg instanceof Error) {
+          originalWarn.call(console, `Arg ${i} (Error):`, arg.message);
+          originalWarn.call(console, `Arg ${i} Stack:`, arg.stack);
+        } else if (typeof arg === 'object' && arg !== null) {
+          try {
+            originalWarn.call(console, `Arg ${i} (Object):`, JSON.stringify(arg, null, 2));
+          } catch (e) {
+            originalWarn.call(console, `Arg ${i} (Object, non-serializeable):`, String(arg));
+          }
+        } else {
+          originalWarn.call(console, `Arg ${i}:`, arg);
         }
-      }
-      return original.apply(console, args);
-    };
+      });
+
+      const callStack = new Error().stack;
+      originalWarn.call(console, "Console Call Stack (Trace):", callStack);
+      originalWarn.call(console, "=== TORNAGATOR DIAGNOSTIC END ===");
+    }
   };
 
-  wrapConsole('log');
-  wrapConsole('error');
-  wrapConsole('warn');
-  wrapConsole('info');
+  console.log = function(...args) {
+    handleDiagnostic('log', args);
+    return originalLog.apply(console, args);
+  };
+  console.error = function(...args) {
+    handleDiagnostic('error', args);
+    return originalError.apply(console, args);
+  };
+  console.warn = function(...args) {
+    handleDiagnostic('warn', args);
+    return originalWarn.apply(console, args);
+  };
+  console.info = function(...args) {
+    handleDiagnostic('info', args);
+    return originalInfo.apply(console, args);
+  };
 
   // 2. Wrap EventTarget.prototype.addEventListener and target.addEventListener directly
   const wrapAddRemove = (target) => {
@@ -58,7 +77,16 @@
               return listener.apply(this, arguments);
             } catch (err) {
               if (err && err.message && err.message.includes("reading 'url'")) {
-                return;
+                originalWarn.call(console, "=== TORNAGATOR MESSAGE LISTENER ERROR ===");
+                originalWarn.call(console, "Error:", err.message);
+                originalWarn.call(console, "Error Stack:", err.stack);
+                originalWarn.call(console, "Event origin:", event ? event.origin : 'unknown');
+                try {
+                  originalWarn.call(console, "Event data:", JSON.stringify(event ? event.data : null, null, 2));
+                } catch (e) {
+                  originalWarn.call(console, "Event data (non-serializeable):", event ? event.data : 'unknown');
+                }
+                originalWarn.call(console, "=========================================");
               }
               throw err;
             }
@@ -106,7 +134,16 @@
               return listener.apply(this, arguments);
             } catch (err) {
               if (err && err.message && err.message.includes("reading 'url'")) {
-                return;
+                originalWarn.call(console, "=== TORNAGATOR ONMESSAGE ERROR ===");
+                originalWarn.call(console, "Error:", err.message);
+                originalWarn.call(console, "Error Stack:", err.stack);
+                originalWarn.call(console, "Event origin:", event ? event.origin : 'unknown');
+                try {
+                  originalWarn.call(console, "Event data:", JSON.stringify(event ? event.data : null, null, 2));
+                } catch (e) {
+                  originalWarn.call(console, "Event data (non-serializeable):", event ? event.data : 'unknown');
+                }
+                originalWarn.call(console, "=================================");
               }
               throw err;
             }
