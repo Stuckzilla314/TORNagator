@@ -204,6 +204,18 @@ function App() {
     setTargetCountry(country);
     setActiveTab('torn');
   }, [setActiveTab]);
+
+  useEffect(() => {
+    if (!window.require) return;
+    const { ipcRenderer } = window.require('electron');
+    const handleOpenUrlInTab = (event, url) => {
+      handleOpenInTorn(url);
+    };
+    ipcRenderer.on('open-url-in-tab', handleOpenUrlInTab);
+    return () => {
+      ipcRenderer.removeListener('open-url-in-tab', handleOpenUrlInTab);
+    };
+  }, [handleOpenInTorn]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
   const [showNavControls, setShowNavControls] = useLocalStorage('tornagator_show_nav_controls', true);
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);

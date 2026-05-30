@@ -2,6 +2,8 @@ const { app, BrowserWindow, session, ipcMain, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+let win;
+
 function createWindow() {
   const stateFilePath = path.join(app.getPath('userData'), 'window-state.json');
   
@@ -43,7 +45,7 @@ function createWindow() {
     }
   }
 
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: width || 1200,
     height: height || 800,
     x: x,
@@ -163,6 +165,14 @@ app.whenReady().then(() => {
   app.on('web-contents-created', (event, contents) => {
     contents.on('will-attach-webview', (event, webPreferences, params) => {
       webPreferences.preload = path.join(__dirname, 'preload.js');
+    });
+
+    contents.setWindowOpenHandler((details) => {
+      const { url } = details;
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('open-url-in-tab', url);
+      }
+      return { action: 'deny' };
     });
   });
 
