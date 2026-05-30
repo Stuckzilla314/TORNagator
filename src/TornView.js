@@ -795,17 +795,19 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   }, []);
 
   const injectMarketValues = useCallback((wvInstance) => {
-    if (!wvInstance || !itemsData || !domReadyRef.current || !isElectron) return;
+    if (!wvInstance || !domReadyRef.current || !isElectron) return;
     const itemsMarketValues = {};
     const itemsMarketValuesById = {};
-    Object.entries(itemsData).forEach(([id, item]) => {
-      if (item.name && item.market_value) {
-        itemsMarketValues[item.name.toLowerCase()] = item.market_value;
-      }
-      if (id && item.market_value) {
-        itemsMarketValuesById[id] = item.market_value;
-      }
-    });
+    if (itemsData) {
+      Object.entries(itemsData).forEach(([id, item]) => {
+        if (item.name && item.market_value) {
+          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+        }
+        if (id && item.market_value) {
+          itemsMarketValuesById[id] = item.market_value;
+        }
+      });
+    }
 
     const injectScript = `
       (() => {
@@ -948,6 +950,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       }
       updateNavigationState();
     };
+    const handleNavigateInPage = (e) => {
+      if (e.url.includes('__cf_chl_') || e.url.includes('/cdn-cgi/')) {
+        return;
+      }
+      // In-page navigations do not destroy the context, so keep domReadyRef.current true.
+      if (tabId) {
+        onUpdate(tabId, { url: e.url });
+      }
+      updateNavigationState();
+      injectMarketValues(wv);
+    };
     const handleTitle = (e) => {
       if (tabId) {
         onUpdate(tabId, { title: e.title });
@@ -961,19 +974,19 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     };
 
     wv.addEventListener('did-navigate', handleNavigate);
-    wv.addEventListener('did-navigate-in-page', handleNavigate);
+    wv.addEventListener('did-navigate-in-page', handleNavigateInPage);
     wv.addEventListener('did-stop-loading', updateNavigationState);
     wv.addEventListener('page-title-updated', handleTitle);
     wv.addEventListener('console-message', handleConsole);
 
     return () => {
       wv.removeEventListener('did-navigate', handleNavigate);
-      wv.removeEventListener('did-navigate-in-page', handleNavigate);
+      wv.removeEventListener('did-navigate-in-page', handleNavigateInPage);
       wv.removeEventListener('did-stop-loading', updateNavigationState);
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tabId, onUpdate, updateNavigationState, isNewTab]);
+  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -1280,6 +1293,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             try {
               const header = document.querySelector('.content-title');
               if (header) {
+                const userData = window._tornagator_user_data;
                 const factionData = window._tornagator_faction_data;
                 const stats = {
                   strength: 0,
@@ -1288,22 +1302,44 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   dexterity: 0
                 };
 
-                if (factionData && factionData.upgrades) {
+                let dataFound = false;
+
+                // 1. Try parsing from user faction_perks (highest priority/fallback)
+                if (userData && Array.isArray(userData.faction_perks)) {
+                  userData.faction_perks.forEach(perk => {
+                    const p = perk.toLowerCase();
+                    if (p.includes('gym gains')) {
+                      const match = p.match(/\\+\\s*([\\d.]+)\\s*%/);
+                      if (match) {
+                        const val = parseFloat(match[1]);
+                        if (p.includes('strength')) { stats.strength = val; dataFound = true; }
+                        else if (p.includes('defense') || p.includes('defence')) { stats.defense = val; dataFound = true; }
+                        else if (p.includes('speed')) { stats.speed = val; dataFound = true; }
+                        else if (p.includes('dexterity')) { stats.dexterity = val; dataFound = true; }
+                      }
+                    }
+                  });
+                }
+
+                // 2. If no gym gains perks were found in faction_perks, or faction_perks wasn't available,
+                // fallback to faction upgrades if they are present.
+                if (!dataFound && factionData && factionData.upgrades) {
                   const upgrades = Array.isArray(factionData.upgrades) ? factionData.upgrades : Object.values(factionData.upgrades);
                   upgrades.forEach(up => {
                     const branch = up.branch || '';
                     if (branch.toLowerCase() === 'steadfast') {
                       const name = (up.name || '').toLowerCase();
                       const level = up.level || 0;
-                      if (name.includes('strength')) stats.strength = level;
-                      else if (name.includes('defense') || name.includes('defence')) stats.defense = level;
-                      else if (name.includes('speed')) stats.speed = level;
-                      else if (name.includes('dexterity')) stats.dexterity = level;
+                      if (name.includes('strength')) { stats.strength = level; dataFound = true; }
+                      else if (name.includes('defense') || name.includes('defence')) { stats.defense = level; dataFound = true; }
+                      else if (name.includes('speed')) { stats.speed = level; dataFound = true; }
+                      else if (name.includes('dexterity')) { stats.dexterity = level; dataFound = true; }
                     }
                   });
                 }
 
-                const dataStr = JSON.stringify(stats);
+                const hasData = (userData && userData.faction_perks !== undefined) || (factionData && factionData.upgrades !== undefined);
+                const dataStr = JSON.stringify(stats) + '_' + hasData;
                 const existing = document.getElementById('tornagator-gym-steadfast');
                 if (existing) {
                   if (existing.dataset.stats === dataStr) {
@@ -1312,7 +1348,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   existing.remove();
                 }
 
-                if (factionData) {
+                if (userData || factionData) {
                   const container = document.createElement('div');
                   container.id = 'tornagator-gym-steadfast';
                   container.dataset.stats = dataStr;
@@ -1330,33 +1366,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.4)';
                   container.style.color = '#e0e0e0';
 
-                  const createBadge = (label, val) => {
-                    const badge = document.createElement('div');
-                    badge.style.display = 'flex';
-                    badge.style.alignItems = 'center';
-                    badge.style.gap = '3px';
-                    badge.style.padding = '2px 6px';
-                    badge.style.borderRadius = '4px';
-                    badge.style.background = val > 0 ? 'rgba(46, 204, 113, 0.1)' : 'rgba(255, 255, 255, 0.03)';
-                    badge.style.border = val > 0 ? '1px solid rgba(46, 204, 113, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)';
-
-                    const lblSpan = document.createElement('span');
-                    lblSpan.textContent = label + ':';
-                    lblSpan.style.fontWeight = 'bold';
-                    lblSpan.style.fontSize = '10px';
-                    lblSpan.style.textTransform = 'uppercase';
-                    lblSpan.style.color = val > 0 ? '#2ecc71' : '#888';
-
-                    const valSpan = document.createElement('span');
-                    valSpan.textContent = '+' + val + '%';
-                    valSpan.style.fontWeight = 'bold';
-                    valSpan.style.color = val > 0 ? '#2ecc71' : '#666';
-
-                    badge.appendChild(lblSpan);
-                    badge.appendChild(valSpan);
-                    return badge;
-                  };
-
                   const labelSpan = document.createElement('span');
                   labelSpan.textContent = 'Steadfast:';
                   labelSpan.style.fontWeight = '700';
@@ -1367,10 +1376,53 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   labelSpan.style.marginRight = '4px';
                   container.appendChild(labelSpan);
 
-                  container.appendChild(createBadge('Str', stats.strength));
-                  container.appendChild(createBadge('Def', stats.defense));
-                  container.appendChild(createBadge('Spd', stats.speed));
-                  container.appendChild(createBadge('Dex', stats.dexterity));
+                  if (hasData) {
+                    const createBadge = (label, val) => {
+                      const badge = document.createElement('div');
+                      badge.style.display = 'flex';
+                      badge.style.alignItems = 'center';
+                      badge.style.gap = '3px';
+                      badge.style.padding = '2px 6px';
+                      badge.style.borderRadius = '4px';
+                      badge.style.background = val > 0 ? 'rgba(46, 204, 113, 0.1)' : 'rgba(255, 255, 255, 0.03)';
+                      badge.style.border = val > 0 ? '1px solid rgba(46, 204, 113, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)';
+
+                      const lblSpan = document.createElement('span');
+                      lblSpan.textContent = label + ':';
+                      lblSpan.style.fontWeight = 'bold';
+                      lblSpan.style.fontSize = '10px';
+                      lblSpan.style.textTransform = 'uppercase';
+                      lblSpan.style.color = val > 0 ? '#2ecc71' : '#888';
+
+                      const valSpan = document.createElement('span');
+                      valSpan.textContent = '+' + val + '%';
+                      valSpan.style.fontWeight = 'bold';
+                      valSpan.style.color = val > 0 ? '#2ecc71' : '#666';
+
+                      badge.appendChild(lblSpan);
+                      badge.appendChild(valSpan);
+                      return badge;
+                    };
+
+                    container.appendChild(createBadge('Str', stats.strength));
+                    container.appendChild(createBadge('Def', stats.defense));
+                    container.appendChild(createBadge('Spd', stats.speed));
+                    container.appendChild(createBadge('Dex', stats.dexterity));
+                  } else {
+                    const warningBadge = document.createElement('div');
+                    warningBadge.style.display = 'flex';
+                    warningBadge.style.alignItems = 'center';
+                    warningBadge.style.padding = '2px 6px';
+                    warningBadge.style.borderRadius = '4px';
+                    warningBadge.style.background = 'rgba(241, 196, 15, 0.1)';
+                    warningBadge.style.border = '1px solid rgba(241, 196, 15, 0.25)';
+                    warningBadge.style.fontSize = '10px';
+                    warningBadge.style.fontWeight = 'bold';
+                    warningBadge.style.color = '#f1c40f';
+                    warningBadge.textContent = 'Unknown (Limited API Key)';
+                    warningBadge.title = 'Please provide a Limited or Full access API key to view faction Steadfast upgrades';
+                    container.appendChild(warningBadge);
+                  }
 
                   const h1 = header.querySelector('h1');
                   if (h1) {

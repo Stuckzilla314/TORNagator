@@ -221,7 +221,7 @@ function App() {
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money');
+      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money,perks');
       setUserData(prev => prev ? { ...prev, ...user } : user);
       try {
         localStorage.setItem('torn_api_key', apiKey);
@@ -239,13 +239,13 @@ function App() {
     }
   }, [apiKey]);
 
-  // Fetch Faction data — only called on-demand when visiting the Faction War tab
   const loadFactionData = useCallback(async () => {
     if (!apiKey) return;
     console.log('[TORNagator] loadFactionData triggered...');
     try {
       const faction = await fetchFactionData(apiKey);
       console.log('[TORNagator] fetchFactionData returned:', faction);
+
       if (faction && !faction.error) {
         setFactionData(faction);
       } else {

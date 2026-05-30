@@ -38,6 +38,19 @@ export const fetchFactionData = async (apiKey) => {
     const data = await response.json();
 
     if (data.error) {
+      const code = data.error.code;
+      const errMsg = (data.error.error || '').toLowerCase();
+      // If key lacks permissions for selections (like upgrades), retry basic selections
+      if (code === 2 || code === 7 || errMsg.includes('key') || errMsg.includes('access') || errMsg.includes('permission') || errMsg.includes('selection')) {
+        console.warn('[TORNagator API] Faction upgrades selection failed. Retrying fallback without upgrades...');
+        const fallbackUrl = `${BASE_URL}/faction/?selections=basic,rankedwars,chain&key=${apiKey}`;
+        const fallbackResponse = await fetch(fallbackUrl);
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.error) {
+          throw new Error(fallbackData.error.error || 'Unknown API Error');
+        }
+        return fallbackData;
+      }
       throw new Error(data.error.error || 'Unknown API Error');
     }
 
