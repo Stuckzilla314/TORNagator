@@ -384,11 +384,13 @@ const ApiLogsView = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ width: '180px' }}
+              aria-label="Filter endpoint or error"
             />
             <select 
               className="console-select"
               value={serviceFilter}
               onChange={(e) => setServiceFilter(e.target.value)}
+              aria-label="Filter by service"
             >
               <option value="ALL">All Services</option>
               <option value="TORN">TORN API</option>
@@ -399,6 +401,7 @@ const ApiLogsView = () => {
               className="console-select"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="Filter by status"
             >
               <option value="ALL">All Statuses</option>
               <option value="SUCCESS">Success</option>
