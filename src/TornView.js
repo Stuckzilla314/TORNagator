@@ -763,6 +763,131 @@ const NewTabPage = ({ tabId, onNavigate }) => {
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered WebviewTab component.
  */
+const INJECTED_CSS_SCRIPT = `
+  (() => {
+    let style = document.getElementById('tornagator-injected-css');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'tornagator-injected-css';
+      style.textContent = \`
+        [class*="mobileLink___"] span {
+          color: #888888 !important;
+        }
+        [class*="mobileLink___"]:hover span {
+          color: #ffffff !important;
+        }
+        [class*="active___"] [class*="mobileLink___"] span {
+          color: #ffffff !important;
+          text-shadow: 0 0 3px rgba(255, 255, 255, 0.4) !important;
+        }
+      \`;
+      document.head.appendChild(style);
+    }
+  })()
+`;
+
+const STATS_REDIR_SCRIPT = `
+  (() => {
+    console.log("TORNagator: STATS_REDIR_SCRIPT loaded and running. Location: " + window.location.href + " bound=" + window._tornagator_global_listeners_bound);
+
+    const isInside = (x, y, rect) => {
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    };
+
+    const handleGlobalTap = (e) => {
+      let x, y;
+      if (e.type === 'touchstart') {
+        if (e.touches && e.touches.length > 0) {
+          x = e.touches[0].clientX;
+          y = e.touches[0].clientY;
+        } else {
+          return;
+        }
+      } else {
+        x = e.clientX;
+        y = e.clientY;
+      }
+
+      // Find current energy bar element
+      const energySelectors = [
+        '[class*="energyContainer___"]',
+        '[class*="energy___"]',
+        '[id*="energy"]',
+        '[aria-label*="Energy" i]',
+        'div[class*="sidebar"] [class*="energy" i]',
+      ];
+      let energyEl = null;
+      for (const selector of energySelectors) {
+        const found = document.querySelector(selector);
+        if (found) {
+          energyEl = found;
+          break;
+        }
+      }
+      if (!energyEl) {
+        energyEl = Array.from(document.querySelectorAll('div, li, p, span, a')).find(el => {
+          const text = (el.textContent || '').trim();
+          return text.startsWith('Energy:') && el.children.length < 8;
+        });
+      }
+
+      if (energyEl) {
+        const rect = energyEl.getBoundingClientRect();
+        const isTargetInside = isInside(x, y, rect) || energyEl.contains(e.target);
+        if (isTargetInside) {
+          console.log("TORNagator: Global intercept! Clicked inside energy bar. Navigating to gym.php. event=" + e.type + " coords=" + x + "," + y);
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = 'https://www.torn.com/gym.php';
+          return;
+        }
+      }
+
+      // Find current nerve bar element
+      const nerveSelectors = [
+        '[class*="nerveContainer___"]',
+        '[class*="nerve___"]',
+        '[id*="nerve"]',
+        '[aria-label*="Nerve" i]',
+        'div[class*="sidebar"] [class*="nerve" i]',
+      ];
+      let nerveEl = null;
+      for (const selector of nerveSelectors) {
+        const found = document.querySelector(selector);
+        if (found) {
+          nerveEl = found;
+          break;
+        }
+      }
+      if (!nerveEl) {
+        nerveEl = Array.from(document.querySelectorAll('div, li, p, span, a')).find(el => {
+          const text = (el.textContent || '').trim();
+          return text.startsWith('Nerve:') && el.children.length < 8;
+        });
+      }
+
+      if (nerveEl) {
+        const rect = nerveEl.getBoundingClientRect();
+        const isTargetInside = isInside(x, y, rect) || nerveEl.contains(e.target);
+        if (isTargetInside) {
+          console.log("TORNagator: Global intercept! Clicked inside nerve bar. Navigating to crimes.php. event=" + e.type + " coords=" + x + "," + y);
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = 'https://www.torn.com/crimes.php';
+          return;
+        }
+      }
+    };
+
+    if (!window._tornagator_global_listeners_bound) {
+      window._tornagator_global_listeners_bound = true;
+      document.addEventListener('click', handleGlobalTap, true);
+      document.addEventListener('touchstart', handleGlobalTap, true);
+      console.log("TORNagator: Global capturing click/touch listeners bound successfully!");
+    }
+  })()
+`;
+
 const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
@@ -824,115 +949,212 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
-    const wv = webviewRef.current;
-    if (!wv || !targetCountry || !isElectron) return;
+    if (!targetCountry) return;
 
-    let currentUrl = '';
-    try {
-      currentUrl = wv.getURL() || '';
-    } catch (e) {
-      return;
-    }
+    if (isCapacitor) {
+      if (!window.AndroidTornBridge || !window.AndroidTornBridge.executeInOverlay) return;
 
-    if (!currentUrl.includes('travelagency.php') && !currentUrl.includes('sid=travel')) return;
+      const currentUrl = tabUrl || '';
+      if (!currentUrl.includes('travelagency.php') && !currentUrl.includes('sid=travel')) return;
 
-    console.log(`TORNagator: Triggering selectCountry (attempt ${attempt}) for:`, targetCountry);
-    const script = `
-      (() => {
-        const countryName = ${JSON.stringify(targetCountry)};
-        const targetNormalized = countryName.toLowerCase();
-        
-        const codes = {
-          "mexico": ["mex", "mexico"],
-          "cayman islands": ["cay", "cayman", "cayman islands"],
-          "canada": ["can", "canada"],
-          "hawaii": ["haw", "hawaii"],
-          "united kingdom": ["uni", "united kingdom", "uk", "great britain", "london"],
-          "argentina": ["arg", "argentina"],
-          "switzerland": ["swi", "switzerland"],
-          "japan": ["jap", "japan", "tokyo"],
-          "china": ["chi", "china", "beijing"],
-          "uae": ["uae", "united arab emirates", "dubai", "abu dhabi"],
-          "south africa": ["sou", "south africa", "johannesburg", "capetown", "cape town"]
-        };
+      console.log(`TORNagator: Triggering selectCountry (attempt ${attempt}) on Android for:`, targetCountry);
+      const script = `
+        (() => {
+          let attempt = ${attempt};
+          const countryName = ${JSON.stringify(targetCountry)};
+          const targetNormalized = countryName.toLowerCase();
+          
+          const codes = {
+            "mexico": ["mex", "mexico"],
+            "cayman islands": ["cay", "cayman", "cayman islands"],
+            "canada": ["can", "canada"],
+            "hawaii": ["haw", "hawaii"],
+            "united kingdom": ["uni", "united kingdom", "uk", "great britain", "london"],
+            "argentina": ["arg", "argentina"],
+            "switzerland": ["swi", "switzerland"],
+            "japan": ["jap", "japan", "tokyo"],
+            "china": ["chi", "china", "beijing"],
+            "uae": ["uae", "united arab emirates", "dubai", "abu dhabi"],
+            "south africa": ["sou", "south africa", "johannesburg", "capetown", "cape town"]
+          };
 
-        let matchedKey = targetNormalized;
-        for (const [canonical, aliases] of Object.entries(codes)) {
-          if (canonical === targetNormalized || aliases.includes(targetNormalized)) {
-            matchedKey = canonical;
-            break;
+          let matchedKey = targetNormalized;
+          for (const [canonical, aliases] of Object.entries(codes)) {
+            if (canonical === targetNormalized || aliases.includes(targetNormalized)) {
+              matchedKey = canonical;
+              break;
+            }
           }
-        }
 
-        const radios = document.querySelectorAll('input[type="radio"][name="destination"]');
-        for (const r of radios) {
-          const label = (r.getAttribute('aria-label') || '').toLowerCase();
-          if (label.includes(matchedKey) || matchedKey.includes(label)) {
-            r.click();
-            r.dispatchEvent(new Event('change', { bubbles: true }));
-            r.dispatchEvent(new Event('input', { bubbles: true }));
-            
-            if (r.nextElementSibling && r.nextElementSibling.classList.contains('pin___kahDJ')) {
-              r.nextElementSibling.click();
-              r.nextElementSibling.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          const run = () => {
+            const radios = document.querySelectorAll('input[type="radio"][name="destination"]');
+            for (const r of radios) {
+              const label = (r.getAttribute('aria-label') || '').toLowerCase();
+              if (label.includes(matchedKey) || matchedKey.includes(label)) {
+                r.click();
+                r.dispatchEvent(new Event('change', { bubbles: true }));
+                r.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                if (r.nextElementSibling && r.nextElementSibling.classList.contains('pin___kahDJ')) {
+                  r.nextElementSibling.click();
+                  r.nextElementSibling.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                }
+
+                setTimeout(() => {
+                  window.scrollTo(0, document.body.scrollHeight);
+                  if (document.documentElement) {
+                    document.documentElement.scrollTop = document.documentElement.scrollHeight;
+                  }
+                }, 150);
+
+                return true;
+              }
             }
 
-            setTimeout(() => {
-              window.scrollTo(0, document.body.scrollHeight);
-              if (document.documentElement) {
-                document.documentElement.scrollTop = document.documentElement.scrollHeight;
+            const clickables = document.querySelectorAll('.pin___kahDJ, [class*="pin___" i], [class*="destination" i], button, a');
+            for (const el of clickables) {
+              const text = (el.textContent || '').toLowerCase().trim();
+              const bg = (el.style.backgroundImage || '').toLowerCase();
+              const className = (el.className || '').toLowerCase();
+              
+              if (text.includes(matchedKey) || bg.includes(matchedKey) || className.includes(matchedKey)) {
+                el.click();
+                el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+                setTimeout(() => {
+                  window.scrollTo(0, document.body.scrollHeight);
+                  if (document.documentElement) {
+                    document.documentElement.scrollTop = document.documentElement.scrollHeight;
+                  }
+                }, 150);
+
+                return true;
               }
-            }, 150);
+            }
 
-            return true;
-          }
-        }
+            if (attempt < 15) {
+              attempt++;
+              setTimeout(run, 400);
+            }
+            return false;
+          };
 
-        const clickables = document.querySelectorAll('.pin___kahDJ, [class*="pin___" i], [class*="destination" i], button, a');
-        for (const el of clickables) {
-          const text = (el.textContent || '').toLowerCase().trim();
-          const bg = (el.style.backgroundImage || '').toLowerCase();
-          const className = (el.className || '').toLowerCase();
+          run();
+        })()
+      `;
+      window.AndroidTornBridge.executeInOverlay(script);
+      setTargetCountry(null);
+    } else {
+      const wv = webviewRef.current;
+      if (!wv || !isElectron) return;
+
+      let currentUrl = '';
+      try {
+        currentUrl = wv.getURL() || '';
+      } catch (e) {
+        return;
+      }
+
+      if (!currentUrl.includes('travelagency.php') && !currentUrl.includes('sid=travel')) return;
+
+      console.log(`TORNagator: Triggering selectCountry (attempt ${attempt}) for:`, targetCountry);
+      const script = `
+        (() => {
+          const countryName = ${JSON.stringify(targetCountry)};
+          const targetNormalized = countryName.toLowerCase();
           
-          if (text.includes(matchedKey) || bg.includes(matchedKey) || className.includes(matchedKey)) {
-            el.click();
-            el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          const codes = {
+            "mexico": ["mex", "mexico"],
+            "cayman islands": ["cay", "cayman", "cayman islands"],
+            "canada": ["can", "canada"],
+            "hawaii": ["haw", "hawaii"],
+            "united kingdom": ["uni", "united kingdom", "uk", "great britain", "london"],
+            "argentina": ["arg", "argentina"],
+            "switzerland": ["swi", "switzerland"],
+            "japan": ["jap", "japan", "tokyo"],
+            "china": ["chi", "china", "beijing"],
+            "uae": ["uae", "united arab emirates", "dubai", "abu dhabi"],
+            "south africa": ["sou", "south africa", "johannesburg", "capetown", "cape town"]
+          };
 
-            setTimeout(() => {
-              window.scrollTo(0, document.body.scrollHeight);
-              if (document.documentElement) {
-                document.documentElement.scrollTop = document.documentElement.scrollHeight;
-              }
-            }, 150);
-
-            return true;
+          let matchedKey = targetNormalized;
+          for (const [canonical, aliases] of Object.entries(codes)) {
+            if (canonical === targetNormalized || aliases.includes(targetNormalized)) {
+              matchedKey = canonical;
+              break;
+            }
           }
-        }
 
-        return false;
-      })()
-    `;
+          const radios = document.querySelectorAll('input[type="radio"][name="destination"]');
+          for (const r of radios) {
+            const label = (r.getAttribute('aria-label') || '').toLowerCase();
+            if (label.includes(matchedKey) || matchedKey.includes(label)) {
+              r.click();
+              r.dispatchEvent(new Event('change', { bubbles: true }));
+              r.dispatchEvent(new Event('input', { bubbles: true }));
+              
+              if (r.nextElementSibling && r.nextElementSibling.classList.contains('pin___kahDJ')) {
+                r.nextElementSibling.click();
+                r.nextElementSibling.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+              }
 
-    wv.executeJavaScript(script)
-      .then(result => {
-        console.log("TORNagator: executeJavaScript selectCountry result:", result);
-        if (result) {
-          setTargetCountry(null);
-        } else if (attempt < 15) {
-          setTimeout(() => {
-            trySelectCountry(attempt + 1);
-          }, 400);
-        }
-      })
-      .catch(err => {
-        console.error("TORNagator: executeJavaScript failed:", err);
-        if (attempt < 15) {
-          setTimeout(() => {
-            trySelectCountry(attempt + 1);
-          }, 400);
-        }
-      });
-  }, [targetCountry, setTargetCountry]);
+              setTimeout(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+                if (document.documentElement) {
+                  document.documentElement.scrollTop = document.documentElement.scrollHeight;
+                }
+              }, 150);
+
+              return true;
+            }
+          }
+
+          const clickables = document.querySelectorAll('.pin___kahDJ, [class*="pin___" i], [class*="destination" i], button, a');
+          for (const el of clickables) {
+            const text = (el.textContent || '').toLowerCase().trim();
+            const bg = (el.style.backgroundImage || '').toLowerCase();
+            const className = (el.className || '').toLowerCase();
+            
+            if (text.includes(matchedKey) || bg.includes(matchedKey) || className.includes(matchedKey)) {
+              el.click();
+              el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+              setTimeout(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+                if (document.documentElement) {
+                  document.documentElement.scrollTop = document.documentElement.scrollHeight;
+                }
+              }, 150);
+
+              return true;
+            }
+          }
+
+          return false;
+        })()
+      `;
+
+      wv.executeJavaScript(script)
+        .then(result => {
+          console.log("TORNagator: executeJavaScript selectCountry result:", result);
+          if (result) {
+            setTargetCountry(null);
+          } else if (attempt < 15) {
+            setTimeout(() => {
+              trySelectCountry(attempt + 1);
+            }, 400);
+          }
+        })
+        .catch(err => {
+          console.error("TORNagator: executeJavaScript failed:", err);
+          if (attempt < 15) {
+            setTimeout(() => {
+              trySelectCountry(attempt + 1);
+            }, 400);
+          }
+        });
+    }
+  }, [targetCountry, setTargetCountry, tabUrl]);
 
   useEffect(() => {
     const wv = webviewRef.current;
@@ -1114,126 +1336,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         }, 500);
       }
 
-      const redirScript = `
-        (() => {
-          const handleStatsClicks = () => {
-            const hasEnergy = window._tornagator_bound_energy && document.body && document.body.contains(window._tornagator_bound_energy);
-            const hasNerve = window._tornagator_bound_nerve && document.body && document.body.contains(window._tornagator_bound_nerve);
-            
-            if (hasEnergy && hasNerve) {
-              return;
-            }
-
-            const now = Date.now();
-            if (now - (window._tornagator_last_stats_search || 0) < 2000) {
-              return;
-            }
-            window._tornagator_last_stats_search = now;
-
-            const energySelectors = [
-              '[class*="energyContainer___"]',
-              '[class*="energy___"]',
-              '[id*="energy"]',
-              '[aria-label*="Energy" i]',
-              'div[class*="sidebar"] [class*="energy" i]',
-            ];
-            
-            const nerveSelectors = [
-              '[class*="nerveContainer___"]',
-              '[class*="nerve___"]',
-              '[id*="nerve"]',
-              '[aria-label*="Nerve" i]',
-              'div[class*="sidebar"] [class*="nerve" i]',
-            ];
-
-            let energyEl = hasEnergy ? window._tornagator_bound_energy : null;
-            if (!energyEl) {
-              for (const selector of energySelectors) {
-                const found = document.querySelector(selector);
-                if (found) {
-                  energyEl = found;
-                  break;
-                }
-              }
-              if (!energyEl) {
-                const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
-                energyEl = allElements.find(el => {
-                  const text = (el.textContent || '').trim();
-                  return text.startsWith('Energy:') && el.children.length < 8;
-                });
-              }
-              if (energyEl) {
-                window._tornagator_bound_energy = energyEl;
-              }
-            }
-
-            let nerveEl = hasNerve ? window._tornagator_bound_nerve : null;
-            if (!nerveEl) {
-              for (const selector of nerveSelectors) {
-                const found = document.querySelector(selector);
-                if (found) {
-                  nerveEl = found;
-                  break;
-                }
-              }
-              if (!nerveEl) {
-                const allElements = Array.from(document.querySelectorAll('div, li, p, span, a'));
-                nerveEl = allElements.find(el => {
-                  const text = (el.textContent || '').trim();
-                  return text.startsWith('Nerve:') && el.children.length < 8;
-                });
-              }
-              if (nerveEl) {
-                window._tornagator_bound_nerve = nerveEl;
-              }
-            }
-
-            if (energyEl && !energyEl.dataset.redirBound) {
-              energyEl.dataset.redirBound = 'true';
-              energyEl.style.cursor = 'pointer';
-              energyEl.title = 'Go to Gym';
-              energyEl.addEventListener('mouseenter', () => {
-                energyEl.style.filter = 'brightness(1.2)';
-              });
-              energyEl.addEventListener('mouseleave', () => {
-                energyEl.style.filter = 'none';
-              });
-              energyEl.style.transition = 'filter 0.2s';
-              energyEl.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = 'https://www.torn.com/gym.php';
-              });
-            }
-
-            if (nerveEl && !nerveEl.dataset.redirBound) {
-              nerveEl.dataset.redirBound = 'true';
-              nerveEl.style.cursor = 'pointer';
-              nerveEl.title = 'Go to Crimes';
-              nerveEl.addEventListener('mouseenter', () => {
-                nerveEl.style.filter = 'brightness(1.2)';
-              });
-              nerveEl.addEventListener('mouseleave', () => {
-                nerveEl.style.filter = 'none';
-              });
-              nerveEl.style.transition = 'filter 0.2s';
-              nerveEl.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = 'https://www.torn.com/crimes.php';
-              });
-            }
-          };
-
-          handleStatsClicks();
-          const targetNode = document.body || document.documentElement;
-          if (targetNode) {
-            const obs = new MutationObserver(handleStatsClicks);
-            obs.observe(targetNode, { childList: true, subtree: true });
-          }
-        })()
-      `;
-      wv.executeJavaScript(redirScript).catch(err => {
+      wv.executeJavaScript(STATS_REDIR_SCRIPT).catch(err => {
         console.error("TORNagator: Failed to inject stats redir script:", err);
       });
     };
@@ -1274,8 +1377,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   }, [isActive, injectMarketValues]);
 
   useEffect(() => {
-    const wv = webviewRef.current;
-    if (!wv || !isActive || !isElectron) return;
+    if (!isActive) return;
 
     const script = `
       (() => {
@@ -1436,6 +1538,80 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               }
             } catch (err) {
               console.error('[TORNagator] Steadfast injection error:', err);
+            }
+
+            // Stacking Warning Injection
+            try {
+              const uData = window._tornagator_user_data;
+              const isStacking = uData && uData.energy && uData.energy.current > 100;
+              if (isStacking && !window._tornagator_stacking_warning_dismissed) {
+                let warningBanner = document.getElementById('tornagator-stacking-warning');
+                if (!warningBanner) {
+                  warningBanner = document.createElement('div');
+                  warningBanner.id = 'tornagator-stacking-warning';
+                  warningBanner.style.position = 'fixed';
+                  warningBanner.style.top = '12px';
+                  warningBanner.style.left = '50%';
+                  warningBanner.style.transform = 'translateX(-50%)';
+                  warningBanner.style.backgroundColor = 'rgba(231, 76, 60, 0.95)';
+                  warningBanner.style.backdropFilter = 'blur(8px)';
+                  warningBanner.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+                  warningBanner.style.borderRadius = '8px';
+                  warningBanner.style.padding = '10px 20px';
+                  warningBanner.style.color = '#fff';
+                  warningBanner.style.zIndex = '999999';
+                  warningBanner.style.display = 'flex';
+                  warningBanner.style.alignItems = 'center';
+                  warningBanner.style.gap = '12px';
+                  warningBanner.style.boxShadow = '0 4px 20px rgba(0,0,0,0.6)';
+                  warningBanner.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+                  
+                  const warningIcon = document.createElement('span');
+                  warningIcon.innerHTML = '⚠️';
+                  warningIcon.style.fontSize = '1.2rem';
+                  warningBanner.appendChild(warningIcon);
+                  
+                  const textContainer = document.createElement('div');
+                  const title = document.createElement('span');
+                  title.textContent = 'Stacking Warning';
+                  title.style.fontSize = '0.8rem';
+                  title.style.fontWeight = 'bold';
+                  title.style.display = 'block';
+                  
+                  const desc = document.createElement('span');
+                  desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/100. You might be stacking and may not want to train in the gym.';
+                  desc.style.fontSize = '0.7rem';
+                  desc.style.color = 'rgba(255, 255, 255, 0.9)';
+                  desc.style.display = 'block';
+                  
+                  textContainer.appendChild(title);
+                  textContainer.appendChild(desc);
+                  warningBanner.appendChild(textContainer);
+                  
+                  const closeBtn = document.createElement('button');
+                  closeBtn.textContent = '×';
+                  closeBtn.style.background = 'none';
+                  closeBtn.style.border = 'none';
+                  closeBtn.style.color = '#fff';
+                  closeBtn.style.cursor = 'pointer';
+                  closeBtn.style.fontSize = '1.3rem';
+                  closeBtn.style.opacity = '0.7';
+                  closeBtn.onclick = () => {
+                    warningBanner.remove();
+                    window._tornagator_stacking_warning_dismissed = true;
+                  };
+                  warningBanner.appendChild(closeBtn);
+                  
+                  document.body.appendChild(warningBanner);
+                }
+              } else {
+                const existingBanner = document.getElementById('tornagator-stacking-warning');
+                if (existingBanner && (window._tornagator_stacking_warning_dismissed || !isStacking)) {
+                  existingBanner.remove();
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator] Stacking warning injection error:', err);
             }
           }
 
@@ -2101,37 +2277,92 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       })()
     `;
 
-    const profitInterval = setInterval(() => {
-      let currentUrl = '';
-      try {
-        if (!wv.isConnected) return;
-        wv.getWebContentsId(); // Ensure webview is attached and ready
-        currentUrl = wv.getURL() || '';
-      } catch (e) {
-        return;
-      }
+    if (isCapacitor) {
+      const profitInterval = setInterval(() => {
+        if (!window.AndroidTornBridge || !window.AndroidTornBridge.executeInOverlay) return;
 
-      const isTravel = currentUrl.includes('travelagency.php') || currentUrl.includes('sid=travel') || (currentUrl.includes('index.php') && userData?.status?.state === 'Traveling');
-      const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
-      const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
-      const isGym = currentUrl.includes('gym.php');
+        const currentUrl = tabUrl || '';
+        const isTravel = currentUrl.includes('travelagency.php') || currentUrl.includes('sid=travel') || (currentUrl.includes('index.php') && userData?.status?.state === 'Traveling');
+        const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
+        const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
+        const isGym = currentUrl.includes('gym.php');
 
-      if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
 
-      wv.executeJavaScript(script)
-        .then(result => {
-          if (result && result.requestFetchItemId && window.require) {
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.send('request-catalog-update', result.requestFetchItemId);
-          }
-        })
-        .catch(() => { });
-    }, 1000);
+        window.AndroidTornBridge.executeInOverlay(script);
+      }, 1000);
 
-    return () => clearInterval(profitInterval);
-  }, [isActive, isNewTab, userData]);
+      return () => clearInterval(profitInterval);
+    } else {
+      const wv = webviewRef.current;
+      if (!wv || !isElectron) return;
+
+      const profitInterval = setInterval(() => {
+        let currentUrl = '';
+        try {
+          if (!wv.isConnected) return;
+          wv.getWebContentsId(); // Ensure webview is attached and ready
+          currentUrl = wv.getURL() || '';
+        } catch (e) {
+          return;
+        }
+
+        const isTravel = currentUrl.includes('travelagency.php') || currentUrl.includes('sid=travel') || (currentUrl.includes('index.php') && userData?.status?.state === 'Traveling');
+        const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
+        const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
+        const isGym = currentUrl.includes('gym.php');
+
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+
+        wv.executeJavaScript(script)
+          .then(result => {
+            if (result && result.requestFetchItemId && window.require) {
+              const { ipcRenderer } = window.require('electron');
+              ipcRenderer.send('request-catalog-update', result.requestFetchItemId);
+            }
+          })
+          .catch(() => { });
+      }, 1000);
+
+      return () => clearInterval(profitInterval);
+    }
+  }, [isActive, isNewTab, userData, tabUrl]);
 
   const placeholderRef = useRef(null);
+  
+  // Reusable callback to sync all React-side metadata (API keys, user/faction details, market prices) to WebView global namespace
+  const syncMetadata = useCallback(() => {
+    if (!isCapacitor) return;
+    if (!window.AndroidTornBridge || !window.AndroidTornBridge.executeInOverlay) return;
+
+    const itemsMarketValues = {};
+    const itemsMarketValuesById = {};
+    if (itemsData) {
+      Object.entries(itemsData).forEach(([id, item]) => {
+        if (item.name && item.market_value) {
+          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+        }
+        if (id && item.market_value) {
+          itemsMarketValuesById[id] = item.market_value;
+        }
+      });
+    }
+
+    const injectScript = `
+      (() => {
+        window._tornagator_market_values = ${JSON.stringify(itemsMarketValues)};
+        window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+        window._tornagator_cargo_capacity = ${cargoCapacity || 5};
+        window._tornagator_sorted_names = null;
+        window._tornagator_api_key = ${JSON.stringify(apiKey)};
+        window._tornagator_user_data = ${JSON.stringify(userData)};
+        window._tornagator_faction_data = ${JSON.stringify(factionData)};
+      })()
+    `;
+
+    console.log("TORNagator: Syncing metadata into overlay WebView");
+    window.AndroidTornBridge.executeInOverlay(injectScript);
+  }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
 
   // Sync back/forward button states and url updates from native WebView
   useEffect(() => {
@@ -2146,13 +2377,49 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       if (tabId && url && url !== tabUrl) {
         onUpdate(tabId, { url });
       }
+
+      // Inject stats redirects and styles on Capacitor overlay
+      if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+        syncMetadata();
+        window.AndroidTornBridge.executeInOverlay(INJECTED_CSS_SCRIPT);
+        window.AndroidTornBridge.executeInOverlay(STATS_REDIR_SCRIPT);
+
+        // Auto-select target country if active
+        if (targetCountry) {
+          setTimeout(() => {
+            trySelectCountry();
+          }, 500);
+        }
+      }
     };
 
     window.addEventListener('tornUrlChange', handleTornUrlChange);
+
+    // Run initial injections if overlay is active
+    if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+      syncMetadata();
+      window.AndroidTornBridge.executeInOverlay(INJECTED_CSS_SCRIPT);
+      window.AndroidTornBridge.executeInOverlay(STATS_REDIR_SCRIPT);
+
+      // Auto-select target country if active
+      if (targetCountry) {
+        setTimeout(() => {
+          trySelectCountry();
+        }, 500);
+      }
+    }
+
     return () => {
       window.removeEventListener('tornUrlChange', handleTornUrlChange);
     };
-  }, [isActive, tabId, tabUrl, onUpdate]);
+  }, [isActive, tabId, tabUrl, onUpdate, targetCountry, trySelectCountry, syncMetadata]);
+
+  // Inject/Sync metadata into the Capacitor overlay whenever it changes and overlay is active
+  useEffect(() => {
+    if (isActive) {
+      syncMetadata();
+    }
+  }, [isActive, syncMetadata]);
 
   // Sync visibility and position of the native WebView overlay
   useEffect(() => {
@@ -3635,7 +3902,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
           </div>
 
           <div style={{ flex: 1, position: 'relative' }}>
-            {showStackingWarning && (
+            {showStackingWarning && !isCapacitor && (
               <div className="stacking-warning-banner">
                 <IconWarning size={20} color="#fff" />
                 <div>

@@ -5,8 +5,10 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
@@ -74,6 +76,17 @@ public class MainActivity extends BridgeActivity {
                         
                         // Set up cookies
                         CookieManager.getInstance().setAcceptThirdPartyCookies(tornWebView, true);
+                        
+                        // Set up console log forwarding
+                        tornWebView.setWebChromeClient(new WebChromeClient() {
+                            @Override
+                            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                                Log.d("OverlayConsole", consoleMessage.message() + " -- From line "
+                                                     + consoleMessage.lineNumber() + " of "
+                                                     + consoleMessage.sourceId());
+                                return true;
+                            }
+                        });
                         
                         // Add WebViewClient to track loads and sync events
                         tornWebView.setWebViewClient(new WebViewClient() {
@@ -175,6 +188,21 @@ public class MainActivity extends BridgeActivity {
                     if (tornWebView != null) {
                         Log.d(TAG, "Overlay reloading");
                         tornWebView.reload();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void executeInOverlay(final String js) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (tornWebView != null) {
+                        Log.v(TAG, "Evaluating Javascript in overlay WebView");
+                        tornWebView.evaluateJavascript(js, null);
+                    } else {
+                        Log.w(TAG, "executeInOverlay called but tornWebView is null");
                     }
                 }
             });
