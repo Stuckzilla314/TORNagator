@@ -1542,71 +1542,78 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
             // Stacking Warning Injection
             try {
-              const uData = window._tornagator_user_data;
-              const isStacking = uData && uData.energy && uData.energy.current > 100;
-              if (isStacking && !window._tornagator_stacking_warning_dismissed) {
-                let warningBanner = document.getElementById('tornagator-stacking-warning');
-                if (!warningBanner) {
-                  warningBanner = document.createElement('div');
-                  warningBanner.id = 'tornagator-stacking-warning';
-                  warningBanner.style.position = 'fixed';
-                  warningBanner.style.top = '12px';
-                  warningBanner.style.left = '50%';
-                  warningBanner.style.transform = 'translateX(-50%)';
-                  warningBanner.style.backgroundColor = 'rgba(231, 76, 60, 0.95)';
-                  warningBanner.style.backdropFilter = 'blur(8px)';
-                  warningBanner.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-                  warningBanner.style.borderRadius = '8px';
-                  warningBanner.style.padding = '10px 20px';
-                  warningBanner.style.color = '#fff';
-                  warningBanner.style.zIndex = '999999';
-                  warningBanner.style.display = 'flex';
-                  warningBanner.style.alignItems = 'center';
-                  warningBanner.style.gap = '12px';
-                  warningBanner.style.boxShadow = '0 4px 20px rgba(0,0,0,0.6)';
-                  warningBanner.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-                  
-                  const warningIcon = document.createElement('span');
-                  warningIcon.innerHTML = '⚠️';
-                  warningIcon.style.fontSize = '1.2rem';
-                  warningBanner.appendChild(warningIcon);
-                  
-                  const textContainer = document.createElement('div');
-                  const title = document.createElement('span');
-                  title.textContent = 'Stacking Warning';
-                  title.style.fontSize = '0.8rem';
-                  title.style.fontWeight = 'bold';
-                  title.style.display = 'block';
-                  
-                  const desc = document.createElement('span');
-                  desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/100. You might be stacking and may not want to train in the gym.';
-                  desc.style.fontSize = '0.7rem';
-                  desc.style.color = 'rgba(255, 255, 255, 0.9)';
-                  desc.style.display = 'block';
-                  
-                  textContainer.appendChild(title);
-                  textContainer.appendChild(desc);
-                  warningBanner.appendChild(textContainer);
-                  
-                  const closeBtn = document.createElement('button');
-                  closeBtn.textContent = '×';
-                  closeBtn.style.background = 'none';
-                  closeBtn.style.border = 'none';
-                  closeBtn.style.color = '#fff';
-                  closeBtn.style.cursor = 'pointer';
-                  closeBtn.style.fontSize = '1.3rem';
-                  closeBtn.style.opacity = '0.7';
-                  closeBtn.onclick = () => {
-                    warningBanner.remove();
-                    window._tornagator_stacking_warning_dismissed = true;
-                  };
-                  warningBanner.appendChild(closeBtn);
-                  
-                  document.body.appendChild(warningBanner);
+              if (${isCapacitor}) {
+                const uData = window._tornagator_user_data;
+                const isStacking = uData && uData.energy && uData.energy.current > 100;
+                if (isStacking && !window._tornagator_stacking_warning_dismissed) {
+                  let warningBanner = document.getElementById('tornagator-stacking-warning');
+                  if (!warningBanner) {
+                    warningBanner = document.createElement('div');
+                    warningBanner.id = 'tornagator-stacking-warning';
+                    warningBanner.style.position = 'fixed';
+                    warningBanner.style.top = '12px';
+                    warningBanner.style.left = '50%';
+                    warningBanner.style.transform = 'translateX(-50%)';
+                    warningBanner.style.backgroundColor = 'rgba(231, 76, 60, 0.95)';
+                    warningBanner.style.backdropFilter = 'blur(8px)';
+                    warningBanner.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+                    warningBanner.style.borderRadius = '8px';
+                    warningBanner.style.padding = '10px 20px';
+                    warningBanner.style.color = '#fff';
+                    warningBanner.style.zIndex = '999999';
+                    warningBanner.style.display = 'flex';
+                    warningBanner.style.alignItems = 'center';
+                    warningBanner.style.gap = '12px';
+                    warningBanner.style.boxShadow = '0 4px 20px rgba(0,0,0,0.6)';
+                    warningBanner.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+                    
+                    const warningIcon = document.createElement('span');
+                    warningIcon.innerHTML = '⚠️';
+                    warningIcon.style.fontSize = '1.2rem';
+                    warningBanner.appendChild(warningIcon);
+                    
+                    const textContainer = document.createElement('div');
+                    const title = document.createElement('span');
+                    title.textContent = 'Stacking Warning';
+                    title.style.fontSize = '0.8rem';
+                    title.style.fontWeight = 'bold';
+                    title.style.display = 'block';
+                    
+                    const desc = document.createElement('span');
+                    desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/100. You might be stacking and may not want to train in the gym.';
+                    desc.style.fontSize = '0.7rem';
+                    desc.style.color = 'rgba(255, 255, 255, 0.9)';
+                    desc.style.display = 'block';
+                    
+                    textContainer.appendChild(title);
+                    textContainer.appendChild(desc);
+                    warningBanner.appendChild(textContainer);
+                    
+                    const closeBtn = document.createElement('button');
+                    closeBtn.textContent = '×';
+                    closeBtn.style.background = 'none';
+                    closeBtn.style.border = 'none';
+                    closeBtn.style.color = '#fff';
+                    closeBtn.style.cursor = 'pointer';
+                    closeBtn.style.fontSize = '1.3rem';
+                    closeBtn.style.opacity = '0.7';
+                    closeBtn.onclick = () => {
+                      warningBanner.remove();
+                      window._tornagator_stacking_warning_dismissed = true;
+                    };
+                    warningBanner.appendChild(closeBtn);
+                    
+                    document.body.appendChild(warningBanner);
+                  }
+                } else {
+                  const existingBanner = document.getElementById('tornagator-stacking-warning');
+                  if (existingBanner && (window._tornagator_stacking_warning_dismissed || !isStacking)) {
+                    existingBanner.remove();
+                  }
                 }
               } else {
                 const existingBanner = document.getElementById('tornagator-stacking-warning');
-                if (existingBanner && (window._tornagator_stacking_warning_dismissed || !isStacking)) {
+                if (existingBanner) {
                   existingBanner.remove();
                 }
               }
