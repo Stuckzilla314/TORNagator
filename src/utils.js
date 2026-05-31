@@ -2,5 +2,8 @@ export const isElectron = typeof window !== 'undefined' &&
   window.process && 
   window.process.type === 'renderer';
 
-export const isCapacitor = typeof window !== 'undefined' && 
-  !!window.Capacitor;
+export const isCapacitor = typeof window !== 'undefined' && (
+  !!window.Capacitor || 
+  (/Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent) && !window.process)
+);
+

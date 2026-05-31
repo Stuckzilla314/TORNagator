@@ -688,137 +688,151 @@ function App() {
 
       <div style={{
         flex: 1,
-        overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
         display: 'flex',
-        flexDirection: isCapacitor ? 'column-reverse' : 'column',
+        flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
         position: 'relative',
-        padding: activeTab === 'torn' ? '0' : '20px',
         boxSizing: 'border-box'
       }}>
-        {!apiKey && <LoginForm onLogin={setApiKey} />}
-
-        {apiKey && userData && (
-          <>
-            <nav
-              className={isCapacitor ? 'capacitor-nav' : 'desktop-nav'}
-              style={
-              isCapacitor ? {
-                display: 'flex',
-                justifyContent: 'space-around',
-                alignItems: 'center',
-                backgroundColor: '#161616',
-                borderTop: '1px solid #2d2d2d',
-                width: '100%',
-                height: '60px',
-                padding: '4px 0',
-                boxSizing: 'border-box',
-                flexShrink: 0,
-                zIndex: 10
-              } : {
-                display: 'flex',
-                gap: '10px',
-                marginBottom: activeTab === 'torn' ? '0' : '30px',
-                borderBottom: '1px solid #333',
-                width: '100%',
-                maxWidth: '100%',
-                margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
-                padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
-                position: activeTab === 'torn' ? 'relative' : undefined,
-                zIndex: activeTab === 'torn' ? 10 : undefined
-              }
-            }>
-              {isCapacitor ? (
-                <>
-                  <div style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                      <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
-                    <span>Dashboard</span>
-                  </div>
-                  <div style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                    <span>Faction War</span>
-                  </div>
-                  <div style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="2" y1="12" x2="22" y2="12"/>
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                    <span>Overseas</span>
-                  </div>
-                  <div style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
-                    <IconGamepad size={20} color={activeTab === 'torn' ? '#3498db' : '#777'} />
-                    <span>TORN</span>
-                  </div>
-                  <div style={mobileNavItemStyle('apilogs')} onClick={() => setActiveTab('apilogs')}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                      <line x1="8" y1="21" x2="16" y2="21" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                    <span>API Monitor</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
-                  <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
-                  <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-                  <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
-                  <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                      <line x1="8" y1="21" x2="16" y2="21" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                    API Monitor
-                  </div>
-                </>
-              )}
-            </nav>
-
-            {activeTab === 'dashboard' ? (
-              <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
-            ) : activeTab === 'faction' ? (
-              <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
-            ) : activeTab === 'torn' ? (
-              <TornView 
-                userData={userData} 
-                factionData={factionData}
-                loadFactionData={loadFactionData}
-                apiKey={apiKey} 
-                requestedUrl={requestedUrl} 
-                setRequestedUrl={setRequestedUrl}
-                targetCountry={targetCountry}
-                setTargetCountry={setTargetCountry}
-                itemsData={itemsData}
-                cargoCapacity={cargoCapacity}
-                showNavControls={showNavControls}
-              />
-            ) : activeTab === 'apilogs' ? (
-              <ApiLogsView />
-            ) : (
-              <OverseasStock
-                itemsData={itemsData}
-                userData={userData}
-                cargoCapacity={cargoCapacity}
-                autoSyncStock={stockAutoSync}
-                onManualSync={loadOverseasData}
-                filter={countryFilter}
-                setFilter={setCountryFilter}
-                onOpenInTorn={handleOpenInTorn}
-              />
-            )}
-          </>
+        {/* Render desktop nav at the top */}
+        {!isCapacitor && apiKey && userData && (
+          <nav
+            className="desktop-nav"
+            style={{
+              display: 'flex',
+              gap: '10px',
+              marginBottom: activeTab === 'torn' ? '0' : '30px',
+              borderBottom: '1px solid #333',
+              width: '100%',
+              maxWidth: '100%',
+              margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
+              padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
+              position: activeTab === 'torn' ? 'relative' : undefined,
+              zIndex: activeTab === 'torn' ? 10 : undefined,
+              flexShrink: 0
+            }}
+          >
+            <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
+            <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
+            <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
+            <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
+            <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+              API Monitor
+            </div>
+          </nav>
         )}
 
-        {loading && !userData && <p style={{ textAlign: 'center' }}>Loading TORN data...</p>}
-        {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
-        {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
+        {/* Main page content area - scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
+          position: 'relative',
+          padding: activeTab === 'torn' ? '0' : '20px',
+          boxSizing: 'border-box'
+        }}>
+          {!apiKey && <LoginForm onLogin={setApiKey} />}
+
+          {apiKey && userData && (
+            <>
+              {activeTab === 'dashboard' ? (
+                <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
+              ) : activeTab === 'faction' ? (
+                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
+              ) : activeTab === 'torn' ? (
+                <TornView 
+                  userData={userData} 
+                  factionData={factionData}
+                  loadFactionData={loadFactionData}
+                  apiKey={apiKey} 
+                  requestedUrl={requestedUrl} 
+                  setRequestedUrl={setRequestedUrl}
+                  targetCountry={targetCountry}
+                  setTargetCountry={setTargetCountry}
+                  itemsData={itemsData}
+                  cargoCapacity={cargoCapacity}
+                  showNavControls={showNavControls}
+                />
+              ) : activeTab === 'apilogs' ? (
+                <ApiLogsView />
+              ) : (
+                <OverseasStock
+                  itemsData={itemsData}
+                  userData={userData}
+                  cargoCapacity={cargoCapacity}
+                  autoSyncStock={stockAutoSync}
+                  onManualSync={loadOverseasData}
+                  filter={countryFilter}
+                  setFilter={setCountryFilter}
+                  onOpenInTorn={handleOpenInTorn}
+                />
+              )}
+            </>
+          )}
+
+          {loading && !userData && <p style={{ textAlign: 'center' }}>Loading TORN data...</p>}
+          {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
+          {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
+        </div>
+
+        {/* Render Capacitor mobile nav at the bottom */}
+        {isCapacitor && apiKey && userData && (
+          <nav
+            className="capacitor-nav"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-around',
+              alignItems: 'center',
+              backgroundColor: '#161616',
+              borderTop: '1px solid #2d2d2d',
+              width: '100%',
+              height: '60px',
+              padding: '4px 0',
+              boxSizing: 'border-box',
+              flexShrink: 0,
+              zIndex: 10
+            }}
+          >
+            <div style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              <span>Dashboard</span>
+            </div>
+            <div style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>Faction War</span>
+            </div>
+            <div style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span>Overseas</span>
+            </div>
+            <div style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
+              <IconGamepad size={20} color={activeTab === 'torn' ? '#3498db' : '#777'} />
+              <span>TORN</span>
+            </div>
+            <div style={mobileNavItemStyle('apilogs')} onClick={() => setActiveTab('apilogs')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+              <span>API Monitor</span>
+            </div>
+          </nav>
+        )}
       </div>
     </div>
   );
