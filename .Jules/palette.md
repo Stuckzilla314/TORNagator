@@ -1,3 +1,7 @@
 ## 2024-05-24 - Accessible Submit Button Patterns
 **Learning:** For inputs like an API key that strictly require validation (e.g. exactly 16 characters), dynamically setting the disabled attribute on the submit button alongside conditional visual styling (e.g. a disabled background color and not-allowed cursor) provides immediate, intuitive feedback to users, preventing premature form submissions. It is also crucial to make sure screen reader labels use proper visually hidden CSS (`position: absolute`, `width: 1px`, etc.) rather than `display: none` which breaks accessibility.
 **Action:** Apply dynamic disabled states on submit actions when form conditions are known upfront, and ensure labels are correctly hidden for accessibility.
+
+## $(date +%Y-%m-%d) - Tab Navigation Accessibility
+**Learning:** When building custom tab navigation using generic `<div>` elements, they lack native keyboard focus and screen reader context. Converting them to semantic `<button>` elements instantly fixes focusability and keyboard interactions (Space/Enter). However, default browser styles will break the visual design.
+**Action:** When converting custom interactive components to semantic elements (like `div` to `button`), apply style resets (`background: 'none'`, `border: 'none'`, `fontFamily: 'inherit'`, `fontSize: 'inherit'`) to retain the exact visual appearance while gaining the accessibility benefits. Add appropriate ARIA roles (`role="tablist"` and `role="tab"`) and states (`aria-selected`).
