@@ -761,6 +761,29 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
               onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
               style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none', width: '100%', boxSizing: 'border-box' }}
             />
+            <select
+              aria-label="Sort by field"
+              value={sortConfig.key}
+              onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="bagProfit">Sort: Bag Profit</option>
+              <option value="profitPerItem">Sort: Profit (ea)</option>
+              <option value="bagProfitPerHour">Sort: Profit/hr</option>
+              <option value="buy_price">Sort: Buy Price</option>
+              <option value="stockQuantity">Sort: Stock</option>
+              <option value="name">Sort: Item Name</option>
+              <option value="owned">Sort: Owned</option>
+            </select>
+            <select
+              aria-label="Sort direction"
+              value={sortConfig.direction}
+              onChange={(e) => setSortConfig(prev => ({ ...prev, direction: e.target.value }))}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="desc">Order: Descending</option>
+              <option value="asc">Order: Ascending</option>
+            </select>
           </div>
         </div>
       ) : (
