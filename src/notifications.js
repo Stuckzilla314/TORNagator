@@ -89,6 +89,22 @@ export const manageTravelNotification = async (userData, enabled = true) => {
         }
 
         if (permission === 'granted') {
+          // Ensure the custom notification channel is created
+          try {
+            await LocalNotifications.createChannel({
+              id: 'travel_landing_channel',
+              name: 'Travel Landing Notifications',
+              description: 'Notifies when you land from travel',
+              importance: 5, // High importance (trigger popups/sound)
+              sound: 'airline_chime',
+              visibility: 1, // Public visibility
+              vibration: true
+            });
+            console.log('[Notification] Travel landing notification channel verified.');
+          } catch (channelErr) {
+            console.error('[Notification] Error creating notification channel:', channelErr);
+          }
+
           // Cancel any existing travel landing notification before scheduling a new one
           await LocalNotifications.cancel({ notifications: [{ id: TRAVEL_NOTIF_ID }] });
 
@@ -101,7 +117,8 @@ export const manageTravelNotification = async (userData, enabled = true) => {
                 title: "TORNagator - Landed!",
                 body: `You have arrived at ${destination}.`,
                 schedule: { at: new Date(landingTimeMs) },
-                sound: null,
+                channelId: 'travel_landing_channel',
+                sound: 'airline_chime',
                 attachments: null,
                 actionTypeId: "",
                 extra: null
