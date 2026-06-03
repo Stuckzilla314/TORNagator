@@ -2382,7 +2382,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       setCanGoForward(!!nativeCanGoForward);
 
       if (tabId && url && url !== tabUrl) {
-        onUpdate(tabId, { url });
+        onUpdate(tabId, { url, title: 'Loading...' });
       }
 
       // Inject stats redirects and styles on Capacitor overlay
@@ -2400,7 +2400,15 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       }
     };
 
+    const handleTornTitleChange = (e) => {
+      const { title } = e.detail || {};
+      if (tabId && title) {
+        onUpdate(tabId, { title });
+      }
+    };
+
     window.addEventListener('tornUrlChange', handleTornUrlChange);
+    window.addEventListener('tornTitleChange', handleTornTitleChange);
 
     // Run initial injections if overlay is active
     if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
@@ -2418,6 +2426,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
     return () => {
       window.removeEventListener('tornUrlChange', handleTornUrlChange);
+      window.removeEventListener('tornTitleChange', handleTornTitleChange);
     };
   }, [isActive, tabId, tabUrl, onUpdate, targetCountry, trySelectCountry, syncMetadata]);
 

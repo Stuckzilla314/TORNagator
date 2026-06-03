@@ -40,9 +40,23 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void run() {
                 if (getBridge() == null || getBridge().getWebView() == null) return;
-                String safeUrl = url.replace("'", "\\'");
+                String safeUrl = url.replace("\\", "\\\\").replace("'", "\\'");
                 String js = "window.dispatchEvent(new CustomEvent('tornUrlChange', { " +
                             "detail: { url: '" + safeUrl + "', canGoBack: " + canGoBack + ", canGoForward: " + canGoForward + " } " +
+                            "}));";
+                getBridge().getWebView().evaluateJavascript(js, null);
+            }
+        });
+    }
+
+    private void dispatchTitleChange(final String title) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (getBridge() == null || getBridge().getWebView() == null) return;
+                String safeTitle = title.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
+                String js = "window.dispatchEvent(new CustomEvent('tornTitleChange', { " +
+                            "detail: { title: '" + safeTitle + "' } " +
                             "}));";
                 getBridge().getWebView().evaluateJavascript(js, null);
             }
@@ -85,6 +99,13 @@ public class MainActivity extends BridgeActivity {
                                                      + consoleMessage.lineNumber() + " of "
                                                      + consoleMessage.sourceId());
                                 return true;
+                            }
+
+                            @Override
+                            public void onReceivedTitle(WebView view, String title) {
+                                super.onReceivedTitle(view, title);
+                                Log.d(TAG, "Overlay received title: " + title);
+                                dispatchTitleChange(title);
                             }
                         });
                         
