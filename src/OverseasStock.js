@@ -1456,16 +1456,30 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   ? historicalData[historicalData.length - 1].stock 
                   : (selectedItemForGraph.stockQuantity || 0);
 
-                if (restocks.length < 3) {
+const selloutToRestockIntervals = [];
+                for (let i = 0; i < sellOuts.length; i++) {
+                  const sTime = sellOuts[i];
+                  const nextR = restocks.find(r => r > sTime);
+                  if (nextR) {
+                    selloutToRestockIntervals.push(nextR - sTime);
+                  }
+                }
+
+                const restockToRestockIntervals = [];
+                for (let i = 1; i < restocks.length; i++) {
+                  restockToRestockIntervals.push(restocks[i] - restocks[i - 1]);
+                }
+
+                let intervals = selloutToRestockIntervals;
+                if (intervals.length < 3) {
+                  intervals = restockToRestockIntervals;
+                }
+
+                if (intervals.length < 3) {
                   if (liveStockQuantity === 0) {
                     return <div style={{ textAlign: isCapacitor ? 'left' : 'right', fontSize: '0.7rem', color: '#666' }}>Gathering data...</div>;
                   }
                   return null;
-                }
-
-                const intervals = [];
-                for (let i = 1; i < restocks.length; i++) {
-                  intervals.push(restocks[i] - restocks[i - 1]);
                 }
 
                 const sorted = [...intervals].sort((a, b) => a - b);
@@ -1476,25 +1490,49 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 const lastRestock = restocks[restocks.length - 1];
                 const now = Date.now();
 
-                // --- Adaptive Cycle Analysis (ACA) ---
-                // Adjust prediction based on the velocity of the last sell-out
-                let acaAdjustment = 1.0;
-                const lastSellOut = [...sellOuts].reverse().find(s => s >= lastRestock);
-                if (lastSellOut) {
-                  const sellDurationMins = (lastSellOut - lastRestock) / 60000;
-                  if (sellDurationMins < 30) acaAdjustment = 0.5; // High velocity -> Fast restock
-                  else if (sellDurationMins < 60) acaAdjustment = 1.0; // Normal velocity
-                  else acaAdjustment = 1.5; // Low velocity -> Slower restock
+                // Find when the stock went to 0 in the current out-of-stock period
+                let wentToZeroTimestamp = null;
+                if (liveStockQuantity === 0) {
+                  for (let i = fullHistory.length - 1; i >= 0; i--) {
+                    if (fullHistory[i].stock === 0) {
+                      wentToZeroTimestamp = fullHistory[i].timestamp;
+                    } else {
+                      break;
+                    }
+                  }
                 }
-                const adjustedMedian = median * acaAdjustment;
-                // --------------------------------------
+
+                let rawExpected;
+                if (liveStockQuantity === 0 && wentToZeroTimestamp) {
+                  rawExpected = wentToZeroTimestamp + p10;
+                } else {
+                  // --- Adaptive Cycle Analysis (ACA) ---
+                  // Adjust prediction based on the velocity of the last sell-out
+                  let acaAdjustment = 1.0;
+                  const lastSellOut = [...sellOuts].reverse().find(s => s >= lastRestock);
+                  if (lastSellOut) {
+                    const sellDurationMins = (lastSellOut - lastRestock) / 60000;
+                    if (sellDurationMins < 30) acaAdjustment = 0.5; // High velocity -> Fast restock
+                    else if (sellDurationMins < 60) acaAdjustment = 1.0; // Normal velocity
+                    else acaAdjustment = 1.5; // Low velocity -> Slower restock
+                  }
+
+                  // Use restock-to-restock intervals for in-stock cycle duration prediction
+                  const r2rSorted = [...restockToRestockIntervals].sort((a, b) => a - b);
+                  const r2rMedian = r2rSorted.length > 0 ? r2rSorted[Math.floor(r2rSorted.length / 2)] : median;
+                  const adjustedMedian = r2rMedian * acaAdjustment;
+                  rawExpected = lastRestock + adjustedMedian;
+                  // --------------------------------------
+                }
+
+
+
 
                 // --- Tick Alignment Logic ---
-                // Snap the raw prediction to the next 15-minute tick (:00, :15, :30, :45)
-                const rawExpected = lastRestock + adjustedMedian;
+                // Snap the raw prediction to the next 5-minute tick (:00, :05, :10, :15, ...)
                 const expectedDate = new Date(rawExpected);
                 const minutes = expectedDate.getMinutes();
-                const snappedMinutes = Math.ceil(minutes / 15) * 15;
+                const snappedMinutes = Math.ceil(minutes / 5) * 5;
                 expectedDate.setMinutes(snappedMinutes);
                 expectedDate.setSeconds(0);
                 expectedDate.setMilliseconds(0);
@@ -1502,20 +1540,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
                 // Proactive Tick Shifting: If we have a confirmed 0-stock data point 
                 // AFTER our expected tick, we know that tick was missed. 
-                // Shift forward to the next viable 15-minute tick.
+                // Shift forward to the next viable 5-minute tick.
                 const latestZeroPoint = [...historicalData].reverse().find(d => d.stock === 0);
                 if (latestZeroPoint && latestZeroPoint.timestamp >= snappedExpected) {
-                  // Shift to the first 15m tick AFTER the latest confirmed zero
+                  // Shift to the first 5m tick AFTER the latest confirmed zero
                   const nextTickDate = new Date(latestZeroPoint.timestamp);
                   const nextMins = nextTickDate.getMinutes();
-                  const nextSnappedMins = Math.ceil((nextMins + 1) / 15) * 15;
+                  const nextSnappedMins = Math.ceil((nextMins + 1) / 5) * 5;
                   nextTickDate.setMinutes(nextSnappedMins);
                   nextTickDate.setSeconds(0);
                   nextTickDate.setMilliseconds(0);
                   snappedExpected = nextTickDate.getTime();
                   expectedDate.setTime(snappedExpected); // Update date object for display
                 }
-                // -----------------------------
+                // --------------------------------------
+
+
 
                 let statusText = "";
                 let statusColor = "#3498db";
