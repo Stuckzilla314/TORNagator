@@ -99,6 +99,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [maxBagCost, setMaxBagCost] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [lowCashItem, setLowCashItem] = useState(null);
+  const [showTotalProfit, setShowTotalProfit] = useState(false);
+
+  const toggleShowTotalProfit = () => {
+    setShowTotalProfit(prev => {
+      const next = !prev;
+      setSortConfig(config => {
+        if (config.key === 'bagProfit' && !next) {
+          return { ...config, key: 'profitPerItem' };
+        } else if (config.key === 'profitPerItem' && next) {
+          return { ...config, key: 'bagProfit' };
+        }
+        return config;
+      });
+      return next;
+    });
+  };
 
   // Handle native Android hardware back button and swipe-to-dismiss
   useEffect(() => {
@@ -903,10 +919,16 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                       ${item.market_value.toLocaleString()}
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Bag Profit (ea)</div>
+                  <div onClick={(e) => { e.stopPropagation(); toggleShowTotalProfit(); }} style={{ cursor: 'pointer' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                      {showTotalProfit ? 'Bag Profit' : 'Profit (ea)'}
+                    </div>
                     <div style={{ fontSize: '0.8rem', color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold', marginTop: '1px' }}>
-                      ${item.bagProfit.toLocaleString()} <span style={{ color: '#666', fontWeight: 'normal', fontSize: '0.7rem' }}>(${item.profitPerItem.toLocaleString()} ea)</span>
+                      {showTotalProfit ? (
+                        `$${item.bagProfit.toLocaleString()}`
+                      ) : (
+                        `$${item.profitPerItem.toLocaleString()} ea`
+                      )}
                     </div>
                   </div>
                   <div>
@@ -988,9 +1010,9 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     Market Value {renderSortIndicator('market_value')}
                   </div>
                 </th>
-                <th style={headerStyle} onClick={() => requestSort('bagProfit')}>
+                <th style={headerStyle} onClick={() => requestSort(showTotalProfit ? 'bagProfit' : 'profitPerItem')}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    Bag Profit {renderSortIndicator('bagProfit')}
+                    {showTotalProfit ? 'Bag Profit' : 'Profit (ea)'} {renderSortIndicator(showTotalProfit ? 'bagProfit' : 'profitPerItem')}
                   </div>
                 </th>
                 <th style={headerStyle} onClick={() => requestSort('bagProfitPerHour')}>
@@ -1061,13 +1083,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     <td style={{ ...cellStyle, color: '#f39c12' }}>
                       ${(item.market_value || 0).toLocaleString()}
                     </td>
-                    <td style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0' }}>
-                      <div style={{ fontWeight: 'bold' }}>
-                        ${item.bagProfit.toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                        ${item.profitPerItem.toLocaleString()} ea
-                      </div>
+                    <td 
+                      style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0', cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleShowTotalProfit();
+                      }}
+                    >
+                      {showTotalProfit ? (
+                        <div style={{ fontWeight: 'bold' }}>
+                          ${item.bagProfit.toLocaleString()}
+                        </div>
+                      ) : (
+                        <div style={{ fontWeight: 'bold' }}>
+                          ${item.profitPerItem.toLocaleString()} ea
+                        </div>
+                      )}
                     </td>
                     <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
                       ${Math.round(item.bagProfitPerHour).toLocaleString()}

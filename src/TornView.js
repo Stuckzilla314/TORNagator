@@ -1756,19 +1756,43 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   const calcQty = (stock === 0) ? cargoCapacity : qty;
                   const totalProfit = profitPerItem * calcQty;
                   
+                  const showTotal = !!window._tornagator_show_total_profit;
+
                   if (marketValue === 0) {
                     profitSpan.textContent = ' (N/A)';
                     profitSpan.style.color = '#888';
-                  } else if (calcQty === 0) {
-                    profitSpan.textContent = ' (+$0)';
-                    profitSpan.style.color = '#888';
                   } else {
-                    profitSpan.textContent = ' (' + (totalProfit < 0 ? '-' : '+') + '$' + Math.abs(totalProfit).toLocaleString() + ')';
-                    profitSpan.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+                    if (showTotal) {
+                      if (calcQty === 0) {
+                        profitSpan.textContent = ' (+$0)';
+                        profitSpan.style.color = '#888';
+                      } else {
+                        profitSpan.textContent = ' (' + (totalProfit < 0 ? '-' : '+') + '$' + Math.abs(totalProfit).toLocaleString() + ')';
+                        profitSpan.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
+                      }
+                    } else {
+                      profitSpan.textContent = ' (' + (profitPerItem < 0 ? '-' : '+') + '$' + Math.abs(profitPerItem).toLocaleString() + ' ea)';
+                      profitSpan.style.color = profitPerItem > 0 ? '#10b981' : '#ef4444';
+                    }
                   }
                 };
 
                 updateRowProfit();
+
+                let profitSpan = button.querySelector('.injected-profit-span');
+                if (profitSpan && !profitSpan.dataset.hasClickListener) {
+                  profitSpan.dataset.hasClickListener = 'true';
+                  profitSpan.style.cursor = 'pointer';
+                  profitSpan.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window._tornagator_show_total_profit = !window._tornagator_show_total_profit;
+                    // Trigger instant refresh
+                    if (typeof injectProfitAndCrimes === 'function') {
+                      injectProfitAndCrimes();
+                    }
+                  });
+                }
 
                 if (input && !input.dataset.hasProfitListener) {
                   input.dataset.hasProfitListener = 'true';
