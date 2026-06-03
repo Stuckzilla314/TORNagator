@@ -1648,6 +1648,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             const sortedNames = window._tornagator_sorted_names || [];
             const cargoCapacity = window._tornagator_cargo_capacity || 5;
 
+
             // 1. Find and update header cells
             if (hasTravelTable) {
               const headers = Array.from(document.querySelectorAll('[class*="itemsHeader___"]')).filter(el => {
@@ -1676,135 +1677,165 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               // Cleanup any previously injected profit columns/headers if they exist in DOM
               document.querySelectorAll('.injected-profit-header, .injected-profit-cell').forEach(el => el.remove());
 
-              // 2. Find and update item rows
-              const rows = Array.from(document.querySelectorAll('[class*="row___"]')).filter(row => {
-                const hasInput = Array.from(row.querySelectorAll('input')).some(inp => {
-                  const type = (inp.getAttribute('type') || 'text').toLowerCase();
-                  return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
-                });
-                const hasButton = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
-                return hasInput && hasButton && row.children.length >= 5;
-              });
-
-              for (const row of rows) {
-                // Find header row for this item row
-                const tableWrapper = row.closest('[class*="stockTableWrapper___"]') || row.parentElement?.parentElement;
-                const headerRow = tableWrapper ? tableWrapper.querySelector('[class*="itemsHeader___"]') : null;
-                if (!headerRow) continue;
-
-                const originalHeaderCells = Array.from(headerRow.children);
-                const costHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('cost'));
-                const nameHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('name'));
-                const stockHeaderIdx = originalHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('stock'));
-                if (costHeaderIdx === -1 || nameHeaderIdx === -1) continue;
-
-                const originalRowCells = Array.from(row.children);
-                const costCell = originalRowCells[costHeaderIdx];
-                const nameCell = originalRowCells[nameHeaderIdx];
-                if (!costCell || !nameCell) continue;
-
-                const nameSpan = nameCell.querySelector('.injected-market-price');
-                let itemName = nameCell.textContent;
-                if (nameSpan) {
-                  itemName = itemName.replace(nameSpan.textContent, '');
-                }
-                itemName = itemName.trim().toLowerCase();
-
-                let marketValue = 0;
-                let matchedName = '';
-                for (const name of sortedNames) {
-                  if (itemName.includes(name)) {
-                    marketValue = marketValues[name];
-                    matchedName = name;
-                    break;
-                  }
-                }
-
-                if (matchedName) {
-                  let priceSpan = nameCell.querySelector('.injected-market-price');
-                  if (!priceSpan) {
-                    priceSpan = document.createElement('span');
-                    priceSpan.className = 'injected-market-price';
-                    priceSpan.style.color = '#888';
-                    priceSpan.style.fontSize = '0.8em';
-                    priceSpan.style.marginLeft = '8px';
-                    nameCell.appendChild(priceSpan);
-                  }
-                  priceSpan.textContent = marketValue > 0 ? '($' + marketValue.toLocaleString() + ')' : '(N/A)';
-                }
-
-                const neededSpaceSpan = costCell.querySelector('[class*="neededSpace___"]');
-                const costText = (neededSpaceSpan || costCell).textContent.replace(/[^0-9]/g, '');
-                const cost = parseInt(costText, 10) || 0;
-                const profitPerItem = marketValue - cost;
-
-                const input = row.querySelector('input');
-                const button = row.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
-
-                const updateRowProfit = () => {
-                  let profitSpan = button.querySelector('.injected-profit-span');
-                  if (!profitSpan) {
-                    profitSpan = document.createElement('span');
-                    profitSpan.className = 'injected-profit-span';
-                    profitSpan.style.fontWeight = 'bold';
-                    button.appendChild(profitSpan);
-                  }
-
-                  const qty = parseInt(input?.value || '0', 10) || 0;
-                  let stock = 0;
-                  if (stockHeaderIdx !== -1 && originalRowCells[stockHeaderIdx]) {
-                    const stockText = originalRowCells[stockHeaderIdx].textContent.replace(/[^0-9]/g, '');
-                    stock = parseInt(stockText, 10) || 0;
-                  }
-
-                  // Calculate profit based on qty, but if stock is 0, base it on cargoCapacity
-                  const calcQty = (stock === 0) ? cargoCapacity : qty;
-                  const totalProfit = profitPerItem * calcQty;
-                  
-                  const showTotal = !!window._tornagator_show_total_profit;
-
-                  if (marketValue === 0) {
-                    profitSpan.textContent = ' (N/A)';
-                    profitSpan.style.color = '#888';
-                  } else {
-                    if (showTotal) {
-                      if (calcQty === 0) {
-                        profitSpan.textContent = ' (+$0)';
-                        profitSpan.style.color = '#888';
-                      } else {
-                        profitSpan.textContent = ' (' + (totalProfit < 0 ? '-' : '+') + '$' + Math.abs(totalProfit).toLocaleString() + ')';
-                        profitSpan.style.color = totalProfit > 0 ? '#10b981' : '#ef4444';
-                      }
-                    } else {
-                      profitSpan.textContent = ' (' + (profitPerItem < 0 ? '-' : '+') + '$' + Math.abs(profitPerItem).toLocaleString() + ' ea)';
-                      profitSpan.style.color = profitPerItem > 0 ? '#10b981' : '#ef4444';
-                    }
-                  }
-                };
-
-                updateRowProfit();
-
-                let profitSpan = button.querySelector('.injected-profit-span');
-                if (profitSpan && !profitSpan.dataset.hasClickListener) {
-                  profitSpan.dataset.hasClickListener = 'true';
-                  profitSpan.style.cursor = 'pointer';
-                  profitSpan.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window._tornagator_show_total_profit = !window._tornagator_show_total_profit;
-                    // Trigger instant refresh
-                    if (typeof injectProfitAndCrimes === 'function') {
-                      injectProfitAndCrimes();
-                    }
-                  });
-                }
-
-                if (input && !input.dataset.hasProfitListener) {
-                  input.dataset.hasProfitListener = 'true';
-                  input.addEventListener('input', updateRowProfit);
-                  input.addEventListener('change', updateRowProfit);
-                }
+              // Determine current travel display mode (default: sell)
+              if (!window._tornagator_travel_mode) {
+                window._tornagator_travel_mode = 'sell';
               }
+
+              // Define global redraw function for travel rows once
+              window._tornagator_redraw_travel = () => {
+                const mode = window._tornagator_travel_mode || 'sell';
+                const currentRows = Array.from(document.querySelectorAll('[class*="row___"]')).filter(r => {
+                  const hasInput = Array.from(r.querySelectorAll('input')).some(inp => {
+                    const type = (inp.getAttribute('type') || 'text').toLowerCase();
+                    return type !== 'button' && type !== 'submit' && type !== 'image' && type !== 'hidden';
+                  });
+                  const hasBtn = r.querySelector('button, a, [role="button"], input[type="button"], input[type="submit"]');
+                  return hasInput && hasBtn && r.children.length >= 5;
+                });
+
+
+                for (const r of currentRows) {
+                  const tWrapper = r.closest('[class*="stockTableWrapper___"]') || r.parentElement?.parentElement;
+                  const hRow = tWrapper ? tWrapper.querySelector('[class*="itemsHeader___"]') : null;
+                  if (!hRow) continue;
+
+                  const origHeaderCells = Array.from(hRow.children);
+                  const costHIdx = origHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('cost'));
+                  const nameHIdx = origHeaderCells.findIndex(cell => cell.textContent.toLowerCase().includes('name'));
+                  if (costHIdx === -1 || nameHIdx === -1) continue;
+
+                  const origRowCells = Array.from(r.children);
+                  const cCell = origRowCells[costHIdx];
+                  const nCell = origRowCells[nameHIdx];
+                  if (!cCell || !nCell) continue;
+
+                  let pSpan = nCell.querySelector('.injected-market-price');
+                  let nameTextSpan = nCell.querySelector('.tornagator-name-text');
+                  let wrapper = nCell.querySelector('.tornagator-cell-wrapper');
+
+                  let iName = '';
+                  if (nameTextSpan) {
+                    iName = nameTextSpan.textContent;
+                  } else {
+                    iName = nCell.textContent;
+                    if (pSpan) {
+                      iName = iName.replace(pSpan.textContent, '');
+                    }
+                  }
+                  iName = iName.trim().toLowerCase();
+
+                  let mValue = 0;
+                  let mName = '';
+                  for (const name of sortedNames) {
+                    if (iName.includes(name)) {
+                      mValue = marketValues[name];
+                      mName = name;
+                      break;
+                    }
+                  }
+
+
+                  if (!mName) continue;
+
+                  // Setup wrapper / styles on name cell to support stacked name and pill layout
+                  if (!wrapper) {
+                    wrapper = document.createElement('div');
+                    wrapper.className = 'tornagator-cell-wrapper';
+                    wrapper.style.display = 'flex';
+                    wrapper.style.flexDirection = 'column';
+                    wrapper.style.justifyContent = 'center';
+                    wrapper.style.alignItems = 'flex-start';
+                    wrapper.style.width = '100%';
+                    wrapper.style.boxSizing = 'border-box';
+
+                    if (!nameTextSpan) {
+                      nameTextSpan = document.createElement('span');
+                      nameTextSpan.className = 'tornagator-name-text';
+                      nameTextSpan.style.overflow = 'hidden';
+                      nameTextSpan.style.textOverflow = 'ellipsis';
+                      nameTextSpan.style.whiteSpace = 'nowrap';
+                      nameTextSpan.style.width = '100%';
+                      nameTextSpan.style.display = 'block';
+
+                      const nodesToMove = [];
+                      for (const child of Array.from(nCell.childNodes)) {
+                        if (child !== pSpan && child !== wrapper) {
+                          nodesToMove.push(child);
+                        }
+                      }
+                      nodesToMove.forEach(node => nameTextSpan.appendChild(node));
+                      wrapper.appendChild(nameTextSpan);
+                    } else {
+                      wrapper.appendChild(nameTextSpan);
+                    }
+
+                    if (pSpan) {
+                      wrapper.appendChild(pSpan);
+                    }
+                    nCell.appendChild(wrapper);
+                  }
+
+                  const ndSpaceSpan = cCell.querySelector('[class*="neededSpace___"]');
+                  const cText = (ndSpaceSpan || cCell).textContent.replace(/[^0-9]/g, '');
+                  const cCost = parseInt(cText, 10) || 0;
+                  const pPerItem = mValue - cCost;
+                  const tProfit = pPerItem * cargoCapacity;
+
+                  if (!pSpan) {
+                    pSpan = document.createElement('span');
+                    pSpan.className = 'injected-market-price';
+                    wrapper.appendChild(pSpan);
+                  }
+
+                  pSpan.style.fontSize = '0.74em';
+                  pSpan.style.cursor = 'pointer';
+                  pSpan.style.padding = '2px 6px';
+                  pSpan.style.borderRadius = '4px';
+                  pSpan.style.userSelect = 'none';
+                  pSpan.style.display = 'inline-block';
+                  pSpan.style.fontWeight = 'bold';
+                  pSpan.style.fontFamily = "-apple-system, BlinkMacSystemFont, sans-serif";
+                  pSpan.style.transition = 'all 0.1s ease';
+                  pSpan.style.marginTop = '4px';
+
+                  if (!nCell.dataset.hasClickListener) {
+                    nCell.dataset.hasClickListener = 'true';
+                    nCell.style.cursor = 'pointer';
+                    nCell.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window._tornagator_travel_mode = window._tornagator_travel_mode === 'sell' ? 'profit' : 'sell';
+                      if (typeof window._tornagator_redraw_travel === 'function') {
+                        window._tornagator_redraw_travel();
+                      }
+                    });
+                  }
+
+                  if (mValue === 0) {
+                    pSpan.textContent = 'N/A';
+                    pSpan.style.color = '#888';
+                    pSpan.style.background = 'rgba(255, 255, 255, 0.05)';
+                    pSpan.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                  } else {
+                    if (mode === 'sell') {
+                      pSpan.textContent = 'Sell: $' + mValue.toLocaleString();
+                      pSpan.style.color = '#3498db';
+                      pSpan.style.background = 'rgba(52, 152, 219, 0.08)';
+                      pSpan.style.border = '1px solid rgba(52, 152, 219, 0.18)';
+                    } else {
+                      const isProfit = tProfit > 0;
+                      pSpan.textContent = 'Cargo: ' + (isProfit ? '+' : '') + '$' + tProfit.toLocaleString();
+                      pSpan.style.color = isProfit ? '#2ecc71' : '#e74c3c';
+                      pSpan.style.background = isProfit ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
+                      pSpan.style.border = isProfit ? '1px solid rgba(46, 204, 113, 0.18)' : '1px solid rgba(231, 76, 60, 0.18)';
+                    }
+                  }
+                }
+              };
+
+              // Trigger initial redraw immediately
+              window._tornagator_redraw_travel();
             }
 
             // 3. Inject market values for found items on Crimes page (ONLY under outcome reward container)
