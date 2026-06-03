@@ -752,11 +752,13 @@ function App() {
 
           {apiKey && userData && (
             <>
-              {activeTab === 'dashboard' ? (
+              <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}>
                 <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
-              ) : activeTab === 'faction' ? (
+              </div>
+              <div style={{ display: activeTab === 'faction' ? 'block' : 'none' }}>
                 <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
-              ) : activeTab === 'torn' ? (
+              </div>
+              <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
                 <TornView 
                   userData={userData} 
                   factionData={factionData}
@@ -769,10 +771,13 @@ function App() {
                   itemsData={itemsData}
                   cargoCapacity={cargoCapacity}
                   showNavControls={showNavControls}
+                  isActive={activeTab === 'torn'}
                 />
-              ) : activeTab === 'apilogs' ? (
+              </div>
+              <div style={{ display: activeTab === 'apilogs' ? 'block' : 'none' }}>
                 <ApiLogsView />
-              ) : (
+              </div>
+              <div style={{ display: activeTab === 'stock' ? 'block' : 'none' }}>
                 <OverseasStock
                   itemsData={itemsData}
                   userData={userData}
@@ -783,7 +788,7 @@ function App() {
                   setFilter={setCountryFilter}
                   onOpenInTorn={handleOpenInTorn}
                 />
-              )}
+              </div>
             </>
           )}
 

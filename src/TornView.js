@@ -1042,7 +1042,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           run();
         })()
       `;
-      window.AndroidTornBridge.executeInOverlay(script);
+      window.AndroidTornBridge.executeInOverlay(tabId, script);
       setTargetCountry(null);
     } else {
       const wv = webviewRef.current;
@@ -1154,7 +1154,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           }
         });
     }
-  }, [targetCountry, setTargetCountry, tabUrl]);
+  }, [targetCountry, setTargetCountry, tabUrl, tabId]);
 
   useEffect(() => {
     const wv = webviewRef.current;
@@ -2364,7 +2364,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
         if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
 
-        window.AndroidTornBridge.executeInOverlay(script);
+        window.AndroidTornBridge.executeInOverlay(tabId, script);
       }, 1000);
 
       return () => clearInterval(profitInterval);
@@ -2401,7 +2401,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
       return () => clearInterval(profitInterval);
     }
-  }, [isActive, isNewTab, userData, tabUrl]);
+  }, [isActive, isNewTab, userData, tabUrl, tabId]);
 
   const placeholderRef = useRef(null);
 
@@ -2435,9 +2435,19 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       })()
     `;
 
-    console.log("TORNagator: Syncing metadata into overlay WebView");
-    window.AndroidTornBridge.executeInOverlay(injectScript);
-  }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
+    console.log("TORNagator: Syncing metadata into overlay WebView for", tabId);
+    window.AndroidTornBridge.executeInOverlay(tabId, injectScript);
+  }, [itemsData, cargoCapacity, apiKey, userData, factionData, tabId]);
+
+  // Clean up WebView instance on Android when browser tab component is unmounted
+  useEffect(() => {
+    return () => {
+      if (isCapacitor && window.AndroidTornBridge && window.AndroidTornBridge.destroyTorn) {
+        console.log(`[WebviewTab] Component unmounting, destroying WebView for tabId=${tabId}`);
+        window.AndroidTornBridge.destroyTorn(tabId);
+      }
+    };
+  }, [tabId]);
 
   // Sync back/forward button states and url updates from native WebView
   useEffect(() => {
@@ -2445,7 +2455,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     if (!isActive) return;
 
     const handleTornUrlChange = (e) => {
-      const { url, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail || {};
+      const { tabId: eventTabId, url, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail || {};
+      if (eventTabId && eventTabId !== tabId) return;
       setCanGoBack(!!nativeCanGoBack);
       setCanGoForward(!!nativeCanGoForward);
 
@@ -2456,8 +2467,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       // Inject stats redirects and styles on Capacitor overlay
       if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
         syncMetadata();
-        window.AndroidTornBridge.executeInOverlay(INJECTED_CSS_SCRIPT);
-        window.AndroidTornBridge.executeInOverlay(STATS_REDIR_SCRIPT);
+        window.AndroidTornBridge.executeInOverlay(tabId, INJECTED_CSS_SCRIPT);
+        window.AndroidTornBridge.executeInOverlay(tabId, STATS_REDIR_SCRIPT);
 
         // Auto-select target country if active
         if (targetCountry) {
@@ -2469,7 +2480,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     };
 
     const handleTornTitleChange = (e) => {
-      const { title } = e.detail || {};
+      const { tabId: eventTabId, title } = e.detail || {};
+      if (eventTabId && eventTabId !== tabId) return;
       if (tabId && title) {
         onUpdate(tabId, { title });
       }
@@ -2481,8 +2493,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     // Run initial injections if overlay is active
     if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
       syncMetadata();
-      window.AndroidTornBridge.executeInOverlay(INJECTED_CSS_SCRIPT);
-      window.AndroidTornBridge.executeInOverlay(STATS_REDIR_SCRIPT);
+      window.AndroidTornBridge.executeInOverlay(tabId, INJECTED_CSS_SCRIPT);
+      window.AndroidTornBridge.executeInOverlay(tabId, STATS_REDIR_SCRIPT);
 
       // Auto-select target country if active
       if (targetCountry) {
@@ -2524,12 +2536,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const width = Math.round(rect.width * dpr);
         const height = Math.round(rect.height * dpr);
 
-        if (window.AndroidTornBridge) {
-          window.AndroidTornBridge.showTorn(x, y, width, height, tabUrl);
+        if (window.AndroidTornBridge && window.AndroidTornBridge.showTorn) {
+          window.AndroidTornBridge.showTorn(tabId, x, y, width, height, tabUrl);
         }
       } else {
-        if (window.AndroidTornBridge) {
-          window.AndroidTornBridge.hideTorn();
+        if (window.AndroidTornBridge && window.AndroidTornBridge.hideTorn) {
+          window.AndroidTornBridge.hideTorn(tabId);
         }
       }
     };
@@ -2548,22 +2560,22 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     window.addEventListener('scroll', updateOverlay, true);
 
     return () => {
-      console.log(`[TornView Overlay] Cleanup tabId=${tabId}`);
+      console.log(`[TornView Overlay] Cleanup visibility tabId=${tabId}`);
       if (observer) {
         observer.disconnect();
       }
       window.removeEventListener('resize', updateOverlay);
       window.removeEventListener('scroll', updateOverlay, true);
-      if (window.AndroidTornBridge) {
-        window.AndroidTornBridge.hideTorn();
+      if (window.AndroidTornBridge && window.AndroidTornBridge.hideTorn) {
+        window.AndroidTornBridge.hideTorn(tabId);
       }
     };
   }, [isActive, tabId, tabUrl]);
 
   const handleGoBack = () => {
     if (isCapacitor) {
-      if (window.AndroidTornBridge) {
-        window.AndroidTornBridge.goBack();
+      if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
+        window.AndroidTornBridge.goBack(tabId);
       }
     } else {
       const wv = webviewRef.current;
@@ -2576,8 +2588,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   const handleGoForward = () => {
     if (isCapacitor) {
-      if (window.AndroidTornBridge) {
-        window.AndroidTornBridge.goForward();
+      if (window.AndroidTornBridge && window.AndroidTornBridge.goForward) {
+        window.AndroidTornBridge.goForward(tabId);
       }
     } else {
       const wv = webviewRef.current;
@@ -2590,8 +2602,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
   const handleReload = () => {
     if (isCapacitor) {
-      if (window.AndroidTornBridge) {
-        window.AndroidTornBridge.reload();
+      if (window.AndroidTornBridge && window.AndroidTornBridge.reload) {
+        window.AndroidTornBridge.reload(tabId);
       }
     } else {
       const wv = webviewRef.current;
@@ -3223,7 +3235,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered TornView component.
  */
-const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls }) => {
+const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -4008,7 +4020,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
               <WebviewTab
                 key={tab.id}
                 tab={tab}
-                isActive={activeTabId === tab.id}
+                isActive={isActive && activeTabId === tab.id}
                 onUpdate={handleTabUpdate}
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
