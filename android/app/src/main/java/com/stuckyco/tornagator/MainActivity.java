@@ -18,6 +18,7 @@ public class MainActivity extends BridgeActivity {
     private static final String TAG = "TornOverlay";
     private WebView tornWebView;
     private final String customUA = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36";
+    private String lastDispatchedUrl = "";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -36,6 +37,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void dispatchUrlChange(final String url, final boolean canGoBack, final boolean canGoForward) {
+        lastDispatchedUrl = url;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -152,12 +154,15 @@ public class MainActivity extends BridgeActivity {
                     }
                     tornWebView.bringToFront();
                     
-                    // Load the URL if it is different
-                    String currentUrl = tornWebView.getUrl();
-                    if (currentUrl == null || !currentUrl.equals(url)) {
+                    // Load the URL if it is different from the last url we loaded/dispatched
+                    if (lastDispatchedUrl == null || !lastDispatchedUrl.equals(url)) {
                         Log.d(TAG, "Loading URL in overlay: " + url);
                         tornWebView.loadUrl(url);
+                    } else {
+                        Log.d(TAG, "Skipping loadUrl because url matches lastDispatchedUrl: " + url);
                     }
+                    // Sync lastDispatchedUrl in case it was loaded externally
+                    lastDispatchedUrl = url;
                 }
             });
         }
