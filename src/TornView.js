@@ -1454,10 +1454,20 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   const container = document.createElement('div');
                   container.id = 'tornagator-gym-steadfast';
                   container.dataset.stats = dataStr;
-                  container.style.display = 'inline-flex';
-                  container.style.alignItems = 'center';
-                  container.style.gap = '6px';
-                  container.style.marginLeft = '16px';
+                  
+                  if (window.innerWidth < 600) {
+                    container.style.display = 'flex';
+                    container.style.flexWrap = 'wrap';
+                    container.style.gap = '6px';
+                    container.style.marginLeft = '0px';
+                    container.style.marginTop = '6px';
+                  } else {
+                    container.style.display = 'inline-flex';
+                    container.style.alignItems = 'center';
+                    container.style.gap = '6px';
+                    container.style.marginLeft = '16px';
+                  }
+                  
                   container.style.verticalAlign = 'middle';
                   container.style.fontFamily = "'Inter', -apple-system, sans-serif";
                   container.style.fontSize = '12px';
@@ -1467,16 +1477,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   container.style.padding = '4px 10px';
                   container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.4)';
                   container.style.color = '#e0e0e0';
-
-                  const labelSpan = document.createElement('span');
-                  labelSpan.textContent = 'Steadfast:';
-                  labelSpan.style.fontWeight = '700';
-                  labelSpan.style.fontSize = '11px';
-                  labelSpan.style.color = '#888';
-                  labelSpan.style.textTransform = 'uppercase';
-                  labelSpan.style.letterSpacing = '0.5px';
-                  labelSpan.style.marginRight = '4px';
-                  container.appendChild(labelSpan);
 
                   if (hasData) {
                     const createBadge = (label, val) => {
@@ -1528,8 +1528,13 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                   const h1 = header.querySelector('h1');
                   if (h1) {
-                    h1.style.display = 'inline-block';
-                    h1.style.verticalAlign = 'middle';
+                    if (window.innerWidth < 600) {
+                      h1.style.display = 'block';
+                      h1.style.marginBottom = '4px';
+                    } else {
+                      h1.style.display = 'inline-block';
+                      h1.style.verticalAlign = 'middle';
+                    }
                     h1.after(container);
                   } else {
                     header.appendChild(container);
@@ -2360,7 +2365,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   }, [isActive, isNewTab, userData, tabUrl]);
 
   const placeholderRef = useRef(null);
-  
+
   // Reusable callback to sync all React-side metadata (API keys, user/faction details, market prices) to WebView global namespace
   const syncMetadata = useCallback(() => {
     if (!isCapacitor) return;
@@ -2558,7 +2563,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           try {
             // eslint-disable-next-line no-self-assign
             wv.src = wv.src;
-          } catch (e) {}
+          } catch (e) { }
         }
         updateNavigationState();
       }
@@ -3988,261 +3993,187 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
               transition: isResizing ? 'none' : 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
-          {/* Resize handle */}
-          {!sidebarCollapsed && (
-            <div
-              onMouseDown={startResizing}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: '-3px',
-                width: '6px',
-                bottom: 0,
-                cursor: 'ew-resize',
-                zIndex: 100,
-                backgroundColor: isResizing ? 'rgba(52, 152, 219, 0.5)' : 'transparent',
-                transition: 'background-color 0.2s'
-              }}
-            />
-          )}
-
-          {/* Collapse toggle */}
-          <button
-            className="torn-sidebar-toggle"
-            onClick={() => setSidebarCollapsed(c => !c)}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!sidebarCollapsed}
-          >
-            {sidebarCollapsed ? '◀' : '▶'}
-          </button>
-
-          {!sidebarCollapsed && (
-            <div className={`torn-sidebar-inner ${sidebarTab === 'war' ? 'war-tab-active' : ''}`}>
-              {/* Player header */}
+            {/* Resize handle */}
+            {!sidebarCollapsed && (
               <div
-                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-                className="torn-sidebar-header"
+                onMouseDown={startResizing}
                 style={{
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingBottom: isHeaderCollapsed ? '8px' : '12px',
-                  userSelect: 'none'
+                  position: 'absolute',
+                  top: 0,
+                  left: '-3px',
+                  width: '6px',
+                  bottom: 0,
+                  cursor: 'ew-resize',
+                  zIndex: 100,
+                  backgroundColor: isResizing ? 'rgba(52, 152, 219, 0.5)' : 'transparent',
+                  transition: 'background-color 0.2s'
                 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-                  {!isHeaderCollapsed ? (
-                    <>
-                      <div className="torn-sidebar-avatar">
-                        {userData?.name?.[0] ?? '?'}
-                      </div>
-                      <div className="torn-sidebar-player" style={{ minWidth: 0 }}>
-                        <div className="torn-sidebar-name">{userData?.name ?? 'Unknown'}</div>
-                        <div className="torn-sidebar-meta">
-                          <span className="torn-sidebar-level">Lv {userData?.level}</span>
-                          <span
-                            className="torn-sidebar-status-dot"
-                            style={{ backgroundColor: statusColor }}
-                            title={userData?.status?.description}
-                          />
-                          <span className="torn-sidebar-status-text" style={{ color: statusColor }}>
-                            {userData?.status?.state}
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                      <span
-                        className="torn-sidebar-status-dot"
-                        style={{ backgroundColor: statusColor, width: '8px', height: '8px', margin: 0 }}
-                        title={userData?.status?.description}
-                      />
-                      <span style={{ fontWeight: 'bold', fontSize: '0.82rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {userData?.name ?? 'Unknown'}
-                      </span>
-                      <span style={{ fontSize: '0.7rem', color: '#666', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '8px' }}>
-                        Lv {userData?.level}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <span style={{
-                  fontSize: '0.65rem',
-                  color: '#666',
-                  transform: isHeaderCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                  transition: 'transform 0.2s',
-                  paddingLeft: '6px'
-                }}>
-                  ▶
-                </span>
-              </div>
+              />
+            )}
 
-              {/* Sidebar Tabs */}
-              <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '6px', marginBottom: '4px' }}>
-                <button
-                  onClick={() => setSidebarTab('player')}
+            {/* Collapse toggle */}
+            <button
+              className="torn-sidebar-toggle"
+              onClick={() => setSidebarCollapsed(c => !c)}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-expanded={!sidebarCollapsed}
+            >
+              {sidebarCollapsed ? '◀' : '▶'}
+            </button>
+
+            {!sidebarCollapsed && (
+              <div className={`torn-sidebar-inner ${sidebarTab === 'war' ? 'war-tab-active' : ''}`}>
+                {/* Player header */}
+                <div
+                  onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                  className="torn-sidebar-header"
                   style={{
-                    flex: 1,
-                    padding: '6px 12px',
-                    backgroundColor: sidebarTab === 'player' ? '#2c2c2c' : 'transparent',
-                    border: 'none',
-                    borderRadius: '4px',
-                    color: sidebarTab === 'player' ? '#fff' : '#888',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
+                    justifyContent: 'space-between',
+                    paddingBottom: isHeaderCollapsed ? '8px' : '12px',
+                    userSelect: 'none'
                   }}
                 >
-                  <IconDot size={8} color={sidebarTab === 'player' ? statusColor : '#888'} /> Player Info
-                </button>
-                <button
-                  onClick={() => setSidebarTab('war')}
-                  style={{
-                    flex: 1,
-                    padding: '6px 12px',
-                    backgroundColor: sidebarTab === 'war' ? '#2c2c2c' : 'transparent',
-                    border: 'none',
-                    borderRadius: '4px',
-                    color: sidebarTab === 'war' ? '#fff' : '#888',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <IconSwords size={12} color={sidebarTab === 'war' ? '#e74c3c' : '#888'} /> Faction War
-                </button>
-              </div>
-
-              {sidebarTab === 'player' ? (
-                <>
-                  {/* Special status card */}
-                  {hasSpecialStatus && (
-                    <div className="torn-sidebar-section">
-                      {isTraveling && (
-                        <StatusCard
-                          icon={<IconPlane size={15} color="#3498db" />}
-                          title="Traveling"
-                          description={userData.status?.description}
-                          timeLeft={travelTimeLeft}
-                          releaseTime={landingTime}
-                          accentColor="#3498db"
-                        />
-                      )}
-                      {isHospitalized && (
-                        <StatusCard
-                          icon={<IconHospital size={15} color="#e74c3c" />}
-                          title="Hospitalized"
-                          description={userData.status?.description}
-                          detail={userData.status?.details}
-                          timeLeft={statusTimeLeft}
-                          releaseTime={releaseTime}
-                          accentColor="#e74c3c"
-                        />
-                      )}
-                      {isJailed && (
-                        <StatusCard
-                          icon={<IconScales size={15} color="#f39c12" />}
-                          title="Jailed"
-                          description={userData.status?.description}
-                          timeLeft={statusTimeLeft}
-                          releaseTime={releaseTime}
-                          accentColor="#f39c12"
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Live Stats */}
-                  <div className="torn-sidebar-section">
-                    <div
-                      onClick={() => setIsLiveStatsCollapsed(!isLiveStatsCollapsed)}
-                      className="torn-sidebar-section-title"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                          fontSize: '0.55rem',
-                          color: '#555',
-                          transform: isLiveStatsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                          transition: 'transform 0.2s',
-                          display: 'inline-block'
-                        }}>
-                          ▶
-                        </span>
-                        <span>Live Stats</span>
-                      </div>
-                      {isLiveStatsCollapsed && userData && (
-                        <span style={{ fontSize: '0.62rem', color: '#666', fontWeight: 'normal' }}>
-                          ⚡{userData.energy?.current} • 🎯{userData.nerve?.current} • ❤️{userData.life?.current}
-                        </span>
-                      )}
-                    </div>
-                    {!isLiveStatsCollapsed && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                    {!isHeaderCollapsed ? (
                       <>
-                        <SidebarStatBar
-                          label={<><IconBolt size={12} color="#f1c40f" /> Energy</>}
-                          current={userData?.energy?.current}
-                          max={userData?.energy?.maximum}
-                          color="#f1c40f"
-                          timeRemaining={energyTimer}
-                          href="https://www.torn.com/gym.php"
-                          onNavigate={navigateTo}
-                        />
-                        <SidebarStatBar
-                          label={<><IconDot size={10} color="#e74c3c" /> Nerve</>}
-                          current={userData?.nerve?.current}
-                          max={userData?.nerve?.maximum}
-                          color="#e74c3c"
-                          timeRemaining={nerveTimer}
-                          href="https://www.torn.com/crimes.php"
-                          onNavigate={navigateTo}
-                        />
-                        <SidebarStatBar
-                          label={<><IconSmile size={12} color="#3498db" /> Happy</>}
-                          current={userData?.happy?.current}
-                          max={userData?.happy?.maximum}
-                          color="#3498db"
-                          timeRemaining={happyTimer}
-                          href="https://www.torn.com/properties.php"
-                          onNavigate={navigateTo}
-                        />
-                        <SidebarStatBar
-                          label={<><IconHeart size={12} color="#2ecc71" /> Life</>}
-                          current={userData?.life?.current}
-                          max={userData?.life?.maximum}
-                          color="#2ecc71"
-                          timeRemaining={lifeTimer}
-                          href="https://www.torn.com/hospitalview.php"
-                          onNavigate={navigateTo}
-                        />
+                        <div className="torn-sidebar-avatar">
+                          {userData?.name?.[0] ?? '?'}
+                        </div>
+                        <div className="torn-sidebar-player" style={{ minWidth: 0 }}>
+                          <div className="torn-sidebar-name">{userData?.name ?? 'Unknown'}</div>
+                          <div className="torn-sidebar-meta">
+                            <span className="torn-sidebar-level">Lv {userData?.level}</span>
+                            <span
+                              className="torn-sidebar-status-dot"
+                              style={{ backgroundColor: statusColor }}
+                              title={userData?.status?.description}
+                            />
+                            <span className="torn-sidebar-status-text" style={{ color: statusColor }}>
+                              {userData?.status?.state}
+                            </span>
+                          </div>
+                        </div>
                       </>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <span
+                          className="torn-sidebar-status-dot"
+                          style={{ backgroundColor: statusColor, width: '8px', height: '8px', margin: 0 }}
+                          title={userData?.status?.description}
+                        />
+                        <span style={{ fontWeight: 'bold', fontSize: '0.82rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {userData?.name ?? 'Unknown'}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: '#666', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '8px' }}>
+                          Lv {userData?.level}
+                        </span>
+                      </div>
                     )}
                   </div>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    color: '#666',
+                    transform: isHeaderCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                    transition: 'transform 0.2s',
+                    paddingLeft: '6px'
+                  }}>
+                    ▶
+                  </span>
+                </div>
 
-                  {/* Money */}
-                  {moneyFormatted && (
+                {/* Sidebar Tabs */}
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '6px', marginBottom: '4px' }}>
+                  <button
+                    onClick={() => setSidebarTab('player')}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      backgroundColor: sidebarTab === 'player' ? '#2c2c2c' : 'transparent',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: sidebarTab === 'player' ? '#fff' : '#888',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <IconDot size={8} color={sidebarTab === 'player' ? statusColor : '#888'} /> Player Info
+                  </button>
+                  <button
+                    onClick={() => setSidebarTab('war')}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      backgroundColor: sidebarTab === 'war' ? '#2c2c2c' : 'transparent',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: sidebarTab === 'war' ? '#fff' : '#888',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <IconSwords size={12} color={sidebarTab === 'war' ? '#e74c3c' : '#888'} /> Faction War
+                  </button>
+                </div>
+
+                {sidebarTab === 'player' ? (
+                  <>
+                    {/* Special status card */}
+                    {hasSpecialStatus && (
+                      <div className="torn-sidebar-section">
+                        {isTraveling && (
+                          <StatusCard
+                            icon={<IconPlane size={15} color="#3498db" />}
+                            title="Traveling"
+                            description={userData.status?.description}
+                            timeLeft={travelTimeLeft}
+                            releaseTime={landingTime}
+                            accentColor="#3498db"
+                          />
+                        )}
+                        {isHospitalized && (
+                          <StatusCard
+                            icon={<IconHospital size={15} color="#e74c3c" />}
+                            title="Hospitalized"
+                            description={userData.status?.description}
+                            detail={userData.status?.details}
+                            timeLeft={statusTimeLeft}
+                            releaseTime={releaseTime}
+                            accentColor="#e74c3c"
+                          />
+                        )}
+                        {isJailed && (
+                          <StatusCard
+                            icon={<IconScales size={15} color="#f39c12" />}
+                            title="Jailed"
+                            description={userData.status?.description}
+                            timeLeft={statusTimeLeft}
+                            releaseTime={releaseTime}
+                            accentColor="#f39c12"
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Live Stats */}
                     <div className="torn-sidebar-section">
                       <div
-                        onClick={() => setIsFinancesCollapsed(!isFinancesCollapsed)}
+                        onClick={() => setIsLiveStatsCollapsed(!isLiveStatsCollapsed)}
                         className="torn-sidebar-section-title"
                         style={{
                           display: 'flex',
@@ -4256,552 +4187,667 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                           <span style={{
                             fontSize: '0.55rem',
                             color: '#555',
-                            transform: isFinancesCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                            transform: isLiveStatsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
                             transition: 'transform 0.2s',
                             display: 'inline-block'
                           }}>
                             ▶
                           </span>
-                          <span>Finances</span>
+                          <span>Live Stats</span>
                         </div>
-                        {isFinancesCollapsed && (
-                          <span style={{ fontSize: '0.65rem', color: '#2ecc71', fontWeight: 'bold' }}>
-                            {moneyFormatted}
+                        {isLiveStatsCollapsed && userData && (
+                          <span style={{ fontSize: '0.62rem', color: '#666', fontWeight: 'normal' }}>
+                            ⚡{userData.energy?.current} • 🎯{userData.nerve?.current} • ❤️{userData.life?.current}
                           </span>
                         )}
                       </div>
-                      {!isFinancesCollapsed && (
-                        <div
-                          className="torn-money-card"
-                          onClick={() => navigateTo('https://www.torn.com/bank.php')}
-                          title="Open Bank"
-                        >
-                          <span className="torn-money-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><IconCoin size={13} color="#f1c40f" /> Cash on Hand</span>
-                          <span className="torn-money-value">{moneyFormatted}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Quick actions */}
-                  <div className="torn-sidebar-section">
-                    <div
-                      onClick={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
-                      className="torn-sidebar-section-title"
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: isQuickActionsCollapsed ? '0' : '8px',
-                        cursor: 'pointer',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                          fontSize: '0.55rem',
-                          color: '#555',
-                          transform: isQuickActionsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                          transition: 'transform 0.2s',
-                          display: 'inline-block'
-                        }}>
-                          ▶
-                        </span>
-                        <span>Quick Actions</span>
-                      </div>
-                      {!isQuickActionsCollapsed && (
-                        <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => {
-                              const activeTab = tabs.find(t => t.id === activeTabId);
-                              if (activeTab) {
-                                setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
-                              }
-                            }}
-                            title="Add current tab to quick actions"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#2ecc71',
-                              fontSize: '0.7rem',
-                              cursor: 'pointer',
-                              padding: '2px 6px',
-                              borderRadius: '3px',
-                              backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            + Add Current
-                          </button>
-                          <button
-                            onClick={() => {
-                              setIsEditingQuick(!isEditingQuick);
-                              setIsAddingNew(false);
-                            }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#3498db',
-                              fontSize: '0.7rem',
-                              cursor: 'pointer',
-                              padding: '2px 6px',
-                              borderRadius: '3px',
-                              backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            {isEditingQuick ? 'Done' : 'Edit'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {!isQuickActionsCollapsed && (
-                      <>
-                        <div className="torn-sidebar-quicklinks">
-                          {quickActions.map((action, index) => (
-                            isEditingQuick ? (
-                              <div
-                                key={index}
-                                style={{
-                                  position: 'relative',
-                                  background: 'rgba(255,255,255,0.02)',
-                                  border: '1px solid #333',
-                                  borderRadius: '7px',
-                                  padding: '16px 4px 6px 4px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                              >
-                                {/* Delete button */}
-                                <button
-                                  onClick={() => handleRemoveAction(index)}
-                                  style={{
-                                    position: 'absolute',
-                                    top: '2px',
-                                    right: '4px',
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#e74c3c',
-                                    fontSize: '0.85rem',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    lineHeight: '1'
-                                  }}
-                                  title="Remove"
-                                >
-                                  ×
-                                </button>
-
-                                {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={16} color="#888" />; })()}
-
-                                <input
-                                  type="text"
-                                  value={action.label}
-                                  onChange={(e) => {
-                                    const newLabel = e.target.value;
-                                    setQuickActions(prev => prev.map((qa, i) => i === index ? { ...qa, label: newLabel } : qa));
-                                  }}
-                                  style={{
-                                    width: '90%',
-                                    fontSize: '0.68rem',
-                                    backgroundColor: '#111',
-                                    border: '1px solid #444',
-                                    color: '#fff',
-                                    borderRadius: '4px',
-                                    padding: '2px 4px',
-                                    textAlign: 'center',
-                                    boxSizing: 'border-box',
-                                    fontFamily: 'inherit'
-                                  }}
-                                  placeholder="Label"
-                                />
-
-                                {/* Rearrange arrows */}
-                                <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
-                                  <button
-                                    onClick={() => handleMoveAction(index, -1)}
-                                    disabled={index === 0}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: index === 0 ? '#444' : '#3498db',
-                                      fontSize: '0.7rem',
-                                      cursor: index === 0 ? 'default' : 'pointer',
-                                      padding: '0 4px'
-                                    }}
-                                  >
-                                    ◀
-                                  </button>
-                                  <button
-                                    onClick={() => handleMoveAction(index, 1)}
-                                    disabled={index === quickActions.length - 1}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: index === quickActions.length - 1 ? '#444' : '#3498db',
-                                      fontSize: '0.7rem',
-                                      cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
-                                      padding: '0 4px'
-                                    }}
-                                  >
-                                    ▶
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                key={action.href}
-                                className="torn-sidebar-quicklink-btn"
-                                onClick={() => navigateTo(action.href)}
-                              >
-                                {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
-                                <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1 }}>{action.label}</span>
-                              </button>
-                            )
-                          ))}
-
-                          {isEditingQuick && (
-                            <>
-                              {isAddingNew ? (
-                                <div style={{
-                                  gridColumn: 'span 2',
-                                  padding: '8px',
-                                  backgroundColor: '#161616',
-                                  border: '1px solid #333',
-                                  borderRadius: '6px',
-                                  marginTop: '6px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '6px'
-                                }}>
-                                  <input
-                                    type="text"
-                                    placeholder="Label (e.g. 🏋️ Gym)"
-                                    value={newLabel}
-                                    onChange={e => setNewLabel(e.target.value)}
-                                    style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
-                                  />
-                                  <input
-                                    type="text"
-                                    placeholder="URL (e.g. https://www.torn.com/...)"
-                                    value={newUrl}
-                                    onChange={e => setNewUrl(e.target.value)}
-                                    style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
-                                  />
-
-                                  {/* Live Icon & Button Preview */}
-                                  <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px',
-                                    padding: '6px 8px',
-                                    backgroundColor: 'rgba(255,255,255,0.02)',
-                                    borderRadius: '4px',
-                                    border: '1px dashed #333',
-                                    marginTop: '2px'
-                                  }}>
-                                    <span style={{ fontSize: '0.65rem', color: '#666' }}>Preview:</span>
-                                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                                      <div className="torn-sidebar-quicklink-btn" style={{ width: '100%', minHeight: '48px', cursor: 'default', pointerEvents: 'none' }}>
-                                        {(() => {
-                                          const Icon = getQuickActionIcon(newUrl, newLabel);
-                                          return <Icon size={15} color="#3498db" style={{ marginBottom: '3px' }} />;
-                                        })()}
-                                        <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1, color: '#fff' }}>
-                                          {newLabel.trim() || 'Preview'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
-                                    <button
-                                      onClick={() => setIsAddingNew(false)}
-                                      style={{ backgroundColor: 'transparent', border: 'none', color: '#aaa', fontSize: '0.7rem', cursor: 'pointer' }}
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      onClick={handleSaveNewAction}
-                                      style={{ backgroundColor: '#3498db', border: 'none', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                                    >
-                                      Add
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div style={{ gridColumn: 'span 2', display: 'flex', gap: '6px', marginTop: '4px' }}>
-                                  <button
-                                    onClick={() => {
-                                      const activeTab = tabs.find(t => t.id === activeTabId);
-                                      if (activeTab) {
-                                        setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
-                                      }
-                                    }}
-                                    style={{
-                                      flex: 1,
-                                      background: 'none',
-                                      border: '1px dashed #2ecc71',
-                                      borderRadius: '7px',
-                                      color: '#2ecc71',
-                                      fontSize: '0.7rem',
-                                      padding: '6px',
-                                      cursor: 'pointer',
-                                      textAlign: 'center',
-                                      transition: 'all 0.2s'
-                                    }}
-                                  >
-                                    + Add Current
-                                  </button>
-                                  <button
-                                    onClick={() => setIsAddingNew(true)}
-                                    style={{
-                                      flex: 1,
-                                      background: 'none',
-                                      border: '1px dashed #444',
-                                      borderRadius: '7px',
-                                      color: '#888',
-                                      fontSize: '0.7rem',
-                                      padding: '6px',
-                                      cursor: 'pointer',
-                                      textAlign: 'center',
-                                      transition: 'all 0.2s'
-                                    }}
-                                  >
-                                    + Custom Action
-                                  </button>
-                                </div>
-                              )}
-
-                              {/* Presets suggestions */}
-                              {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).length > 0 && (
-                                <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                                  <span style={{ fontSize: '0.65rem', color: '#666' }}>Suggestions:</span>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                    {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).slice(0, 6).map(preset => (
-                                      <button
-                                        key={preset.href}
-                                        onClick={() => {
-                                          setQuickActions(prev => [...prev, preset]);
-                                        }}
-                                        style={{
-                                          backgroundColor: 'rgba(255,255,255,0.03)',
-                                          border: '1px solid #222',
-                                          borderRadius: '4px',
-                                          color: '#aaa',
-                                          fontSize: '0.65rem',
-                                          padding: '2px 5px',
-                                          cursor: 'pointer'
-                                        }}
-                                      >
-                                        {preset.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="torn-sidebar-footer">
-                    <span>Live • refreshes every 30s</span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: 0 }}>
-                  {!enemyFactionId ? (
-                    <div style={{ padding: '12px', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed #444' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                        <IconPeace size={20} color="#888" />
-                      </div>
-                      <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold' }}>PEACE TIME</span>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#666' }}>Your faction is not currently in a ranked war.</p>
-                      <button
-                        onClick={() => loadFactionData && loadFactionData()}
-                        style={{
-                          marginTop: '10px',
-                          backgroundColor: 'transparent',
-                          border: '1px solid #444',
-                          borderRadius: '4px',
-                          color: '#3498db',
-                          padding: '4px 10px',
-                          fontSize: '0.7rem',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          transition: 'all 0.2s',
-                          outline: 'none'
-                        }}
-                        className="btn-check-war"
-                      >
-                        Check for War
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {/* War Status Header / Collapsible Overview Toggle */}
-                      <div
-                        onClick={() => setIsWarOverviewCollapsed(!isWarOverviewCollapsed)}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid rgba(255,255,255,0.05)',
-                          paddingBottom: '6px',
-                          userSelect: 'none'
-                        }}
-                      >
-                        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{
-                            fontSize: '0.6rem',
-                            color: '#666',
-                            transform: isWarOverviewCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-                            transition: 'transform 0.2s',
-                            display: 'inline-block'
-                          }}>
-                            ▶
-                          </span>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            WAR OVERVIEW
-                          </span>
-                        </div>
-                        {isWarOverviewCollapsed && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#e74c3c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }} title={`vs ${suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}`}>
-                              vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}
-                            </div>
-                            <CompactChainInfo chain={factionData?.chain} />
-                          </div>
-                        )}
-                        {!isWarOverviewCollapsed && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleForceRefresh();
-                            }}
-                            disabled={isLoadingTargets || isSyncingTargets}
-                            style={{
-                              background: 'transparent',
-                              border: '1px solid #444',
-                              borderRadius: '20px',
-                              padding: '2px 8px',
-                              cursor: (isLoadingTargets || isSyncingTargets) ? 'not-allowed' : 'pointer',
-                              color: (isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db',
-                              fontWeight: 'bold',
-                              fontSize: '0.62rem',
-                              transition: 'all 0.2s',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <IconRefresh
-                              size={8}
-                              color={(isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db'}
-                              className={isSyncingTargets ? 'spin-animation' : ''}
-                            />
-                          </button>
-                        )}
-                      </div>
-
-                      {!isWarOverviewCollapsed && (
+                      {!isLiveStatsCollapsed && (
                         <>
-                          {/* War Details */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy Faction'}
-                              </div>
-                              <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                <IconTarget size={10} color="#888" /> Target: {currentWar?.war?.target || 'N/A'} pts
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Scores Progress Bar */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px' }}>
-                            {(() => {
-                              const factionsEntries = Object.entries(currentWar?.factions || {}).map(([id, f]) => ({ id, ...f }));
-                              const ourFactionInfoObj = factionsEntries.find(f => f.name === factionData?.name) || {};
-                              const ourFactionScore = ourFactionInfoObj.score || 0;
-                              const enemyFactionInfoObj = factionsEntries.find(f => f.name !== factionData?.name) || {};
-                              const enemyFactionScore = enemyFactionInfoObj.score || 0;
-
-                              const totalScore = ourFactionScore + enemyFactionScore;
-                              const ourPct = totalScore > 0 ? (ourFactionScore / totalScore) * 100 : 50;
-
-                              return (
-                                <>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                    <span style={{ color: '#3498db' }}>{ourFactionScore.toLocaleString()}</span>
-                                    <span style={{ color: '#e74c3c' }}>{enemyFactionScore.toLocaleString()}</span>
-                                  </div>
-                                  <div style={{ height: '6px', backgroundColor: '#222', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
-                                    <div style={{ width: `${ourPct}%`, backgroundColor: '#3498db', height: '100%' }} />
-                                    <div style={{ flex: 1, backgroundColor: '#e74c3c', height: '100%' }} />
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Chain Watcher */}
-                          <ChainWatcher factionData={factionData} />
+                          <SidebarStatBar
+                            label={<><IconBolt size={12} color="#f1c40f" /> Energy</>}
+                            current={userData?.energy?.current}
+                            max={userData?.energy?.maximum}
+                            color="#f1c40f"
+                            timeRemaining={energyTimer}
+                            href="https://www.torn.com/gym.php"
+                            onNavigate={navigateTo}
+                          />
+                          <SidebarStatBar
+                            label={<><IconDot size={10} color="#e74c3c" /> Nerve</>}
+                            current={userData?.nerve?.current}
+                            max={userData?.nerve?.maximum}
+                            color="#e74c3c"
+                            timeRemaining={nerveTimer}
+                            href="https://www.torn.com/crimes.php"
+                            onNavigate={navigateTo}
+                          />
+                          <SidebarStatBar
+                            label={<><IconSmile size={12} color="#3498db" /> Happy</>}
+                            current={userData?.happy?.current}
+                            max={userData?.happy?.maximum}
+                            color="#3498db"
+                            timeRemaining={happyTimer}
+                            href="https://www.torn.com/properties.php"
+                            onNavigate={navigateTo}
+                          />
+                          <SidebarStatBar
+                            label={<><IconHeart size={12} color="#2ecc71" /> Life</>}
+                            current={userData?.life?.current}
+                            max={userData?.life?.maximum}
+                            color="#2ecc71"
+                            timeRemaining={lifeTimer}
+                            href="https://www.torn.com/hospitalview.php"
+                            onNavigate={navigateTo}
+                          />
                         </>
                       )}
+                    </div>
 
-                      {/* Sorting & Import Panel Header */}
+                    {/* Money */}
+                    {moneyFormatted && (
+                      <div className="torn-sidebar-section">
+                        <div
+                          onClick={() => setIsFinancesCollapsed(!isFinancesCollapsed)}
+                          className="torn-sidebar-section-title"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontSize: '0.55rem',
+                              color: '#555',
+                              transform: isFinancesCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                              transition: 'transform 0.2s',
+                              display: 'inline-block'
+                            }}>
+                              ▶
+                            </span>
+                            <span>Finances</span>
+                          </div>
+                          {isFinancesCollapsed && (
+                            <span style={{ fontSize: '0.65rem', color: '#2ecc71', fontWeight: 'bold' }}>
+                              {moneyFormatted}
+                            </span>
+                          )}
+                        </div>
+                        {!isFinancesCollapsed && (
+                          <div
+                            className="torn-money-card"
+                            onClick={() => navigateTo('https://www.torn.com/bank.php')}
+                            title="Open Bank"
+                          >
+                            <span className="torn-money-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><IconCoin size={13} color="#f1c40f" /> Cash on Hand</span>
+                            <span className="torn-money-value">{moneyFormatted}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Quick actions */}
+                    <div className="torn-sidebar-section">
                       <div
-                        onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
+                        onClick={() => setIsQuickActionsCollapsed(!isQuickActionsCollapsed)}
+                        className="torn-sidebar-section-title"
                         style={{
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          gap: '8px',
+                          marginBottom: isQuickActionsCollapsed ? '0' : '8px',
                           cursor: 'pointer',
-                          borderBottom: '1px solid rgba(255,255,255,0.05)',
-                          paddingBottom: '4px',
-                          marginTop: '4px',
                           userSelect: 'none'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
-                            fontSize: '0.6rem',
-                            color: '#666',
-                            transform: isControlsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                            fontSize: '0.55rem',
+                            color: '#555',
+                            transform: isQuickActionsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
                             transition: 'transform 0.2s',
                             display: 'inline-block'
                           }}>
                             ▶
                           </span>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            CONTROLS & SETTINGS
-                          </span>
+                          <span>Quick Actions</span>
                         </div>
-                        {isControlsCollapsed && (
-                          <span style={{ fontSize: '0.65rem', color: '#666' }}>
-                            Sort: {sortBy} {statusFilter !== 'all' && `• ${statusFilter === 'online' ? 'Online' : 'Offline'}`} • Auto Sync: {syncInterval > 0 ? `${syncInterval}s` : 'Off'}
-                          </span>
+                        {!isQuickActionsCollapsed && (
+                          <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => {
+                                const activeTab = tabs.find(t => t.id === activeTabId);
+                                if (activeTab) {
+                                  setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
+                                }
+                              }}
+                              title="Add current tab to quick actions"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#2ecc71',
+                                fontSize: '0.7rem',
+                                cursor: 'pointer',
+                                padding: '2px 6px',
+                                borderRadius: '3px',
+                                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              + Add Current
+                            </button>
+                            <button
+                              onClick={() => {
+                                setIsEditingQuick(!isEditingQuick);
+                                setIsAddingNew(false);
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#3498db',
+                                fontSize: '0.7rem',
+                                cursor: 'pointer',
+                                padding: '2px 6px',
+                                borderRadius: '3px',
+                                backgroundColor: isEditingQuick ? 'rgba(52, 152, 219, 0.15)' : 'transparent',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {isEditingQuick ? 'Done' : 'Edit'}
+                            </button>
+                          </div>
                         )}
                       </div>
 
-                      {!isControlsCollapsed && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid #222' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SORT BY:</span>
-                            <div style={{ display: 'flex', gap: '4px' }}>
+                      {!isQuickActionsCollapsed && (
+                        <>
+                          <div className="torn-sidebar-quicklinks">
+                            {quickActions.map((action, index) => (
+                              isEditingQuick ? (
+                                <div
+                                  key={index}
+                                  style={{
+                                    position: 'relative',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid #333',
+                                    borderRadius: '7px',
+                                    padding: '16px 4px 6px 4px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  {/* Delete button */}
+                                  <button
+                                    onClick={() => handleRemoveAction(index)}
+                                    style={{
+                                      position: 'absolute',
+                                      top: '2px',
+                                      right: '4px',
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#e74c3c',
+                                      fontSize: '0.85rem',
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                      lineHeight: '1'
+                                    }}
+                                    title="Remove"
+                                  >
+                                    ×
+                                  </button>
+
+                                  {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={16} color="#888" />; })()}
+
+                                  <input
+                                    type="text"
+                                    value={action.label}
+                                    onChange={(e) => {
+                                      const newLabel = e.target.value;
+                                      setQuickActions(prev => prev.map((qa, i) => i === index ? { ...qa, label: newLabel } : qa));
+                                    }}
+                                    style={{
+                                      width: '90%',
+                                      fontSize: '0.68rem',
+                                      backgroundColor: '#111',
+                                      border: '1px solid #444',
+                                      color: '#fff',
+                                      borderRadius: '4px',
+                                      padding: '2px 4px',
+                                      textAlign: 'center',
+                                      boxSizing: 'border-box',
+                                      fontFamily: 'inherit'
+                                    }}
+                                    placeholder="Label"
+                                  />
+
+                                  {/* Rearrange arrows */}
+                                  <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                                    <button
+                                      onClick={() => handleMoveAction(index, -1)}
+                                      disabled={index === 0}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: index === 0 ? '#444' : '#3498db',
+                                        fontSize: '0.7rem',
+                                        cursor: index === 0 ? 'default' : 'pointer',
+                                        padding: '0 4px'
+                                      }}
+                                    >
+                                      ◀
+                                    </button>
+                                    <button
+                                      onClick={() => handleMoveAction(index, 1)}
+                                      disabled={index === quickActions.length - 1}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: index === quickActions.length - 1 ? '#444' : '#3498db',
+                                        fontSize: '0.7rem',
+                                        cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
+                                        padding: '0 4px'
+                                      }}
+                                    >
+                                      ▶
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  key={action.href}
+                                  className="torn-sidebar-quicklink-btn"
+                                  onClick={() => navigateTo(action.href)}
+                                >
+                                  {(() => { const Icon = getQuickActionIcon(action.href, action.label); return <Icon size={15} color="currentColor" style={{ marginBottom: '3px' }} />; })()}
+                                  <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1 }}>{action.label}</span>
+                                </button>
+                              )
+                            ))}
+
+                            {isEditingQuick && (
+                              <>
+                                {isAddingNew ? (
+                                  <div style={{
+                                    gridColumn: 'span 2',
+                                    padding: '8px',
+                                    backgroundColor: '#161616',
+                                    border: '1px solid #333',
+                                    borderRadius: '6px',
+                                    marginTop: '6px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '6px'
+                                  }}>
+                                    <input
+                                      type="text"
+                                      placeholder="Label (e.g. 🏋️ Gym)"
+                                      value={newLabel}
+                                      onChange={e => setNewLabel(e.target.value)}
+                                      style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="URL (e.g. https://www.torn.com/...)"
+                                      value={newUrl}
+                                      onChange={e => setNewUrl(e.target.value)}
+                                      style={{ flex: 1, backgroundColor: '#0f0f0f', border: '1px solid #333', color: '#fff', fontSize: '0.75rem', padding: '4px 6px', borderRadius: '4px' }}
+                                    />
+
+                                    {/* Live Icon & Button Preview */}
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      padding: '6px 8px',
+                                      backgroundColor: 'rgba(255,255,255,0.02)',
+                                      borderRadius: '4px',
+                                      border: '1px dashed #333',
+                                      marginTop: '2px'
+                                    }}>
+                                      <span style={{ fontSize: '0.65rem', color: '#666' }}>Preview:</span>
+                                      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                                        <div className="torn-sidebar-quicklink-btn" style={{ width: '100%', minHeight: '48px', cursor: 'default', pointerEvents: 'none' }}>
+                                          {(() => {
+                                            const Icon = getQuickActionIcon(newUrl, newLabel);
+                                            return <Icon size={15} color="#3498db" style={{ marginBottom: '3px' }} />;
+                                          })()}
+                                          <span style={{ fontSize: '0.62rem', display: 'block', lineHeight: 1.1, color: '#fff' }}>
+                                            {newLabel.trim() || 'Preview'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '2px' }}>
+                                      <button
+                                        onClick={() => setIsAddingNew(false)}
+                                        style={{ backgroundColor: 'transparent', border: 'none', color: '#aaa', fontSize: '0.7rem', cursor: 'pointer' }}
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={handleSaveNewAction}
+                                        style={{ backgroundColor: '#3498db', border: 'none', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                      >
+                                        Add
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ gridColumn: 'span 2', display: 'flex', gap: '6px', marginTop: '4px' }}>
+                                    <button
+                                      onClick={() => {
+                                        const activeTab = tabs.find(t => t.id === activeTabId);
+                                        if (activeTab) {
+                                          setQuickActions(prev => [...prev, { label: activeTab.title || 'Torn Tab', href: activeTab.url }]);
+                                        }
+                                      }}
+                                      style={{
+                                        flex: 1,
+                                        background: 'none',
+                                        border: '1px dashed #2ecc71',
+                                        borderRadius: '7px',
+                                        color: '#2ecc71',
+                                        fontSize: '0.7rem',
+                                        padding: '6px',
+                                        cursor: 'pointer',
+                                        textAlign: 'center',
+                                        transition: 'all 0.2s'
+                                      }}
+                                    >
+                                      + Add Current
+                                    </button>
+                                    <button
+                                      onClick={() => setIsAddingNew(true)}
+                                      style={{
+                                        flex: 1,
+                                        background: 'none',
+                                        border: '1px dashed #444',
+                                        borderRadius: '7px',
+                                        color: '#888',
+                                        fontSize: '0.7rem',
+                                        padding: '6px',
+                                        cursor: 'pointer',
+                                        textAlign: 'center',
+                                        transition: 'all 0.2s'
+                                      }}
+                                    >
+                                      + Custom Action
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Presets suggestions */}
+                                {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).length > 0 && (
+                                  <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                                    <span style={{ fontSize: '0.65rem', color: '#666' }}>Suggestions:</span>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                      {PRESET_QUICK_ACTIONS.filter(preset => !quickActions.some(qa => qa.href === preset.href)).slice(0, 6).map(preset => (
+                                        <button
+                                          key={preset.href}
+                                          onClick={() => {
+                                            setQuickActions(prev => [...prev, preset]);
+                                          }}
+                                          style={{
+                                            backgroundColor: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid #222',
+                                            borderRadius: '4px',
+                                            color: '#aaa',
+                                            fontSize: '0.65rem',
+                                            padding: '2px 5px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          {preset.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="torn-sidebar-footer">
+                      <span>Live • refreshes every 30s</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minHeight: 0 }}>
+                    {!enemyFactionId ? (
+                      <div style={{ padding: '12px', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed #444' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
+                          <IconPeace size={20} color="#888" />
+                        </div>
+                        <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold' }}>PEACE TIME</span>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#666' }}>Your faction is not currently in a ranked war.</p>
+                        <button
+                          onClick={() => loadFactionData && loadFactionData()}
+                          style={{
+                            marginTop: '10px',
+                            backgroundColor: 'transparent',
+                            border: '1px solid #444',
+                            borderRadius: '4px',
+                            color: '#3498db',
+                            padding: '4px 10px',
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            transition: 'all 0.2s',
+                            outline: 'none'
+                          }}
+                          className="btn-check-war"
+                        >
+                          Check for War
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* War Status Header / Collapsible Overview Toggle */}
+                        <div
+                          onClick={() => setIsWarOverviewCollapsed(!isWarOverviewCollapsed)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                            paddingBottom: '6px',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontSize: '0.6rem',
+                              color: '#666',
+                              transform: isWarOverviewCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                              transition: 'transform 0.2s',
+                              display: 'inline-block'
+                            }}>
+                              ▶
+                            </span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              WAR OVERVIEW
+                            </span>
+                          </div>
+                          {isWarOverviewCollapsed && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#e74c3c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80px' }} title={`vs ${suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}`}>
+                                vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy'}
+                              </div>
+                              <CompactChainInfo chain={factionData?.chain} />
+                            </div>
+                          )}
+                          {!isWarOverviewCollapsed && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleForceRefresh();
+                              }}
+                              disabled={isLoadingTargets || isSyncingTargets}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid #444',
+                                borderRadius: '20px',
+                                padding: '2px 8px',
+                                cursor: (isLoadingTargets || isSyncingTargets) ? 'not-allowed' : 'pointer',
+                                color: (isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db',
+                                fontWeight: 'bold',
+                                fontSize: '0.62rem',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <IconRefresh
+                                size={8}
+                                color={(isLoadingTargets || isSyncingTargets) ? '#666' : '#3498db'}
+                                className={isSyncingTargets ? 'spin-animation' : ''}
+                              />
+                            </button>
+                          )}
+                        </div>
+
+                        {!isWarOverviewCollapsed && (
+                          <>
+                            {/* War Details */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  vs {suspectedStatsFaction || enemyFactionInfo?.name || 'Enemy Faction'}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  <IconTarget size={10} color="#888" /> Target: {currentWar?.war?.target || 'N/A'} pts
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Scores Progress Bar */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '6px' }}>
+                              {(() => {
+                                const factionsEntries = Object.entries(currentWar?.factions || {}).map(([id, f]) => ({ id, ...f }));
+                                const ourFactionInfoObj = factionsEntries.find(f => f.name === factionData?.name) || {};
+                                const ourFactionScore = ourFactionInfoObj.score || 0;
+                                const enemyFactionInfoObj = factionsEntries.find(f => f.name !== factionData?.name) || {};
+                                const enemyFactionScore = enemyFactionInfoObj.score || 0;
+
+                                const totalScore = ourFactionScore + enemyFactionScore;
+                                const ourPct = totalScore > 0 ? (ourFactionScore / totalScore) * 100 : 50;
+
+                                return (
+                                  <>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                      <span style={{ color: '#3498db' }}>{ourFactionScore.toLocaleString()}</span>
+                                      <span style={{ color: '#e74c3c' }}>{enemyFactionScore.toLocaleString()}</span>
+                                    </div>
+                                    <div style={{ height: '6px', backgroundColor: '#222', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+                                      <div style={{ width: `${ourPct}%`, backgroundColor: '#3498db', height: '100%' }} />
+                                      <div style={{ flex: 1, backgroundColor: '#e74c3c', height: '100%' }} />
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+
+                            {/* Chain Watcher */}
+                            <ChainWatcher factionData={factionData} />
+                          </>
+                        )}
+
+                        {/* Sorting & Import Panel Header */}
+                        <div
+                          onClick={() => setIsControlsCollapsed(!isControlsCollapsed)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid rgba(255,255,255,0.05)',
+                            paddingBottom: '4px',
+                            marginTop: '4px',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontSize: '0.6rem',
+                              color: '#666',
+                              transform: isControlsCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                              transition: 'transform 0.2s',
+                              display: 'inline-block'
+                            }}>
+                              ▶
+                            </span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              CONTROLS & SETTINGS
+                            </span>
+                          </div>
+                          {isControlsCollapsed && (
+                            <span style={{ fontSize: '0.65rem', color: '#666' }}>
+                              Sort: {sortBy} {statusFilter !== 'all' && `• ${statusFilter === 'online' ? 'Online' : 'Offline'}`} • Auto Sync: {syncInterval > 0 ? `${syncInterval}s` : 'Off'}
+                            </span>
+                          )}
+                        </div>
+
+                        {!isControlsCollapsed && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid #222' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SORT BY:</span>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <select
+                                  value={sortBy}
+                                  onChange={(e) => setSortBy(e.target.value)}
+                                  style={{
+                                    backgroundColor: '#111',
+                                    border: '1px solid #333',
+                                    borderRadius: '4px',
+                                    color: '#fff',
+                                    padding: '2px 4px',
+                                    fontSize: '0.72rem',
+                                    cursor: 'pointer',
+                                    outline: 'none'
+                                  }}
+                                >
+                                  <option value="default">Status & Lvl</option>
+                                  <option value="level">Level</option>
+                                  {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP</option>}
+                                  <option value="age">Days Playing</option>
+                                  <option value="winrate">Win Rate</option>
+                                </select>
+
+                                <button
+                                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                  style={{
+                                    backgroundColor: '#111',
+                                    border: '1px solid #333',
+                                    borderRadius: '4px',
+                                    color: '#aaa',
+                                    padding: '2px 6px',
+                                    fontSize: '0.72rem',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  {sortOrder === 'asc' ? '▲' : '▼'}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SHOW:</span>
                               <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
                                 style={{
                                   backgroundColor: '#111',
                                   border: '1px solid #333',
@@ -4813,324 +4859,283 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                   outline: 'none'
                                 }}
                               >
-                                <option value="default">Status & Lvl</option>
-                                <option value="level">Level</option>
-                                {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP</option>}
-                                <option value="age">Days Playing</option>
-                                <option value="winrate">Win Rate</option>
+                                <option value="all">All Members</option>
+                                <option value="online">Online / Idle</option>
+                                <option value="offline">Offline Only</option>
                               </select>
+                            </div>
 
-                              <button
-                                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                              <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>COMPARE STATS:</span>
+                              <div
+                                onClick={() => setCompareMode(!compareMode)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  cursor: 'pointer',
+                                  backgroundColor: '#111',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  border: `1px solid ${compareMode ? '#e74c3c' : '#333'}`,
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <div style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '50%',
+                                  backgroundColor: compareMode ? '#e74c3c' : '#555',
+                                  transition: 'all 0.2s'
+                                }} />
+                                <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: compareMode ? '#fff' : '#888' }}>
+                                  {compareMode ? 'ON' : 'OFF'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                              <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>AUTO SYNC:</span>
+                              <select
+                                value={syncInterval}
+                                onChange={(e) => setSyncInterval(Number(e.target.value))}
                                 style={{
                                   backgroundColor: '#111',
                                   border: '1px solid #333',
                                   borderRadius: '4px',
-                                  color: '#aaa',
-                                  padding: '2px 6px',
+                                  color: '#fff',
+                                  padding: '2px 4px',
                                   fontSize: '0.72rem',
                                   cursor: 'pointer',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                {sortOrder === 'asc' ? '▲' : '▼'}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>SHOW:</span>
-                            <select
-                              value={statusFilter}
-                              onChange={(e) => setStatusFilter(e.target.value)}
-                              style={{
-                                backgroundColor: '#111',
-                                border: '1px solid #333',
-                                borderRadius: '4px',
-                                color: '#fff',
-                                padding: '2px 4px',
-                                fontSize: '0.72rem',
-                                cursor: 'pointer',
-                                outline: 'none'
-                              }}
-                            >
-                              <option value="all">All Members</option>
-                              <option value="online">Online / Idle</option>
-                              <option value="offline">Offline Only</option>
-                            </select>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
-                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>COMPARE STATS:</span>
-                            <div
-                              onClick={() => setCompareMode(!compareMode)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                cursor: 'pointer',
-                                backgroundColor: '#111',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                border: `1px solid ${compareMode ? '#e74c3c' : '#333'}`,
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <div style={{
-                                width: '8px',
-                                height: '8px',
-                                borderRadius: '50%',
-                                backgroundColor: compareMode ? '#e74c3c' : '#555',
-                                transition: 'all 0.2s'
-                              }} />
-                              <span style={{ fontSize: '0.68rem', fontWeight: 'bold', color: compareMode ? '#fff' : '#888' }}>
-                                {compareMode ? 'ON' : 'OFF'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
-                            <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold' }}>AUTO SYNC:</span>
-                            <select
-                              value={syncInterval}
-                              onChange={(e) => setSyncInterval(Number(e.target.value))}
-                              style={{
-                                backgroundColor: '#111',
-                                border: '1px solid #333',
-                                borderRadius: '4px',
-                                color: '#fff',
-                                padding: '2px 4px',
-                                fontSize: '0.72rem',
-                                cursor: 'pointer',
-                                outline: 'none'
-                              }}
-                            >
-                              <option value={0}>Off</option>
-                              <option value={30}>30s</option>
-                              <option value={60}>1m</option>
-                              <option value={120}>2m</option>
-                              <option value={300}>5m</option>
-                            </select>
-                          </div>
-
-                          {/* Import Suspected Stats Trigger */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                            {Object.keys(importedStats).length > 0 ? (
-                              <>
-                                <span style={{ fontSize: '0.68rem', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  📊 Suspected XP loaded
-                                </span>
-                                <div style={{ display: 'flex', gap: '4px' }}>
-                                  <button
-                                    onClick={() => setIsImportOpen(!isImportOpen)}
-                                    style={{
-                                      backgroundColor: 'transparent',
-                                      border: '1px solid #3498db',
-                                      borderRadius: '4px',
-                                      color: '#3498db',
-                                      padding: '2px 6px',
-                                      fontSize: '0.68rem',
-                                      cursor: 'pointer',
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={handleClearStats}
-                                    style={{
-                                      backgroundColor: 'transparent',
-                                      border: '1px solid #e74c3c',
-                                      borderRadius: '4px',
-                                      color: '#e74c3c',
-                                      padding: '2px 6px',
-                                      fontSize: '0.68rem',
-                                      cursor: 'pointer',
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    Clear
-                                  </button>
-                                </div>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setIsImportOpen(!isImportOpen)}
-                                style={{
-                                  width: '100%',
-                                  backgroundColor: '#e74c3c',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  color: '#fff',
-                                  padding: '4px 8px',
-                                  fontSize: '0.7rem',
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold',
-                                  textAlign: 'center'
-                                }}
-                              >
-                                📥 Import Suspected Stats
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Compact Import Text Area */}
-                          {isImportOpen && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid #222', paddingTop: '6px' }}>
-                              <textarea
-                                value={importText}
-                                onChange={(e) => setImportText(e.target.value)}
-                                placeholder="Lion Force&#10;No.&#9;Name&#9;XP&#10;1&#9;Johan1&#9;559m"
-                                style={{
-                                  width: '100%',
-                                  height: '80px',
-                                  backgroundColor: '#050505',
-                                  border: '1px solid #222',
-                                  borderRadius: '4px',
-                                  color: '#fff',
-                                  padding: '4px',
-                                  fontSize: '0.72rem',
-                                  fontFamily: 'monospace',
-                                  resize: 'vertical',
-                                  boxSizing: 'border-box',
                                   outline: 'none'
                                 }}
-                              />
-                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              >
+                                <option value={0}>Off</option>
+                                <option value={30}>30s</option>
+                                <option value={60}>1m</option>
+                                <option value={120}>2m</option>
+                                <option value={300}>5m</option>
+                              </select>
+                            </div>
+
+                            {/* Import Suspected Stats Trigger */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                              {Object.keys(importedStats).length > 0 ? (
+                                <>
+                                  <span style={{ fontSize: '0.68rem', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    📊 Suspected XP loaded
+                                  </span>
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button
+                                      onClick={() => setIsImportOpen(!isImportOpen)}
+                                      style={{
+                                        backgroundColor: 'transparent',
+                                        border: '1px solid #3498db',
+                                        borderRadius: '4px',
+                                        color: '#3498db',
+                                        padding: '2px 6px',
+                                        fontSize: '0.68rem',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={handleClearStats}
+                                      style={{
+                                        backgroundColor: 'transparent',
+                                        border: '1px solid #e74c3c',
+                                        borderRadius: '4px',
+                                        color: '#e74c3c',
+                                        padding: '2px 6px',
+                                        fontSize: '0.68rem',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      Clear
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
                                 <button
-                                  onClick={() => {
-                                    setIsImportOpen(false);
-                                    setImportText('');
-                                  }}
+                                  onClick={() => setIsImportOpen(!isImportOpen)}
                                   style={{
-                                    backgroundColor: 'transparent',
-                                    border: '1px solid #444',
-                                    color: '#aaa',
-                                    padding: '2px 8px',
-                                    borderRadius: '3px',
-                                    fontSize: '0.68rem',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    handleImportStats(importText);
-                                    setIsImportOpen(false);
-                                    setImportText('');
-                                    setSortBy('xp');
-                                    setSortOrder('desc');
-                                  }}
-                                  style={{
+                                    width: '100%',
                                     backgroundColor: '#e74c3c',
                                     border: 'none',
+                                    borderRadius: '4px',
                                     color: '#fff',
-                                    padding: '2px 8px',
-                                    borderRadius: '3px',
-                                    fontSize: '0.68rem',
+                                    padding: '4px 8px',
+                                    fontSize: '0.7rem',
                                     cursor: 'pointer',
-                                    fontWeight: 'bold'
+                                    fontWeight: 'bold',
+                                    textAlign: 'center'
                                   }}
                                 >
-                                  Import
+                                  📥 Import Suspected Stats
                                 </button>
-                              </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      )}
 
-                      {/* Members List */}
-                      {isLoadingTargets ? (
-                        <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '6px' }}>
-                            Syncing targets... ({loadingProgress.done}/{loadingProgress.total})
+                            {/* Compact Import Text Area */}
+                            {isImportOpen && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', borderTop: '1px solid #222', paddingTop: '6px' }}>
+                                <textarea
+                                  value={importText}
+                                  onChange={(e) => setImportText(e.target.value)}
+                                  placeholder="Lion Force&#10;No.&#9;Name&#9;XP&#10;1&#9;Johan1&#9;559m"
+                                  style={{
+                                    width: '100%',
+                                    height: '80px',
+                                    backgroundColor: '#050505',
+                                    border: '1px solid #222',
+                                    borderRadius: '4px',
+                                    color: '#fff',
+                                    padding: '4px',
+                                    fontSize: '0.72rem',
+                                    fontFamily: 'monospace',
+                                    resize: 'vertical',
+                                    boxSizing: 'border-box',
+                                    outline: 'none'
+                                  }}
+                                />
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                  <button
+                                    onClick={() => {
+                                      setIsImportOpen(false);
+                                      setImportText('');
+                                    }}
+                                    style={{
+                                      backgroundColor: 'transparent',
+                                      border: '1px solid #444',
+                                      color: '#aaa',
+                                      padding: '2px 8px',
+                                      borderRadius: '3px',
+                                      fontSize: '0.68rem',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleImportStats(importText);
+                                      setIsImportOpen(false);
+                                      setImportText('');
+                                      setSortBy('xp');
+                                      setSortOrder('desc');
+                                    }}
+                                    style={{
+                                      backgroundColor: '#e74c3c',
+                                      border: 'none',
+                                      color: '#fff',
+                                      padding: '2px 8px',
+                                      borderRadius: '3px',
+                                      fontSize: '0.68rem',
+                                      cursor: 'pointer',
+                                      fontWeight: 'bold'
+                                    }}
+                                  >
+                                    Import
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div style={{ backgroundColor: '#222', borderRadius: '4px', height: '4px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', backgroundColor: '#e74c3c', width: loadingProgress.total > 0 ? `${(loadingProgress.done / loadingProgress.total) * 100}%` : '0%', transition: 'width 0.3s ease' }} />
+                        )}
+
+                        {/* Members List */}
+                        {isLoadingTargets ? (
+                          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '6px' }}>
+                              Syncing targets... ({loadingProgress.done}/{loadingProgress.total})
+                            </div>
+                            <div style={{ backgroundColor: '#222', borderRadius: '4px', height: '4px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', backgroundColor: '#e74c3c', width: loadingProgress.total > 0 ? `${(loadingProgress.done / loadingProgress.total) * 100}%` : '0%', transition: 'width 0.3s ease' }} />
+                            </div>
                           </div>
-                        </div>
-                      ) : errorTargets ? (
-                        <div style={{ color: '#e74c3c', textAlign: 'center', fontSize: '0.75rem', padding: '10px 0' }}>{errorTargets}</div>
-                      ) : enemyFactionData && enemyFactionData.members ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
-                          {(() => {
-                            if (!sortedAndFilteredGroups) return null;
+                        ) : errorTargets ? (
+                          <div style={{ color: '#e74c3c', textAlign: 'center', fontSize: '0.75rem', padding: '10px 0' }}>{errorTargets}</div>
+                        ) : enemyFactionData && enemyFactionData.members ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto', paddingRight: '4px', minHeight: 0 }}>
+                            {(() => {
+                              if (!sortedAndFilteredGroups) return null;
 
-                            // Seed default section-open state on first render
-                            Object.entries(sortedAndFilteredGroups).forEach(([key]) => {
-                              if (sectionOpenState.current[key] === undefined) {
-                                sectionOpenState.current[key] = key === 'okay';
-                              }
-                            });
+                              // Seed default section-open state on first render
+                              Object.entries(sortedAndFilteredGroups).forEach(([key]) => {
+                                if (sectionOpenState.current[key] === undefined) {
+                                  sectionOpenState.current[key] = key === 'okay';
+                                }
+                              });
 
-                            const renderRows = (members) => members.map((member) => (
-                              <MemberSidebarRow
-                                key={member.id}
-                                member={member}
-                                userData={userData}
-                                compareMode={compareMode}
-                                navigateTo={navigateTo}
-                                isOpen={memberOpenState.current[member.id] === true}
-                                onToggle={() => {
-                                  memberOpenState.current[member.id] = !memberOpenState.current[member.id];
-                                  bumpRender();
-                                }}
-                              />
-                            ));
-
-                            return Object.entries(sortedAndFilteredGroups)
-                              .filter(([, g]) => g.members.length > 0)
-                              .map(([key, g]) => (
-                                <CollapsibleSidebarSection
-                                  key={key}
-                                  title={g.label}
-                                  count={g.members.length}
-                                  statusColor={g.color}
-                                  isOpen={sectionOpenState.current[key] === true}
+                              const renderRows = (members) => members.map((member) => (
+                                <MemberSidebarRow
+                                  key={member.id}
+                                  member={member}
+                                  userData={userData}
+                                  compareMode={compareMode}
+                                  navigateTo={navigateTo}
+                                  isOpen={memberOpenState.current[member.id] === true}
                                   onToggle={() => {
-                                    sectionOpenState.current[key] = !sectionOpenState.current[key];
+                                    memberOpenState.current[member.id] = !memberOpenState.current[member.id];
                                     bumpRender();
                                   }}
-                                >
-                                  {renderRows(g.members)}
-                                </CollapsibleSidebarSection>
+                                />
                               ));
-                          })()}
-                        </div>
-                      ) : (
-                        <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                          <span style={{ fontSize: '0.75rem', color: '#888' }}>No target data loaded.</span>
-                          <button
-                            onClick={doFetchTargets}
-                            style={{
-                              display: 'block',
-                              margin: '8px auto 0 auto',
-                              backgroundColor: '#3498db',
-                              border: 'none',
-                              color: '#fff',
-                              padding: '4px 10px',
-                              borderRadius: '4px',
-                              fontSize: '0.7rem',
-                              cursor: 'pointer',
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            Load Targets
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
 
-                  <div className="torn-sidebar-footer">
-                    <span>{cachedAt ? `Synced: ${new Date(cachedAt).toLocaleTimeString()}` : 'Targets not synced'}</span>
+                              return Object.entries(sortedAndFilteredGroups)
+                                .filter(([, g]) => g.members.length > 0)
+                                .map(([key, g]) => (
+                                  <CollapsibleSidebarSection
+                                    key={key}
+                                    title={g.label}
+                                    count={g.members.length}
+                                    statusColor={g.color}
+                                    isOpen={sectionOpenState.current[key] === true}
+                                    onToggle={() => {
+                                      sectionOpenState.current[key] = !sectionOpenState.current[key];
+                                      bumpRender();
+                                    }}
+                                  >
+                                    {renderRows(g.members)}
+                                  </CollapsibleSidebarSection>
+                                ));
+                            })()}
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#888' }}>No target data loaded.</span>
+                            <button
+                              onClick={doFetchTargets}
+                              style={{
+                                display: 'block',
+                                margin: '8px auto 0 auto',
+                                backgroundColor: '#3498db',
+                                border: 'none',
+                                color: '#fff',
+                                padding: '4px 10px',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Load Targets
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <div className="torn-sidebar-footer">
+                      <span>{cachedAt ? `Synced: ${new Date(cachedAt).toLocaleTimeString()}` : 'Targets not synced'}</span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
           </aside>
         )}
       </div>
