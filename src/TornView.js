@@ -1679,7 +1679,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
               // Determine current travel display mode (default: sell)
               if (!window._tornagator_travel_mode) {
-                window._tornagator_travel_mode = 'sell';
+                let savedMode = 'sell';
+                try {
+                  savedMode = localStorage.getItem('tornagator_travel_mode') || 'sell';
+                } catch (e) {}
+                window._tornagator_travel_mode = savedMode;
               }
 
               // Define global redraw function for travel rows once
@@ -1805,7 +1809,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     nCell.addEventListener('click', (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      window._tornagator_travel_mode = window._tornagator_travel_mode === 'sell' ? 'profit' : 'sell';
+                      const newMode = window._tornagator_travel_mode === 'sell' ? 'profit' : 'sell';
+                      window._tornagator_travel_mode = newMode;
+                      try {
+                        localStorage.setItem('tornagator_travel_mode', newMode);
+                      } catch (e) {}
                       if (typeof window._tornagator_redraw_travel === 'function') {
                         window._tornagator_redraw_travel();
                       }
