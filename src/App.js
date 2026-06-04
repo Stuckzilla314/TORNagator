@@ -507,7 +507,12 @@ function App() {
     borderBottom: activeTab === tab ? '2px solid #3498db' : '2px solid transparent',
     color: activeTab === tab ? '#3498db' : '#888',
     fontWeight: 'bold',
-    transition: 'all 0.3s ease'
+    transition: 'all 0.3s ease',
+    background: 'none',
+    borderTop: 'none',
+    borderRight: 'none',
+    borderLeft: 'none',
+    fontFamily: 'inherit'
   });
 
   return (
@@ -652,18 +657,18 @@ function App() {
               position: activeTab === 'torn' ? 'relative' : undefined,
               zIndex: activeTab === 'torn' ? 10 : undefined
             }}>
-              <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
-              <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
-              <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-              <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
-              <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+              <button style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+              <button style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</button>
+              <button style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</button>
+              <button style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
+              <button style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                   <line x1="8" y1="21" x2="16" y2="21" />
                   <line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
                 API Monitor
-              </div>
+              </button>
             </nav>
 
             {activeTab === 'dashboard' ? (
