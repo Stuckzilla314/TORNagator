@@ -527,6 +527,14 @@ const NewTabPage = ({ tabId, onNavigate }) => {
   const handleGo = (urlToGo) => {
     let url = (urlToGo || urlInput).trim();
     if (!url) return;
+
+    // 🛡️ Sentinel: Prevent DOM-based XSS by restricting URL schemes
+    const scheme = url.split(':')[0].toLowerCase();
+    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+      console.warn('Blocked navigation to unsafe URL scheme');
+      return;
+    }
+
     if (!/^https?:\/\//i.test(url)) {
       url = 'https://' + url;
     }
@@ -538,6 +546,14 @@ const NewTabPage = ({ tabId, onNavigate }) => {
     if (!newLabel.trim() || !newUrl.trim()) return;
 
     let url = newUrl.trim();
+
+    // 🛡️ Sentinel: Prevent DOM-based XSS by restricting URL schemes
+    const scheme = url.split(':')[0].toLowerCase();
+    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+      alert('Invalid URL scheme for security reasons.');
+      return;
+    }
+
     if (!/^https?:\/\//i.test(url)) {
       url = 'https://' + url;
     }
