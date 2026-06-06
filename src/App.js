@@ -505,6 +505,12 @@ function App() {
     padding: '10px 20px',
     cursor: 'pointer',
     borderBottom: activeTab === tab ? '2px solid #3498db' : '2px solid transparent',
+    borderTop: 'none',
+    borderRight: 'none',
+    borderLeft: 'none',
+    background: 'none',
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
     color: activeTab === tab ? '#3498db' : '#888',
     fontWeight: 'bold',
     transition: 'all 0.3s ease'
@@ -640,30 +646,34 @@ function App() {
 
         {apiKey && userData && (
           <>
-            <nav style={{
-              display: 'flex',
-              gap: '10px',
-              marginBottom: activeTab === 'torn' ? '0' : '30px',
-              borderBottom: '1px solid #333',
-              width: '100%',
-              maxWidth: '100%',
-              margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
-              padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
-              position: activeTab === 'torn' ? 'relative' : undefined,
-              zIndex: activeTab === 'torn' ? 10 : undefined
-            }}>
-              <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
-              <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
-              <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-              <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
-              <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+            <nav
+              role="tablist"
+              aria-label="Main Navigation"
+              style={{
+                display: 'flex',
+                gap: '10px',
+                marginBottom: activeTab === 'torn' ? '0' : '30px',
+                borderBottom: '1px solid #333',
+                width: '100%',
+                maxWidth: '100%',
+                margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
+                padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
+                position: activeTab === 'torn' ? 'relative' : undefined,
+                zIndex: activeTab === 'torn' ? 10 : undefined
+              }}
+            >
+              <button role="tab" aria-selected={activeTab === 'dashboard'} style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+              <button role="tab" aria-selected={activeTab === 'faction'} style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</button>
+              <button role="tab" aria-selected={activeTab === 'stock'} style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</button>
+              <button role="tab" aria-selected={activeTab === 'torn'} style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
+              <button role="tab" aria-selected={activeTab === 'apilogs'} style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                   <line x1="8" y1="21" x2="16" y2="21" />
                   <line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
                 API Monitor
-              </div>
+              </button>
             </nav>
 
             {activeTab === 'dashboard' ? (
