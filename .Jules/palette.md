@@ -1,3 +1,6 @@
 ## 2024-05-24 - Accessible Submit Button Patterns
 **Learning:** For inputs like an API key that strictly require validation (e.g. exactly 16 characters), dynamically setting the disabled attribute on the submit button alongside conditional visual styling (e.g. a disabled background color and not-allowed cursor) provides immediate, intuitive feedback to users, preventing premature form submissions. It is also crucial to make sure screen reader labels use proper visually hidden CSS (`position: absolute`, `width: 1px`, etc.) rather than `display: none` which breaks accessibility.
 **Action:** Apply dynamic disabled states on submit actions when form conditions are known upfront, and ensure labels are correctly hidden for accessibility.
+## 2024-06-07 - Semantic Buttons for Navigation Tabs
+**Learning:** Found an accessibility issue pattern specific to this app where generic `<div onClick>` elements were used for navigation tabs (e.g., in App.js and FactionWar.js).
+**Action:** Replaced `<div onClick>` with `<button onClick>` and applied CSS resets (`background: 'none'`, `borderTop: 'none'`, `borderRight: 'none'`, `borderLeft: 'none'`, `fontFamily: 'inherit'`, `fontSize: 'inherit'`) to preserve visual design while gaining native keyboard accessibility and screen reader support.

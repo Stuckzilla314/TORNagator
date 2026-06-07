@@ -257,7 +257,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     color: activeSubTab === tab ? '#e74c3c' : '#888',
     fontWeight: 'bold',
     transition: 'all 0.3s ease',
-    display: 'inline-block'
+    display: 'inline-block',
+    background: 'none',
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+    borderTop: 'none',
+    borderRight: 'none',
+    borderLeft: 'none'
   });
 
   return (
@@ -290,11 +296,11 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
       {isInWar && (
         <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333' }}>
-          <div style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</div>
-          <div style={navItemStyle('targets')} onClick={() => {
+          <button style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</button>
+          <button style={navItemStyle('targets')} onClick={() => {
             setActiveSubTab('targets');
             handleLoadTargets();
-          }}>Enemy Targets</div>
+          }}>Enemy Targets</button>
         </nav>
       )}
 
