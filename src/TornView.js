@@ -527,6 +527,11 @@ const NewTabPage = ({ tabId, onNavigate }) => {
   const handleGo = (urlToGo) => {
     let url = (urlToGo || urlInput).trim();
     if (!url) return;
+    const scheme = url.split(':')[0].toLowerCase();
+    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+      alert('Invalid URL scheme for security reasons.');
+      return;
+    }
     if (!/^https?:\/\//i.test(url)) {
       url = 'https://' + url;
     }
@@ -538,6 +543,11 @@ const NewTabPage = ({ tabId, onNavigate }) => {
     if (!newLabel.trim() || !newUrl.trim()) return;
 
     let url = newUrl.trim();
+    const scheme = url.split(':')[0].toLowerCase();
+    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+      alert('Invalid URL scheme for security reasons.');
+      return;
+    }
     if (!/^https?:\/\//i.test(url)) {
       url = 'https://' + url;
     }
@@ -2568,6 +2578,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   useEffect(() => {
     if (requestedUrl) {
+      let safeUrl = requestedUrl.trim();
+      const scheme = safeUrl.split(':')[0].toLowerCase();
+      if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+        console.warn('Blocked navigation to unsafe URL scheme');
+        setRequestedUrl(null);
+        return;
+      }
+
       const existingTab = tabs.find(t => areUrlsEqual(t.url, requestedUrl));
       if (existingTab) {
         setActiveTabId(existingTab.id);
