@@ -2666,7 +2666,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const navigateTo = useCallback((href) => {
     // 🛡️ Sentinel: Defense-in-depth against DOM XSS in webview src
     let safeHref = href || '';
-    const scheme = safeHref.split(':')[0].toLowerCase();
+    const scheme = safeHref.trim().split(':')[0].toLowerCase();
     if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
       console.warn('Blocked navigation to unsafe URL scheme');
       return;
