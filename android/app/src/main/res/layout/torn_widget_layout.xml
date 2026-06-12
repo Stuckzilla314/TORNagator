@@ -10,14 +10,14 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="6dp">
 
         <TextView
             android:id="@+id/widget_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="TORNagator"
-            android:textColor="#3498DB"
+            android:textColor="#38BDF8"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -27,10 +27,18 @@
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
             android:text="Loading..."
-            android:textColor="#FFFFFF"
+            android:textColor="#E2E8F0"
             android:textSize="12sp"
             android:textStyle="bold" />
     </RelativeLayout>
+
+    <!-- Sci-Fi Subtle Divider -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1E293B"
+        android:layout_marginBottom="8dp"
+        android:contentDescription="" />
 
     <!-- Status and Timer Row -->
     <LinearLayout
@@ -40,13 +48,23 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="8dp">
 
+        <!-- LED Status Dot -->
+        <ImageView
+            android:id="@+id/widget_status_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/widget_dot"
+            android:tint="#94A3B8"
+            android:contentDescription="Status Indicator" />
+
         <TextView
             android:id="@+id/widget_status"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Initializing..."
-            android:textColor="#AAAAAA"
+            android:textColor="#94A3B8"
             android:textSize="11sp"
             android:singleLine="true"
             android:ellipsize="end" />
@@ -55,7 +73,7 @@
             android:id="@+id/widget_timer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#3498DB"
+            android:textColor="#38BDF8"
             android:textSize="11sp"
             android:textStyle="bold"
             android:visibility="gone"
@@ -66,7 +84,7 @@
             android:id="@+id/widget_timer_eta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#3498DB"
+            android:textColor="#38BDF8"
             android:textSize="11sp"
             android:textStyle="normal"
             android:visibility="gone"
@@ -94,7 +112,7 @@
                 android:layout_width="36dp"
                 android:layout_height="wrap_content"
                 android:text="LIFE"
-                android:textColor="#2ECC71"
+                android:textColor="#4ADE80"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
@@ -102,7 +120,7 @@
                 android:id="@+id/widget_life_bar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="0dp"
-                android:layout_height="8dp"
+                android:layout_height="6dp"
                 android:layout_weight="1"
                 android:max="100"
                 android:progress="0"
@@ -114,7 +132,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="0/0"
-                android:textColor="#FFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="10sp" />
         </LinearLayout>
 
@@ -130,7 +148,7 @@
                 android:layout_width="36dp"
                 android:layout_height="wrap_content"
                 android:text="NRG"
-                android:textColor="#F1C40F"
+                android:textColor="#FBBF24"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
@@ -138,7 +156,7 @@
                 android:id="@+id/widget_energy_bar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="0dp"
-                android:layout_height="8dp"
+                android:layout_height="6dp"
                 android:layout_weight="1"
                 android:max="100"
                 android:progress="0"
@@ -150,7 +168,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="0/0"
-                android:textColor="#FFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="10sp" />
         </LinearLayout>
 
@@ -165,7 +183,7 @@
                 android:layout_width="36dp"
                 android:layout_height="wrap_content"
                 android:text="NRV"
-                android:textColor="#E74C3C"
+                android:textColor="#F87171"
                 android:textSize="10sp"
                 android:textStyle="bold" />
 
@@ -173,7 +191,7 @@
                 android:id="@+id/widget_nerve_bar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="0dp"
-                android:layout_height="8dp"
+                android:layout_height="6dp"
                 android:layout_weight="1"
                 android:max="100"
                 android:progress="0"
@@ -185,7 +203,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="0/0"
-                android:textColor="#FFFFFF"
+                android:textColor="#E2E8F0"
                 android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
@@ -202,7 +220,7 @@
             android:layout_height="wrap_content"
             android:layout_centerVertical="true"
             android:text="Never updated"
-            android:textColor="#666666"
+            android:textColor="#64748B"
             android:textSize="9sp" />
 
         <ImageButton
@@ -214,7 +232,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/widget_ic_refresh"
             android:scaleType="centerInside"
-            android:tint="#AAAAAA"
+            android:tint="#64748B"
             android:contentDescription="Refresh Data" />
     </RelativeLayout>
 

@@ -155,7 +155,12 @@ public class TornWidgetProvider extends AppWidgetProvider {
                 // Name & Level
                 String name = json.optString("name", "Player");
                 int level = json.optInt("level", 0);
-                views.setTextViewText(R.id.widget_player_info, name + " [" + level + "]");
+                String playerHtml = name + " <font color='#64748B'>[" + level + "]</font>";
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    views.setTextViewText(R.id.widget_player_info, android.text.Html.fromHtml(playerHtml, android.text.Html.FROM_HTML_MODE_LEGACY));
+                } else {
+                    views.setTextViewText(R.id.widget_player_info, android.text.Html.fromHtml(playerHtml));
+                }
 
                 // Status Description
                 JSONObject statusObj = json.optJSONObject("status");
@@ -206,22 +211,40 @@ public class TornWidgetProvider extends AppWidgetProvider {
 
                 boolean showTimer = false;
                 long timerEndTimestamp = 0;
-                int timerColor = 0xFF3498DB; // default blue
+                int timerColor = 0xFF38BDF8; // default cyber blue
 
                 if ("Traveling".equalsIgnoreCase(state) && endTimestamp > (System.currentTimeMillis() / 1000)) {
                     showTimer = true;
                     timerEndTimestamp = endTimestamp;
-                    timerColor = 0xFF3498DB; // blue
+                    timerColor = 0xFF38BDF8; // cyber blue
                 } else if (racingIcon != null && racingIcon.optInt("id", 0) == 17) {
                     long raceUntil = racingIcon.optLong("until", 0);
                     if (raceUntil > (System.currentTimeMillis() / 1000)) {
                         showTimer = true;
                         timerEndTimestamp = raceUntil;
-                        timerColor = 0xFF9B59B6; // purple
+                        timerColor = 0xFFC084FC; // purple
+                    }
+                }
+
+                // Determine dynamic status color
+                int statusColor = 0xFF4ADE80; // Default to active green
+                if ("Traveling".equalsIgnoreCase(state)) {
+                    statusColor = 0xFF38BDF8; // Cyber blue/cyan
+                } else if ("Hospital".equalsIgnoreCase(state)) {
+                    statusColor = 0xFFF87171; // Red
+                } else if ("Jail".equalsIgnoreCase(state)) {
+                    statusColor = 0xFFFB923C; // Orange
+                } else if (racingIcon != null) {
+                    if (racingIcon.optInt("id", 0) == 17) {
+                        statusColor = 0xFFC084FC; // Purple (Racing)
+                    } else if (racingIcon.optInt("id", 0) == 18) {
+                        statusColor = 0xFF4ADE80; // Green (Race completed)
                     }
                 }
 
                 views.setTextViewText(R.id.widget_status, statusDesc);
+                views.setTextColor(R.id.widget_status, statusColor);
+                views.setInt(R.id.widget_status_dot, "setColorFilter", statusColor);
 
                 if (showTimer) {
                     long durationMs = (timerEndTimestamp * 1000) - System.currentTimeMillis();
@@ -306,6 +329,8 @@ public class TornWidgetProvider extends AppWidgetProvider {
         for (int widgetId : allWidgetIds) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.torn_widget_layout);
             views.setTextViewText(R.id.widget_status, "Updating...");
+            views.setTextColor(R.id.widget_status, 0xFFFBBF24); // dynamic amber
+            views.setInt(R.id.widget_status_dot, "setColorFilter", 0xFFFBBF24);
             views.setViewVisibility(R.id.widget_timer, View.GONE);
             views.setViewVisibility(R.id.widget_timer_eta, View.GONE);
 
@@ -330,6 +355,8 @@ public class TornWidgetProvider extends AppWidgetProvider {
         for (int widgetId : allWidgetIds) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.torn_widget_layout);
             views.setTextViewText(R.id.widget_status, errorMessage);
+            views.setTextColor(R.id.widget_status, 0xFFF87171); // dynamic red
+            views.setInt(R.id.widget_status_dot, "setColorFilter", 0xFFF87171);
             views.setViewVisibility(R.id.widget_timer, View.GONE);
             views.setViewVisibility(R.id.widget_timer_eta, View.GONE);
 
