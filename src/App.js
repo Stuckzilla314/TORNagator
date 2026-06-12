@@ -508,17 +508,30 @@ function App() {
     };
   }, [apiKey, loadDashboardData, pollInterval]);
 
-  // Fetch faction data whenever the faction or torn tab is activated
+  // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open
   useEffect(() => {
-    if (apiKey && (activeTab === 'faction' || activeTab === 'torn')) {
+    let interval;
+    if (apiKey && activeTab === 'faction') {
       if (!hasFactionSyncRun.current) {
         hasFactionSyncRun.current = true;
         loadFactionData();
       }
+
+      if (pollInterval > 0) {
+        interval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            loadFactionData();
+          }
+        }, Math.max(10000, pollInterval * 1000));
+      }
     } else {
       hasFactionSyncRun.current = false;
     }
-  }, [apiKey, activeTab, loadFactionData]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [apiKey, activeTab, loadFactionData, pollInterval]);
 
   // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {

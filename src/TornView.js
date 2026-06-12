@@ -3655,14 +3655,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // Auto-fetch targets on tab switch to war sidebar if not cached
   useEffect(() => {
-    if (sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+    if (isActive && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
       doFetchTargets(false);
     }
-  }, [sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
+  }, [isActive, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
 
   // Auto-sync timer effect
   useEffect(() => {
-    if (syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
+    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
 
     const intervalId = setInterval(() => {
       if (!isLoadingTargets && !isSyncingTargets) {
@@ -3672,7 +3672,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     }, syncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
