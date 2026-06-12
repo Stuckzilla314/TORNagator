@@ -973,3 +973,193 @@
   background: rgba(46, 204, 113, 0.25);
   color: #fff;
 }
+
+/* ── Mobile Responsiveness (Screen size < 768px) ── */
+@media (max-width: 768px) {
+  .desktop-nav {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .desktop-nav > div {
+    padding: 12px 14px !important; /* Touch target size optimization */
+    font-size: 0.85rem !important;
+  }
+
+  /* Page layout adjustment */
+  .torn-view-root {
+    height: calc(100vh - 50px);
+  }
+  
+  /* Sidebar stacking on mobile */
+  .torn-main-layout {
+    flex-direction: column-reverse !important; 
+  }
+
+  .torn-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 250px;
+    border-left: none !important;
+    border-top: 1px solid rgba(52, 152, 219, 0.2) !important;
+  }
+
+  .torn-sidebar.collapsed {
+    height: 0px !important;
+    max-height: 0px !important;
+    border-top: none !important;
+    overflow: hidden;
+  }
+
+  /* Toggle button repositioned for vertical layout */
+  .torn-sidebar-toggle {
+    left: auto !important;
+    right: 20px !important;
+    top: -24px !important;
+    transform: none !important;
+    width: 60px !important;
+    height: 24px !important;
+    border-radius: 6px 6px 0 0 !important;
+    border-bottom: none !important;
+    border-right: 1px solid rgba(52, 152, 219, 0.3) !important;
+  }
+  
+  /* Touch target optimizations */
+  .torn-browser-nav-btn {
+    width: 36px !important;
+    height: 36px !important;
+    padding: 4px !important;
+  }
+  
+  .torn-browser-toolbar {
+    padding: 4px 8px !important;
+    gap: 4px !important;
+  }
+  
+  .torn-browser-url-bar {
+    padding: 4px 8px !important;
+    font-size: 0.7rem !important;
+  }
+
+  /* Compact tab bar on mobile */
+  .torn-tab-bar {
+    padding: 0 4px !important;
+  }
+
+  .torn-tab-bar > div {
+    padding: 4px 8px !important;
+    min-width: 80px !important;
+    max-width: 140px !important;
+  }
+
+  .torn-tab-bar > div > span {
+    font-size: 0.7rem !important;
+  }
+
+  .settings-gear-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .new-tab-url-input {
+    padding: 14px 16px !important;
+  }
+
+  .new-tab-go-btn {
+    padding: 0 30px !important;
+    height: 44px !important;
+  }
+  
+  .new-tab-favorites-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+  }
+  
+  .new-tab-fav-card {
+    min-height: 80px !important;
+    padding: 12px 6px !important;
+  }
+
+  .torn-sidebar-quicklink-btn {
+    min-height: 48px !important;
+    padding: 12px 8px !important;
+  }
+}
+
+/* ── Chain Watcher Warnings ── */
+.chain-alert-yellow {
+  animation: border-pulse-yellow 1.5s ease-in-out infinite alternate;
+  border: 1px solid rgba(243, 156, 18, 0.5) !important;
+  background-color: rgba(243, 156, 18, 0.08) !important;
+}
+
+.chain-alert-red {
+  animation: border-pulse-red 0.8s ease-in-out infinite alternate;
+  border: 1px solid rgba(231, 76, 60, 0.7) !important;
+  background-color: rgba(231, 76, 60, 0.12) !important;
+}
+
+@keyframes border-pulse-yellow {
+  0% {
+    box-shadow: 0 0 4px rgba(243, 156, 18, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(243, 156, 18, 0.6);
+  }
+}
+
+@keyframes border-pulse-red {
+  0% {
+    box-shadow: 0 0 4px rgba(231, 76, 60, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(231, 76, 60, 0.9);
+  }
+}
+
+.compact-chain-alert-yellow {
+  background-color: rgba(243, 156, 18, 0.2) !important;
+  animation: compact-pulse-yellow 1.5s ease-in-out infinite alternate;
+}
+
+.compact-chain-alert-red {
+  background-color: rgba(231, 76, 60, 0.25) !important;
+  animation: compact-pulse-red 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes compact-pulse-yellow {
+  0% {
+    box-shadow: 0 0 2px rgba(243, 156, 18, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(243, 156, 18, 0.7);
+  }
+}
+
+@keyframes compact-pulse-red {
+  0% {
+    box-shadow: 0 0 2px rgba(231, 76, 60, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.9);
+  }
+}
+
+/* ── Sidebar Danger Flash ── */
+.sidebar-danger-flash {
+  animation: sidebar-danger-pulse 1s infinite alternate;
+  border-left: 1px solid rgba(231, 76, 60, 0.8) !important;
+}
+
+@keyframes sidebar-danger-pulse {
+  0% {
+    background-color: rgba(14, 16, 22, 0.85);
+    box-shadow: inset 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    background-color: rgba(231, 76, 60, 0.18) !important;
+    box-shadow: inset 0 0 35px rgba(231, 76, 60, 0.55);
+  }
+}
+
+

@@ -1,14 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, Timestamp, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
-};
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
@@ -35,12 +26,7 @@ const TRACKED_ITEM_IDS = new Set(Object.values(COUNTRY_MAP).flat());
 async function run() {
   // Validate environment variables
   const requiredEnv = [
-    'REACT_APP_FIREBASE_API_KEY',
-    'REACT_APP_FIREBASE_AUTH_DOMAIN',
-    'REACT_APP_FIREBASE_PROJECT_ID',
-    'REACT_APP_FIREBASE_STORAGE_BUCKET',
-    'REACT_APP_FIREBASE_MESSAGING_SENDER_ID',
-    'REACT_APP_FIREBASE_APP_ID'
+    'FIREBASE_SERVICE_ACCOUNT_KEY'
   ];
   
   const missing = requiredEnv.filter(k => !process.env[k]);
@@ -50,8 +36,18 @@ async function run() {
     process.exit(1);
   }
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  let db;
+  console.log("Initializing Firebase Admin SDK...");
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    const app = initializeApp({
+      credential: cert(serviceAccount)
+    });
+    db = getFirestore(app);
+  } catch (err) {
+    console.error("Failed to initialize Firebase Admin SDK:", err);
+    process.exit(1);
+  }
 
   console.log("Starting stock sync...");
   let data;
@@ -68,9 +64,9 @@ async function run() {
   }
   
   // Fetch the latest state summary (1 read instead of 220+)
-  const stateRef = doc(db, "stock_metadata", "summary");
-  const stateSnap = await getDoc(stateRef);
-  const stateData = stateSnap.exists() ? stateSnap.data() : {};
+  const stateRef = db.collection("stock_metadata").doc("summary");
+  const stateSnap = await stateRef.get();
+  const stateData = stateSnap.exists ? stateSnap.data() : {};
   const lastState = stateData.items || {};
   let lastCleanup = 0;
   if (stateData.lastCleanup) {
@@ -124,7 +120,7 @@ async function run() {
       // Only write to history if quantity changed
       if (lastState[itemKey] !== s.quantity) {
         tasks.push((async () => {
-          await addDoc(collection(db, "stock_history"), {
+          await db.collection("stock_history").add({
             itemId: numericId,
             itemName: itemNames[numericId]?.name || "Unknown",
             country: countryName,
@@ -150,11 +146,11 @@ async function run() {
     try {
       // Cleanup records older than 7 days to stay within Firestore free tier limits
       const cutoff = Math.floor(nowMs / 1000) - (7 * 24 * 60 * 60);
-      const qCleanup = query(collection(db, "stock_history"), where("timestamp", "<", cutoff));
-      const cleanupSnap = await getDocs(qCleanup);
+      const qCleanup = db.collection("stock_history").where("timestamp", "<", cutoff);
+      const cleanupSnap = await qCleanup.get();
       
       if (!cleanupSnap.empty) {
-        const deleteTasks = cleanupSnap.docs.map(doc => deleteDoc(doc.ref));
+        const deleteTasks = cleanupSnap.docs.map(doc => doc.ref.delete());
         await Promise.all(deleteTasks);
         console.log(`[CLEANUP] Deleted ${cleanupSnap.size} records older than 48 hours.`);
       } else {
@@ -168,12 +164,12 @@ async function run() {
 
   // Update the summary state and frontend snapshot (2 writes)
   await Promise.all([
-    setDoc(stateRef, { 
+    stateRef.set({ 
       items: newState, 
       lastUpdated: Timestamp.now(),
       lastCleanup: typeof newLastCleanup === 'number' ? Timestamp.fromMillis(newLastCleanup) : newLastCleanup
     }),
-    setDoc(doc(db, "stock_metadata", "snapshot"), { 
+    db.collection("stock_metadata").doc("snapshot").set({ 
       stocks: snapshotStocks, 
       lastUpdated: Timestamp.now() 
     })

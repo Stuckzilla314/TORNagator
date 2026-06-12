@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { isNotificationsSupported, checkNotificationPermission, requestNotificationPermission } from './notifications';
 
 /**
  * Renders the settings menu dropdown, allowing the user to configure app preferences
@@ -17,6 +18,8 @@ import React from 'react';
  * @param {Function} props.onSyncTravel - Callback to manually force a sync of the travel/cargo data from the API.
  * @param {number} props.pollInterval - The auto-sync polling interval in seconds (0 for manual).
  * @param {Function} props.setPollInterval - Setter for the polling interval.
+ * @param {boolean} props.travelNotificationsEnabled - Whether travel landing notifications are enabled.
+ * @param {Function} props.setTravelNotificationsEnabled - Setter for the travel landing notifications.
  * @returns {React.JSX.Element} The rendered settings menu component.
  */
 const SettingsMenu = ({ 
@@ -33,8 +36,26 @@ const SettingsMenu = ({
   setManualOverride, 
   onSyncTravel,
   pollInterval,
-  setPollInterval
+  setPollInterval,
+  travelNotificationsEnabled,
+  setTravelNotificationsEnabled
 }) => {  
+
+  const [permissionStatus, setPermissionStatus] = useState('prompt');
+  const notificationsSupported = isNotificationsSupported();
+
+  useEffect(() => {
+    if (notificationsSupported) {
+      checkNotificationPermission().then(status => {
+        setPermissionStatus(status);
+      });
+    }
+  }, [notificationsSupported]);
+
+  const handleRequestPermission = async () => {
+    const status = await requestNotificationPermission();
+    setPermissionStatus(status);
+  };
 
   const handleOpenDevTools = () => {
     if (window.require) {
@@ -243,6 +264,67 @@ const SettingsMenu = ({
           )}
         </div>
       </div>
+
+      {notificationsSupported && (
+        <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#3498db', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>
+            Notifications
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem' }}>Permission</span>
+            <span style={{ 
+              fontSize: '0.8rem', 
+              fontWeight: 'bold',
+              color: permissionStatus === 'granted' ? '#2ecc71' : 
+                     permissionStatus === 'denied' ? '#e74c3c' : '#f39c12'
+            }}>
+              {permissionStatus.charAt(0).toUpperCase() + permissionStatus.slice(1)}
+            </span>
+          </div>
+
+          {permissionStatus !== 'granted' && (
+            <button
+              onClick={handleRequestPermission}
+              style={{
+                padding: '6px 10px',
+                backgroundColor: '#3498db',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                transition: 'background-color 0.2s',
+                textAlign: 'center',
+                marginTop: '2px'
+              }}
+              onMouseEnter={e => { e.target.style.backgroundColor = '#2980b9'; }}
+              onMouseLeave={e => { e.target.style.backgroundColor = '#3498db'; }}
+            >
+              Grant Permission
+            </button>
+          )}
+
+          <label 
+            style={{
+              padding: '6px 0',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ fontSize: '0.85rem' }}>Travel Alerts</span>
+            <input 
+              type="checkbox" 
+              checked={travelNotificationsEnabled} 
+              onChange={(e) => setTravelNotificationsEnabled(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+          </label>
+        </div>
+      )}
 
       <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <button

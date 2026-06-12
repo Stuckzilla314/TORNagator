@@ -1,6 +1,11 @@
-const { app, BrowserWindow, session, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, session, ipcMain, screen, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+app.setName('TORNagator');
+
+let win;
+let tray = null;
 
 function createWindow() {
   const stateFilePath = path.join(app.getPath('userData'), 'window-state.json');
@@ -43,7 +48,7 @@ function createWindow() {
     }
   }
 
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: width || 1200,
     height: height || 800,
     x: x,
@@ -67,8 +72,66 @@ function createWindow() {
     win.maximize();
   }
 
-  // Remove menu bar
-  win.setMenu(null);
+  // Set application menu
+  if (process.platform === 'darwin') {
+    const template = [
+      {
+        label: 'TORNagator',
+        submenu: [
+          { role: 'about', label: 'About TORNagator' },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide', label: 'Hide TORNagator' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit', label: 'Quit TORNagator' }
+        ]
+      },
+      {
+        label: 'Edit',
+        submenu: [
+          { role: 'undo' },
+          { role: 'redo' },
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'selectAll' }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          { role: 'reload' },
+          { role: 'forceReload' },
+          { role: 'toggleDevTools' },
+          { type: 'separator' },
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' }
+        ]
+      },
+      {
+        label: 'Window',
+        submenu: [
+          { role: 'minimize' },
+          { role: 'zoom' },
+          { type: 'separator' },
+          { role: 'front' },
+          { type: 'separator' },
+          { role: 'window' }
+        ]
+      }
+    ];
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+  } else {
+    win.setMenu(null);
+  }
 
   // Track window state changes
   let state = {
@@ -159,6 +222,50 @@ app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
 
 app.whenReady().then(() => {
   session.defaultSession.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+  
+  if (process.platform === 'darwin' && app.dock) {
+    try {
+      app.dock.setIcon(path.join(__dirname, '../img/alligator.png'));
+    } catch (e) {
+      console.error('Failed to set dock icon:', e);
+    }
+  }
+
+  try {
+    const iconPath = path.join(__dirname, '../img/alligator.png');
+    const trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    tray = new Tray(trayIcon);
+    tray.setToolTip('TORNagator');
+    const contextMenu = Menu.buildFromTemplate([
+      { label: 'Show App', click: () => { if (win) win.show(); } },
+      { label: 'Quit', click: () => { app.quit(); } }
+    ]);
+    tray.setContextMenu(contextMenu);
+    tray.on('click', () => {
+      if (win) {
+        if (win.isMinimized()) win.restore();
+        win.show();
+        win.focus();
+      }
+    });
+  } catch (e) {
+    console.error('Failed to create tray icon:', e);
+  }
+
+  app.on('web-contents-created', (event, contents) => {
+    contents.on('will-attach-webview', (event, webPreferences, params) => {
+      webPreferences.preload = path.join(__dirname, 'preload.js');
+    });
+
+    contents.setWindowOpenHandler((details) => {
+      const { url } = details;
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('open-url-in-tab', url);
+      }
+      return { action: 'deny' };
+    });
+  });
+
   createWindow();
 
   app.on('activate', () => {

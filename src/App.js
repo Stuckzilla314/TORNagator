@@ -10,6 +10,8 @@ import ApiLogsView from './ApiLogsView';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
+import { isCapacitor } from './utils';
+import { manageTravelNotification } from './notifications';
 
 /**
  * Custom hook to manage state synchronized with the browser's localStorage.
@@ -64,7 +66,7 @@ function useLocalStorage(key, initialValue) {
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
       'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
       'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase',
-      'dashboard_poll_interval'
+      'dashboard_poll_interval', 'travel_notifications_enabled'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -157,7 +159,8 @@ function App() {
       'tornagator_lifetime_torn',
       'tornagator_lifetime_yata',
       'tornagator_lifetime_firebase',
-      'dashboard_poll_interval'
+      'dashboard_poll_interval',
+      'travel_notifications_enabled'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -203,6 +206,18 @@ function App() {
     setTargetCountry(country);
     setActiveTab('torn');
   }, [setActiveTab]);
+
+  useEffect(() => {
+    if (!window.require) return;
+    const { ipcRenderer } = window.require('electron');
+    const handleOpenUrlInTab = (event, url) => {
+      handleOpenInTorn(url);
+    };
+    ipcRenderer.on('open-url-in-tab', handleOpenUrlInTab);
+    return () => {
+      ipcRenderer.removeListener('open-url-in-tab', handleOpenUrlInTab);
+    };
+  }, [handleOpenInTorn]);
   const [showTabTimer, setShowTabTimer] = useLocalStorage('show_tab_timer', true);
   const [showNavControls, setShowNavControls] = useLocalStorage('tornagator_show_nav_controls', true);
   const [stockAutoSync, setStockAutoSync] = useLocalStorage('tornagator_stock_auto_sync', true);
@@ -210,6 +225,7 @@ function App() {
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
   const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
+  const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
 
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   const isElectron = typeof window !== 'undefined' && window.process && window.process.versions && window.process.versions.electron;
@@ -220,7 +236,7 @@ function App() {
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money');
+      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money,perks');
       setUserData(prev => prev ? { ...prev, ...user } : user);
       try {
         localStorage.setItem('torn_api_key', apiKey);
@@ -238,13 +254,13 @@ function App() {
     }
   }, [apiKey]);
 
-  // Fetch Faction data — only called on-demand when visiting the Faction War tab
   const loadFactionData = useCallback(async () => {
     if (!apiKey) return;
     console.log('[TORNagator] loadFactionData triggered...');
     try {
       const faction = await fetchFactionData(apiKey);
       console.log('[TORNagator] fetchFactionData returned:', faction);
+
       if (faction && !faction.error) {
         setFactionData(faction);
       } else {
@@ -372,6 +388,13 @@ function App() {
   const hasInitialSyncRun = useRef(false);
   const hasFactionSyncRun = useRef(false);
   const hasOverseasSyncRun = useRef(false);
+
+  // Manage travel notifications on mobile/Capacitor platforms
+  useEffect(() => {
+    if (userData) {
+      manageTravelNotification(userData, travelNotificationsEnabled);
+    }
+  }, [userData, travelNotificationsEnabled]);
 
   // Always recurring dashboard fetch (user data only)
   useEffect(() => {
@@ -569,6 +592,22 @@ function App() {
     transition: 'all 0.3s ease'
   });
 
+  const mobileNavItemStyle = (tab) => ({
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '3px',
+    flex: 1,
+    height: '100%',
+    cursor: 'pointer',
+    color: activeTab === tab ? '#3498db' : '#777777',
+    transition: 'color 0.2s ease',
+    fontSize: '0.68rem',
+    fontWeight: activeTab === tab ? 'bold' : 'normal',
+    padding: '2px 0'
+  });
+
   return (
     <div style={{
       backgroundColor: '#0f0f0f',
@@ -604,7 +643,7 @@ function App() {
         </div>
       )}
 
-      {apiKey && (
+      {apiKey && !(isCapacitor && activeTab === 'torn') && (
         <div style={{
           position: 'fixed',
           top: isElectron
@@ -652,6 +691,8 @@ function App() {
               onSyncTravel={syncTravelData}
               pollInterval={pollInterval}
               setPollInterval={setPollInterval}
+              travelNotificationsEnabled={travelNotificationsEnabled}
+              setTravelNotificationsEnabled={setTravelNotificationsEnabled}
             />
           )}
         </div>
@@ -659,18 +700,18 @@ function App() {
 
       <div style={{
         flex: 1,
-        overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
         display: 'flex',
         flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
         position: 'relative',
-        padding: activeTab === 'torn' ? '0' : '20px',
         boxSizing: 'border-box'
       }}>
-        {!apiKey && <LoginForm onLogin={setApiKey} />}
-
-        {apiKey && userData && (
-          <>
-            <nav style={{
+        {/* Render desktop nav at the top */}
+        {!isCapacitor && apiKey && userData && (
+          <nav
+            className="desktop-nav"
+            style={{
               display: 'flex',
               gap: '10px',
               marginBottom: activeTab === 'torn' ? '0' : '30px',
@@ -680,60 +721,135 @@ function App() {
               margin: activeTab === 'torn' ? '0' : '0 auto 30px auto',
               padding: activeTab === 'torn' ? '8px 20px 0 20px' : '0',
               position: activeTab === 'torn' ? 'relative' : undefined,
-              zIndex: activeTab === 'torn' ? 10 : undefined
-            }}>
-              <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
-              <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
-              <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-              <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
-              <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                  <line x1="8" y1="21" x2="16" y2="21" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
-                </svg>
-                API Monitor
-              </div>
-            </nav>
-
-            {activeTab === 'dashboard' ? (
-              <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
-            ) : activeTab === 'faction' ? (
-              <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
-            ) : activeTab === 'torn' ? (
-              <TornView 
-                userData={userData} 
-                factionData={factionData}
-                loadFactionData={loadFactionData}
-                apiKey={apiKey} 
-                requestedUrl={requestedUrl} 
-                setRequestedUrl={setRequestedUrl}
-                targetCountry={targetCountry}
-                setTargetCountry={setTargetCountry}
-                itemsData={itemsData}
-                cargoCapacity={cargoCapacity}
-                showNavControls={showNavControls}
-              />
-            ) : activeTab === 'apilogs' ? (
-              <ApiLogsView />
-            ) : (
-              <OverseasStock
-                itemsData={itemsData}
-                userData={userData}
-                cargoCapacity={cargoCapacity}
-                autoSyncStock={stockAutoSync}
-                onManualSync={loadOverseasData}
-                filter={countryFilter}
-                setFilter={setCountryFilter}
-                onOpenInTorn={handleOpenInTorn}
-              />
-            )}
-          </>
+              zIndex: activeTab === 'torn' ? 10 : undefined,
+              flexShrink: 0
+            }}
+          >
+            <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
+            <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
+            <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
+            <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
+            <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+              API Monitor
+            </div>
+          </nav>
         )}
 
-        {loading && !userData && <p style={{ textAlign: 'center' }}>Loading TORN data...</p>}
-        {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
-        {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
+        {/* Main page content area - scrollable */}
+        <div style={{
+          flex: 1,
+          overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
+          position: 'relative',
+          padding: activeTab === 'torn' ? '0' : '20px',
+          boxSizing: 'border-box'
+        }}>
+          {!apiKey && <LoginForm onLogin={setApiKey} />}
+
+          {apiKey && userData && (
+            <>
+              <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}>
+                <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
+              </div>
+              <div style={{ display: activeTab === 'faction' ? 'block' : 'none' }}>
+                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
+              </div>
+              <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
+                <TornView 
+                  userData={userData} 
+                  factionData={factionData}
+                  loadFactionData={loadFactionData}
+                  apiKey={apiKey} 
+                  requestedUrl={requestedUrl} 
+                  setRequestedUrl={setRequestedUrl}
+                  targetCountry={targetCountry}
+                  setTargetCountry={setTargetCountry}
+                  itemsData={itemsData}
+                  cargoCapacity={cargoCapacity}
+                  showNavControls={showNavControls}
+                  isActive={activeTab === 'torn'}
+                />
+              </div>
+              <div style={{ display: activeTab === 'apilogs' ? 'block' : 'none' }}>
+                <ApiLogsView />
+              </div>
+              <div style={{ display: activeTab === 'stock' ? 'block' : 'none' }}>
+                <OverseasStock
+                  itemsData={itemsData}
+                  userData={userData}
+                  cargoCapacity={cargoCapacity}
+                  autoSyncStock={stockAutoSync}
+                  onManualSync={loadOverseasData}
+                  filter={countryFilter}
+                  setFilter={setCountryFilter}
+                  onOpenInTorn={handleOpenInTorn}
+                />
+              </div>
+            </>
+          )}
+
+          {loading && !userData && <p style={{ textAlign: 'center' }}>Loading TORN data...</p>}
+          {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
+          {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
+        </div>
+
+        {/* Render Capacitor mobile nav at the bottom */}
+        {isCapacitor && apiKey && userData && (
+          <nav
+            className="capacitor-nav"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-around',
+              alignItems: 'center',
+              backgroundColor: '#161616',
+              borderTop: '1px solid #2d2d2d',
+              width: '100%',
+              height: '60px',
+              padding: '4px 0',
+              boxSizing: 'border-box',
+              flexShrink: 0,
+              zIndex: 10
+            }}
+          >
+            <div style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              <span>Dashboard</span>
+            </div>
+            <div style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>Faction War</span>
+            </div>
+            <div style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span>Overseas</span>
+            </div>
+            <div style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
+              <IconGamepad size={20} color={activeTab === 'torn' ? '#3498db' : '#777'} />
+              <span>TORN</span>
+            </div>
+            <div style={mobileNavItemStyle('apilogs')} onClick={() => setActiveTab('apilogs')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+              <span>API Monitor</span>
+            </div>
+          </nav>
+        )}
       </div>
     </div>
   );
