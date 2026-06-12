@@ -37,7 +37,9 @@ console.log("Building React app...");
 cp.execSync('npm run build', { stdio: 'inherit' });
 
 console.log("Launching Capacitor on Android...");
-const child = cp.spawn('npx', ['cap', 'run', 'android'], { stdio: 'inherit', shell: true });
+const args = ['cap', 'run', 'android', ...process.argv.slice(2)];
+const child = cp.spawn('npx', args, { stdio: 'inherit', shell: true });
 child.on('exit', (code) => {
   process.exit(code);
 });
+

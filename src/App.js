@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
 import './App.css';
-import OverseasStock from './OverseasStock';
+import OverseasStock, { COUNTRY_MAP } from './OverseasStock';
 import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
@@ -136,6 +136,38 @@ function TitleBarTimer({ userData, showTabTimer }) {
     </span>
   );
 }
+
+const VALID_INVENTORY_CATEGORIES = new Set([
+  'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive', 
+  'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special', 
+  'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower', 
+  'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie', 
+  'Drug', 'Energy Drink'
+]);
+
+/**
+ * Determines the unique inventory categories required to fetch the quantities of tracked foreign items.
+ *
+ * @param {Object} itemsData - The fetched items metadata from Torn.
+ * @returns {string[]} An array of distinct valid category names.
+ */
+const getRequiredCategories = (itemsData) => {
+  if (!itemsData) return [];
+  const categories = new Set();
+  const trackedIds = Object.values(COUNTRY_MAP).flat();
+  
+  trackedIds.forEach(id => {
+    const item = itemsData[id];
+    if (item && item.type) {
+      const category = item.type === 'Miscellaneous' ? 'Other' : item.type;
+      if (VALID_INVENTORY_CATEGORIES.has(category)) {
+        categories.add(category);
+      }
+    }
+  });
+  
+  return Array.from(categories);
+};
 
 /**
  * The main application component.
@@ -363,19 +395,18 @@ function App() {
   const loadOverseasData = useCallback(async () => {
     if (!apiKey) return;
     try {
-      const currentItems = itemsDataRef.current;
-      const [items, inventory] = await Promise.all([
-        currentItems ? Promise.resolve(currentItems) : fetchTornItems(apiKey),
-        fetchUserInventoryV2(apiKey)
-      ]);
-
-      if (!currentItems) {
+      let items = itemsDataRef.current;
+      if (!items) {
+        items = await fetchTornItems(apiKey);
         itemsDataRef.current = items;
         setItemsData(items);
         try {
           localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
         } catch (e) { console.warn("Items cache failed:", e); }
       }
+
+      const requiredCategories = getRequiredCategories(items);
+      const inventory = await fetchUserInventoryV2(apiKey, requiredCategories);
 
       setUserData(prev => prev ? { ...prev, inventory } : { inventory });
       try {
@@ -588,8 +619,20 @@ function App() {
       // Fetch travel, categorized perks, and properties via a combined V2 selection
       const response = await fetch(`https://api.torn.com/user/?selections=travel,perks,properties&key=${apiKey}`);
       const data = await response.json();
+
+      let items = itemsDataRef.current;
+      if (!items) {
+        items = await fetchTornItems(apiKey);
+        itemsDataRef.current = items;
+        setItemsData(items);
+        try {
+          localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
+        } catch (e) { console.warn("Items cache failed:", e); }
+      }
+
+      const requiredCategories = getRequiredCategories(items);
       // Fetch inventory separately using the dedicated V2 inventory endpoint
-      const inventoryData = await fetchUserInventoryV2(apiKey);
+      const inventoryData = await fetchUserInventoryV2(apiKey, requiredCategories);
 
       if (!data.error && !manualOverride) {
         const calculated = calculateCapacity({ ...data, inventory: inventoryData });

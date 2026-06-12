@@ -131,23 +131,47 @@ export const fetchTornItems = async (apiKey) => {
 
 /**
  * Fetches user inventory using TORN v2 API.
- * Since v2 requires category-specific calls, we fetch the common categories 
- * Note: The API does not allow fetching multiple categories at once; we fetch only 'Flower'.
+ * Since v2 requires category-specific calls, we fetch only the requested categories.
  *
  * @param {string} apiKey - The user's private API key.
+ * @param {string|string[]} [requestedCategories] - The categories to fetch. Defaults to all valid categories.
  * @returns {Promise<Array<Object>>} A promise resolving to an array of inventory items.
  * @throws {Error} If the API returns an error or the request fails.
  */
-export const fetchUserInventoryV2 = async (apiKey) => {
-  const categories = [
-    'Medical', 'Drug', 'Temporary', 'Melee', 'Primary',
-    'Secondary', 'Armor', 'Plushie', 'Flower', 'Booster', 'Miscellaneous'
+export const fetchUserInventoryV2 = async (apiKey, requestedCategories = []) => {
+  const allCategories = [
+    'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive', 
+    'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special', 
+    'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower', 
+    'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie', 
+    'Drug', 'Energy Drink'
   ];
+
+  let categoriesToFetch = [];
+  if (requestedCategories) {
+    if (Array.isArray(requestedCategories)) {
+      categoriesToFetch = requestedCategories;
+    } else if (typeof requestedCategories === 'string') {
+      categoriesToFetch = [requestedCategories];
+    }
+  }
+
+  if (categoriesToFetch.length === 0) {
+    categoriesToFetch = allCategories;
+  }
+
+  // Filter against valid categories to prevent invalid API calls
+  const validSet = new Set(allCategories);
+  categoriesToFetch = categoriesToFetch.filter(cat => validSet.has(cat));
+
+  if (categoriesToFetch.length === 0) {
+    categoriesToFetch = allCategories;
+  }
 
   const allItems = {};
   try {
     const results = await Promise.all(
-      categories.map(cat =>
+      categoriesToFetch.map(cat =>
         fetch(`${BASE_URL}/v2/user/inventory?cat=${cat}&key=${apiKey}&limit=100`)
           .then(res => res.ok ? res.json() : null)
           .catch(() => null)
