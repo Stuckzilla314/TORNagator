@@ -32,7 +32,7 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
  */
 export const fetchFactionData = async (apiKey) => {
   try {
-    const url = `${BASE_URL}/faction/?selections=basic,rankedwars,chain,upgrades&key=${apiKey}`;
+    const url = `${BASE_URL}/faction/?selections=basic,rankedwars,chain&key=${apiKey}`;
     console.log('[TORNagator API] Fetching faction data from URL:', url.replace(apiKey, 'HIDDEN_KEY'));
     const response = await fetch(url);
     const data = await response.json();
