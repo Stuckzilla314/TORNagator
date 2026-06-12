@@ -28,7 +28,7 @@
     "electron:serve": "npm run build && electron .",
     "cap:sync": "npx cap sync",
     "cap:open-android": "npx cap open android",
-    "android:run": "npm run build && npx cap run android"
+    "android:run": "node scripts/run-android.mjs"
   },
   "eslintConfig": {
     "extends": [

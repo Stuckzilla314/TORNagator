@@ -2455,13 +2455,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     if (!isActive) return;
 
     const handleTornUrlChange = (e) => {
-      const { tabId: eventTabId, url, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail || {};
+      const { tabId: eventTabId, url, title, canGoBack: nativeCanGoBack, canGoForward: nativeCanGoForward } = e.detail || {};
       if (eventTabId && eventTabId !== tabId) return;
       setCanGoBack(!!nativeCanGoBack);
       setCanGoForward(!!nativeCanGoForward);
 
       if (tabId && url && url !== tabUrl) {
-        onUpdate(tabId, { url, title: 'Loading...' });
+        const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
+        onUpdate(tabId, { url, title: resolvedTitle });
       }
 
       // Inject stats redirects and styles on Capacitor overlay

@@ -39,15 +39,16 @@ public class MainActivity extends BridgeActivity {
         Log.d(TAG, "AndroidTornBridge registered on main WebView");
     }
 
-    private void dispatchUrlChange(final String tabId, final String url, final boolean canGoBack, final boolean canGoForward) {
+    private void dispatchUrlChange(final String tabId, final String url, final String title, final boolean canGoBack, final boolean canGoForward) {
         lastDispatchedUrls.put(tabId, url);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 if (getBridge() == null || getBridge().getWebView() == null) return;
                 String safeUrl = url.replace("\\", "\\\\").replace("'", "\\'");
+                String safeTitle = title != null ? title.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") : "";
                 String js = "window.dispatchEvent(new CustomEvent('tornUrlChange', { " +
-                            "detail: { tabId: '" + tabId + "', url: '" + safeUrl + "', canGoBack: " + canGoBack + ", canGoForward: " + canGoForward + " } " +
+                            "detail: { tabId: '" + tabId + "', url: '" + safeUrl + "', title: '" + safeTitle + "', canGoBack: " + canGoBack + ", canGoForward: " + canGoForward + " } " +
                             "}));";
                 getBridge().getWebView().evaluateJavascript(js, null);
             }
@@ -137,7 +138,7 @@ public class MainActivity extends BridgeActivity {
                                 String tId = (String) view.getTag();
                                 Log.d(TAG, "Overlay tabId=" + tId + " onPageStarted: " + url);
                                 if (tId != null) {
-                                    dispatchUrlChange(tId, url, view.canGoBack(), view.canGoForward());
+                                    dispatchUrlChange(tId, url, "Loading...", view.canGoBack(), view.canGoForward());
                                 }
                             }
 
@@ -146,7 +147,7 @@ public class MainActivity extends BridgeActivity {
                                 String tId = (String) view.getTag();
                                 Log.d(TAG, "Overlay tabId=" + tId + " onPageFinished: " + url);
                                 if (tId != null) {
-                                    dispatchUrlChange(tId, url, view.canGoBack(), view.canGoForward());
+                                    dispatchUrlChange(tId, url, view.getTitle(), view.canGoBack(), view.canGoForward());
                                 }
                             }
 
@@ -155,7 +156,7 @@ public class MainActivity extends BridgeActivity {
                                 String tId = (String) view.getTag();
                                 Log.v(TAG, "Overlay tabId=" + tId + " history update: " + url);
                                 if (tId != null) {
-                                    dispatchUrlChange(tId, url, view.canGoBack(), view.canGoForward());
+                                    dispatchUrlChange(tId, url, view.getTitle(), view.canGoBack(), view.canGoForward());
                                 }
                             }
                         });
