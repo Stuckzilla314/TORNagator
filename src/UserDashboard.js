@@ -150,6 +150,8 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   const landingTime = formatReleaseTime(landingUntil);
   const releaseTime = formatReleaseTime(statusUntil);
 
+
+
   const lifeTime = useBarTimer(userData.life);
   const energyTime = useBarTimer(userData.energy);
   const nerveTime = useBarTimer(userData.nerve);
@@ -294,6 +296,8 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
           </div>
         </a>
       )}
+
+
 
       {/* Hospital Information Section */}
       {isHospitalized && (

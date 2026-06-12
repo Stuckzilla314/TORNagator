@@ -123,7 +123,7 @@ export const resetLifetimeCounters = () => {
  * @param {number} duration - The duration of the call in milliseconds.
  * @param {string|null} [errorMsg=null] - The error message, if applicable.
  */
-export const logApiCall = (type, action, status, duration, errorMsg = null) => {
+export const logApiCall = (type, action, status, duration, errorMsg = null, responseData = null) => {
   // Increment session counter
   if (sessionCounters[type] !== undefined) {
     sessionCounters[type] += 1;
@@ -153,7 +153,8 @@ export const logApiCall = (type, action, status, duration, errorMsg = null) => {
     action,
     status, // 'SUCCESS' or 'ERROR'
     duration, // ms
-    errorMsg
+    errorMsg,
+    responseData
   };
   
   logs.unshift(newLog);
@@ -269,7 +270,7 @@ export const initApiInterceptor = () => {
           mockBody = { name: 'Mock User', player_id: 12345 };
         }
 
-        logApiCall(apiType, endpoint, 'SUCCESS', duration);
+        logApiCall(apiType, endpoint, 'SUCCESS', duration, null, mockBody);
         return new Response(JSON.stringify(mockBody), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
@@ -287,18 +288,34 @@ export const initApiInterceptor = () => {
               const clone = response.clone();
               const data = await clone.json();
               if (data && data.error) {
-                logApiCall(apiType, endpoint, 'ERROR', duration, data.error.error || `Torn Error Code ${data.error.code}`);
+                logApiCall(apiType, endpoint, 'ERROR', duration, data.error.error || `Torn Error Code ${data.error.code}`, data);
               } else {
-                logApiCall(apiType, endpoint, 'SUCCESS', duration);
+                logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
               }
             } catch (e) {
               logApiCall(apiType, endpoint, 'SUCCESS', duration);
             }
           } else {
-            logApiCall(apiType, endpoint, 'SUCCESS', duration);
+            try {
+              const clone = response.clone();
+              const data = await clone.json();
+              logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
+            } catch (e) {
+              logApiCall(apiType, endpoint, 'SUCCESS', duration);
+            }
           }
         } else {
-          logApiCall(apiType, endpoint, 'ERROR', duration, `HTTP Status ${response.status}`);
+          let errorData = null;
+          try {
+            const clone = response.clone();
+            errorData = await clone.json();
+          } catch (e) {
+            try {
+              const clone = response.clone();
+              errorData = await clone.text();
+            } catch (inner) {}
+          }
+          logApiCall(apiType, endpoint, 'ERROR', duration, `HTTP Status ${response.status}`, errorData);
         }
         return response;
       } catch (error) {

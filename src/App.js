@@ -85,9 +85,11 @@ function useLocalStorage(key, initialValue) {
  * This prevents the entire App component tree from re-rendering every second.
  */
 function TitleBarTimer({ userData, showTabTimer }) {
-  const landingUntil = (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
-    ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
-    : 0;
+  const landingUntil = (
+    (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
+      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
+      : 0
+  );
 
   const timeLeft = useTravelTimer(landingUntil);
 
