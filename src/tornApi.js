@@ -23,6 +23,26 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
 };
 
 /**
+ * Fetches user icons using TORN v2 API.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @returns {Promise<Object>} A promise resolving to the user icons object.
+ * @throws {Error} If the API returns an error or the request fails.
+ */
+export const fetchUserIcons = async (apiKey) => {
+  try {
+    const response = await fetch(`${BASE_URL}/v2/user/icons?key=${apiKey}`);
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error.error || 'Unknown API Error');
+    }
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
  * Fetches basic faction data from the Torn API.
  * Additionally attempts to resolve and populate the names of the leader and co-leader.
  *

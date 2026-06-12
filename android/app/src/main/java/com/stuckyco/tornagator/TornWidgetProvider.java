@@ -112,7 +112,17 @@ public class TornWidgetProvider extends AppWidgetProvider {
                         return;
                     }
 
-
+                    // 2. Fetch user icons (v2)
+                    try {
+                        String iconsUrl = "https://api.torn.com/v2/user/icons?key=" + apiKey;
+                        String iconsResponse = performHttpGet(iconsUrl);
+                        JSONObject iconsJson = new JSONObject(iconsResponse);
+                        if (iconsJson.has("icons")) {
+                            json.put("icons", iconsJson.getJSONArray("icons"));
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error fetching user icons", e);
+                    }
 
                     String mergedResponse = json.toString();
                     long now = System.currentTimeMillis();
@@ -158,6 +168,22 @@ public class TornWidgetProvider extends AppWidgetProvider {
                     until = statusObj.optLong("until", 0);
                 }
 
+                // Find racing icon (id 17 or 18)
+                JSONArray iconsArray = json.optJSONArray("icons");
+                JSONObject racingIcon = null;
+                if (iconsArray != null) {
+                    for (int i = 0; i < iconsArray.length(); i++) {
+                        JSONObject icon = iconsArray.optJSONObject(i);
+                        if (icon != null) {
+                            int iconId = icon.optInt("id", 0);
+                            if (iconId == 17 || iconId == 18) {
+                                racingIcon = icon;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // Traveling Timer
                 JSONObject travelObj = json.optJSONObject("travel");
                 long travelTimestamp = 0;
@@ -169,7 +195,14 @@ public class TornWidgetProvider extends AppWidgetProvider {
                 }
                 long endTimestamp = (travelTimestamp > 0) ? travelTimestamp : until;
 
-
+                // Adjust status description if racing
+                if (racingIcon != null) {
+                    if (!"Traveling".equalsIgnoreCase(state) && !"Hospital".equalsIgnoreCase(state) && !"Jail".equalsIgnoreCase(state)) {
+                        String raceTitle = racingIcon.optString("title", "Racing");
+                        String raceDesc = racingIcon.optString("description", "");
+                        statusDesc = raceDesc.isEmpty() ? raceTitle : stripHtml(raceDesc);
+                    }
+                }
 
                 boolean showTimer = false;
                 long timerEndTimestamp = 0;
@@ -179,6 +212,13 @@ public class TornWidgetProvider extends AppWidgetProvider {
                     showTimer = true;
                     timerEndTimestamp = endTimestamp;
                     timerColor = 0xFF3498DB; // blue
+                } else if (racingIcon != null && racingIcon.optInt("id", 0) == 17) {
+                    long raceUntil = racingIcon.optLong("until", 0);
+                    if (raceUntil > (System.currentTimeMillis() / 1000)) {
+                        showTimer = true;
+                        timerEndTimestamp = raceUntil;
+                        timerColor = 0xFF9B59B6; // purple
+                    }
                 }
 
                 views.setTextViewText(R.id.widget_status, statusDesc);
@@ -304,5 +344,17 @@ public class TornWidgetProvider extends AppWidgetProvider {
 
             appWidgetManager.updateAppWidget(widgetId, views);
         }
+    }
+
+    private String stripHtml(String html) {
+        if (html == null) return "";
+        String clean = html.replaceAll("<[^>]*>", "");
+        clean = clean.replace("&amp;", "&")
+                     .replace("&nbsp;", " ")
+                     .replace("&#039;", "'")
+                     .replace("&quot;", "\"")
+                     .replace("&lt;", "<")
+                     .replace("&gt;", ">");
+        return clean;
     }
 }

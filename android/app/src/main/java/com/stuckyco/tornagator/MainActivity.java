@@ -316,7 +316,7 @@ public class MainActivity extends BridgeActivity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Log.v(TAG, "updateWidgetData called from JS");
+                    Log.v(TAG, "updateWidgetData called from JS (including racing/icon updates)");
                     android.content.SharedPreferences pref = getApplicationContext().getSharedPreferences("TornWidgetPrefs", android.content.Context.MODE_PRIVATE);
                     pref.edit()
                         .putString("cached_user_data", userJson)

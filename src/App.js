@@ -7,9 +7,9 @@ import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import ApiLogsView from './ApiLogsView';
-import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
+import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData, fetchUserIcons } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
-import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
+import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock, IconRaceway } from './Icons';
 import { isCapacitor } from './utils';
 import { manageTravelNotification } from './notifications';
 
@@ -85,11 +85,12 @@ function useLocalStorage(key, initialValue) {
  * This prevents the entire App component tree from re-rendering every second.
  */
 function TitleBarTimer({ userData, showTabTimer }) {
-  const landingUntil = (
-    (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
-      ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
-      : 0
-  );
+  const isOccupied = (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail');
+  const racingIcon = userData?.icons?.find(icon => icon.id === 17);
+
+  const landingUntil = isOccupied
+    ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
+    : (racingIcon && racingIcon.until ? racingIcon.until : 0);
 
   const timeLeft = useTravelTimer(landingUntil);
 
@@ -103,7 +104,7 @@ function TitleBarTimer({ userData, showTabTimer }) {
 
   if (!showTabTimer || !timeLeft) return null;
 
-  const state = userData?.status?.state;
+  const state = isOccupied ? userData?.status?.state : (racingIcon ? 'Racing' : null);
 
   return (
     <span style={{
@@ -111,18 +112,21 @@ function TitleBarTimer({ userData, showTabTimer }) {
       padding: '2px 8px',
       backgroundColor: state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
                        state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
-                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
+                       state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
       border: `1px solid ${
                        state === 'Traveling' ? '#3498db' :
                        state === 'Hospital' ? '#e74c3c' :
-                       state === 'Jail' ? '#f39c12' : '#888'
+                       state === 'Jail' ? '#f39c12' :
+                       state === 'Racing' ? '#9b59b6' : '#888'
       }`,
       borderRadius: '4px',
       fontSize: '0.8rem',
       fontWeight: 'bold',
       color: state === 'Traveling' ? '#3498db' :
              state === 'Hospital' ? '#e74c3c' :
-             state === 'Jail' ? '#f39c12' : '#e0e0e0',
+             state === 'Jail' ? '#f39c12' :
+             state === 'Racing' ? '#9b59b6' : '#e0e0e0',
       display: 'flex',
       alignItems: 'center',
       gap: '6px'
@@ -130,7 +134,8 @@ function TitleBarTimer({ userData, showTabTimer }) {
       <span style={{ display: 'flex', alignItems: 'center' }}>
         {state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
          state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
-         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> : <IconClock size={13} color={"#aaa"} />}
+         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> :
+         state === 'Racing' ? <IconRaceway size={13} color={"#9b59b6"} /> : <IconClock size={13} color={"#aaa"} />}
       </span>
       <span>{timeLeft}</span>
     </span>
@@ -270,8 +275,20 @@ function App() {
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money,perks');
-      setUserData(prev => prev ? { ...prev, ...user } : user);
+      const [user, iconsData] = await Promise.all([
+        fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money,perks'),
+        fetchUserIcons(apiKey).catch(err => {
+          console.warn("Failed to fetch user icons:", err);
+          return null;
+        })
+      ]);
+
+      const mergedUser = {
+        ...user,
+        icons: iconsData?.icons || []
+      };
+
+      setUserData(prev => prev ? { ...prev, ...mergedUser } : mergedUser);
       try {
         localStorage.setItem('torn_api_key', apiKey);
       } catch (e) {
