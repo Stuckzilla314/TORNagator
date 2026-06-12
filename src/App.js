@@ -396,6 +396,28 @@ function App() {
     }
   }, [userData, travelNotificationsEnabled]);
 
+  // Sync API Key to Android Native (for widget support)
+  useEffect(() => {
+    if (window.AndroidTornBridge && window.AndroidTornBridge.setTornApiKey) {
+      try {
+        window.AndroidTornBridge.setTornApiKey(apiKey || '');
+      } catch (e) {
+        console.warn("Failed to sync API key to Android widget", e);
+      }
+    }
+  }, [apiKey]);
+
+  // Sync User Data to Android Native (for widget support)
+  useEffect(() => {
+    if (window.AndroidTornBridge && window.AndroidTornBridge.updateWidgetData) {
+      try {
+        window.AndroidTornBridge.updateWidgetData(userData ? JSON.stringify(userData) : '');
+      } catch (e) {
+        console.warn("Failed to sync user data to Android widget", e);
+      }
+    }
+  }, [userData]);
+
   // Always recurring dashboard fetch (user data only)
   useEffect(() => {
     let interval;

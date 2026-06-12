@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_background">
+
+    <!-- Header: App Name and Player Info -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TORNagator"
+            android:textColor="#3498DB"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_player_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:text="Loading..."
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <!-- Status Text -->
+    <TextView
+        android:id="@+id/widget_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Initializing..."
+        android:textColor="#AAAAAA"
+        android:textSize="11sp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Stat Bars container -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+
+        <!-- Life Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+
+            <TextView
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:text="LIFE"
+                android:textColor="#2ECC71"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/widget_life_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="8dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/widget_life_progress" />
+
+            <TextView
+                android:id="@+id/widget_life_val"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0/0"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Energy Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+
+            <TextView
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:text="NRG"
+                android:textColor="#F1C40F"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/widget_energy_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="8dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/widget_energy_progress" />
+
+            <TextView
+                android:id="@+id/widget_energy_val"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0/0"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Nerve Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:text="NRV"
+                android:textColor="#E74C3C"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/widget_nerve_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="8dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/widget_nerve_progress" />
+
+            <TextView
+                android:id="@+id/widget_nerve_val"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0/0"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Footer: Update Time & Refresh Button -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/widget_updated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:text="Never updated"
+            android:textColor="#666666"
+            android:textSize="9sp" />
+
+        <ImageButton
+            android:id="@+id/widget_btn_refresh"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/widget_ic_refresh"
+            android:scaleType="centerInside"
+            android:tint="#AAAAAA"
+            android:contentDescription="Refresh Data" />
+    </RelativeLayout>
+
+</LinearLayout>
