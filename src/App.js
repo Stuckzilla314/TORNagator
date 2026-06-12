@@ -10,7 +10,8 @@ import ApiLogsView from './ApiLogsView';
 import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
-import { isElectron, isCapacitor } from './utils';
+import { isCapacitor } from './utils';
+import { manageTravelNotification } from './notifications';
 
 /**
  * Custom hook to manage state synchronized with the browser's localStorage.
@@ -65,7 +66,7 @@ function useLocalStorage(key, initialValue) {
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
       'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
       'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase',
-      'dashboard_poll_interval'
+      'dashboard_poll_interval', 'travel_notifications_enabled'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -158,7 +159,8 @@ function App() {
       'tornagator_lifetime_torn',
       'tornagator_lifetime_yata',
       'tornagator_lifetime_firebase',
-      'dashboard_poll_interval'
+      'dashboard_poll_interval',
+      'travel_notifications_enabled'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -223,6 +225,7 @@ function App() {
   const [cargoCapacity, setCargoCapacity] = useLocalStorage('cargo_capacity', 5);
   const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
+  const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
 
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   const isElectron = typeof window !== 'undefined' && window.process && window.process.versions && window.process.versions.electron;
@@ -385,6 +388,13 @@ function App() {
   const hasInitialSyncRun = useRef(false);
   const hasFactionSyncRun = useRef(false);
   const hasOverseasSyncRun = useRef(false);
+
+  // Manage travel notifications on mobile/Capacitor platforms
+  useEffect(() => {
+    if (userData) {
+      manageTravelNotification(userData, travelNotificationsEnabled);
+    }
+  }, [userData, travelNotificationsEnabled]);
 
   // Always recurring dashboard fetch (user data only)
   useEffect(() => {
@@ -681,6 +691,8 @@ function App() {
               onSyncTravel={syncTravelData}
               pollInterval={pollInterval}
               setPollInterval={setPollInterval}
+              travelNotificationsEnabled={travelNotificationsEnabled}
+              setTravelNotificationsEnabled={setTravelNotificationsEnabled}
             />
           )}
         </div>
@@ -740,11 +752,13 @@ function App() {
 
           {apiKey && userData && (
             <>
-              {activeTab === 'dashboard' ? (
+              <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}>
                 <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
-              ) : activeTab === 'faction' ? (
+              </div>
+              <div style={{ display: activeTab === 'faction' ? 'block' : 'none' }}>
                 <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
-              ) : activeTab === 'torn' ? (
+              </div>
+              <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
                 <TornView 
                   userData={userData} 
                   factionData={factionData}
@@ -757,10 +771,13 @@ function App() {
                   itemsData={itemsData}
                   cargoCapacity={cargoCapacity}
                   showNavControls={showNavControls}
+                  isActive={activeTab === 'torn'}
                 />
-              ) : activeTab === 'apilogs' ? (
+              </div>
+              <div style={{ display: activeTab === 'apilogs' ? 'block' : 'none' }}>
                 <ApiLogsView />
-              ) : (
+              </div>
+              <div style={{ display: activeTab === 'stock' ? 'block' : 'none' }}>
                 <OverseasStock
                   itemsData={itemsData}
                   userData={userData}
@@ -771,7 +788,7 @@ function App() {
                   setFilter={setCountryFilter}
                   onOpenInTorn={handleOpenInTorn}
                 />
-              )}
+              </div>
             </>
           )}
 
