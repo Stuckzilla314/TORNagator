@@ -398,7 +398,7 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
 
       {/* Racing Information Section */}
       {(() => {
-        const raceLink = "https://www.torn.com/loader.php?sid=racing";
+        const raceLink = "https://www.torn.com/page.php?sid=racing";
         let cardBorder = '#444';
         let cardBackground = 'linear-gradient(145deg, #1e1e1e, #161616)';
         let iconColor = '#888';
