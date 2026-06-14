@@ -1945,6 +1945,18 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
             // 3. Define the scanning logic globally once in the webview context
             if (!window._tornagator_run_seller_scan) {
+
+              // 🛡️ Sentinel: XSS protection helper
+              const escapeHtml = (unsafe) => {
+                if (!unsafe) return '';
+                return String(unsafe)
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+              };
+
               // Climbing-ancestor method to find listing rows
               const findListingRows = () => {
                 const found = [];
@@ -2106,7 +2118,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     sortedEl.onmouseenter = () => sortedEl.style.backgroundColor = 'rgba(255,255,255,0.05)';
                     sortedEl.onmouseleave = () => sortedEl.style.backgroundColor = 'rgba(255,255,255,0.02)';
 
-                    sortedEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + res.name + '</span><span style="color:#888; font-size:10px;">Lvl ' + res.level + ' &bull; Age ' + res.age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (res.winRate >= 70 ? '#e74c3c' : res.winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + res.winRate + '%</strong></span><span>Cri: ' + res.crimes.toLocaleString() + '</span><span>Drg: ' + res.drugs.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + res.assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + res.assessmentColor + '15; border:1px solid ' + res.assessmentColor + '44;">' + res.assessment + '</span></div>';
+                    sortedEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + escapeHtml(res.name) + '</span><span style="color:#888; font-size:10px;">Lvl ' + res.level + ' &bull; Age ' + res.age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (res.winRate >= 70 ? '#e74c3c' : res.winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + res.winRate + '%</strong></span><span>Cri: ' + res.crimes.toLocaleString() + '</span><span>Drg: ' + res.drugs.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + res.assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + res.assessmentColor + '15; border:1px solid ' + res.assessmentColor + '44;">' + res.assessment + '</span></div>';
                     listContainer.appendChild(sortedEl);
                   });
 
@@ -2215,7 +2227,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     // Update UI listing element
                     if (rowEl) {
                       rowEl.style.border = '1px solid ' + assessmentColor + '33';
-                      rowEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + seller.name + '</span><span style="color:#888; font-size:10px;">Lvl ' + level + ' &bull; Age ' + age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + winRate + '%</strong></span><span>Cri: ' + criminalOffenses.toLocaleString() + '</span><span>Drg: ' + drugsUsed.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + assessmentColor + '15; border:1px solid ' + assessmentColor + '44;">' + assessment + '</span></div>';
+                      rowEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + escapeHtml(seller.name) + '</span><span style="color:#888; font-size:10px;">Lvl ' + level + ' &bull; Age ' + age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + winRate + '%</strong></span><span>Cri: ' + criminalOffenses.toLocaleString() + '</span><span>Drg: ' + drugsUsed.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + assessmentColor + '15; border:1px solid ' + assessmentColor + '44;">' + assessment + '</span></div>';
                       
                       rowEl.style.cursor = 'pointer';
                       rowEl.onclick = () => {
@@ -2251,7 +2263,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     if (rowEl) {
                       rowEl.style.backgroundColor = 'rgba(231,76,60,0.05)';
                       rowEl.style.border = '1px solid #e74c3c33';
-                      rowEl.innerHTML = '<div style="font-weight:bold; color:#fff;">' + seller.name + '</div><div style="color:#e74c3c; font-size:10px; margin-top:2px;">Fetch Failed: ' + e.message + '</div>';
+                      rowEl.innerHTML = '<div style="font-weight:bold; color:#fff;">' + escapeHtml(seller.name) + '</div><div style="color:#e74c3c; font-size:10px; margin-top:2px;">Fetch Failed: ' + e.message + '</div>';
                     }
                   }
 
@@ -2284,7 +2296,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                       rowEl.style.alignItems = 'center';
                       rowEl.style.fontSize = '11px';
                       rowEl.style.marginBottom = '4px';
-                      rowEl.innerHTML = '<div><span style="font-weight:bold; color:#fff;">' + seller.name + '</span><span style="color:#666; font-size:10px; margin-left:4px;">[' + seller.id + ']</span></div><div style="color:#888; font-style:italic;">Queueing...</div>';
+                      rowEl.innerHTML = '<div><span style="font-weight:bold; color:#fff;">' + escapeHtml(seller.name) + '</span><span style="color:#666; font-size:10px; margin-left:4px;">[' + seller.id + ']</span></div><div style="color:#888; font-style:italic;">Queueing...</div>';
                       listContainer.appendChild(rowEl);
                     }
 
