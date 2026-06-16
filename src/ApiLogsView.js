@@ -14,6 +14,7 @@ const ApiLogsView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceFilter, setServiceFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedLog, setSelectedLog] = useState(null);
 
   useEffect(() => {
     // Subscribe to logs updates
@@ -33,12 +34,23 @@ const ApiLogsView = () => {
     };
   }, []);
 
+  // Reset selectedLog if it is cleared or no longer exists
+  useEffect(() => {
+    if (selectedLog) {
+      const exists = logs.some(log => log.id === selectedLog.id);
+      if (!exists) {
+        setSelectedLog(null);
+      }
+    }
+  }, [logs, selectedLog]);
+
   /**
    * Prompts the user for confirmation and clears the visible session logs.
    */
   const handleClearLogs = () => {
     if (window.confirm("Are you sure you want to clear the session console logs? This won't reset lifetime stats.")) {
       clearLogs();
+      setSelectedLog(null);
     }
   };
 
@@ -48,6 +60,18 @@ const ApiLogsView = () => {
   const handleResetLifetime = () => {
     if (window.confirm("Are you sure you want to reset all lifetime API call counters?")) {
       resetLifetimeCounters();
+    }
+  };
+
+  /**
+   * Copies the selected API call's response payload to the clipboard.
+   */
+  const handleCopyResponse = (data) => {
+    try {
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert("Response payload copied to clipboard!");
+    } catch (err) {
+      alert("Failed to copy response payload to clipboard.");
     }
   };
 
@@ -89,8 +113,6 @@ const ApiLogsView = () => {
     const matchesStatus = statusFilter === 'ALL' || log.status === statusFilter;
     return matchesSearch && matchesService && matchesStatus;
   });
-
-  // Calculate latency colors
 
   return (
     <div className="api-logs-container" style={{ animation: 'fadeIn 0.5s ease-in', color: '#e0e0e0', width: '100%' }}>
@@ -233,10 +255,44 @@ const ApiLogsView = () => {
           color: #3498db;
           background: rgba(52, 152, 219, 0.05);
         }
+
+        .console-workspace {
+          display: flex;
+          flex-direction: column;
+        }
         .console-table-wrapper {
           max-height: 480px;
           overflow-y: auto;
         }
+        .console-details-wrapper {
+          border-top: 1px solid #222;
+          background-color: #0b0c0e;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+          overflow-y: auto;
+          min-height: 250px;
+        }
+        @media (min-width: 992px) {
+          .console-workspace {
+            flex-direction: row;
+            height: 550px;
+          }
+          .console-table-wrapper {
+            flex: 1.2;
+            max-height: 550px;
+            height: 550px;
+            border-right: 1px solid #222;
+          }
+          .console-details-wrapper {
+            flex: 0.8;
+            max-height: 550px;
+            height: 550px;
+            border-top: none;
+          }
+        }
+
         .console-table {
           width: 100%;
           border-collapse: collapse;
@@ -257,9 +313,14 @@ const ApiLogsView = () => {
         .console-tr {
           border-bottom: 1px solid #1a1c23;
           transition: background-color 0.15s;
+          cursor: pointer;
         }
         .console-tr:hover {
           background-color: #171a21;
+        }
+        .console-tr-selected {
+          background-color: rgba(52, 152, 219, 0.1) !important;
+          border-left: 3px solid #3498db;
         }
         .console-td {
           padding: 10px 15px;
@@ -280,6 +341,25 @@ const ApiLogsView = () => {
         
         .badge-success { background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; }
         .badge-error { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; }
+
+        .payload-pre {
+          background-color: #14171e;
+          border: 1px solid #222;
+          padding: 12px;
+          border-radius: 6px;
+          overflow: auto;
+          flex: 1;
+          margin: 0;
+          font-family: 'Consolas', monospace;
+          font-size: 0.8rem;
+          color: #a9b2c3;
+          max-height: 350px;
+        }
+        @media (min-width: 992px) {
+          .payload-pre {
+            max-height: none;
+          }
+        }
 
         .pulse-dot {
           width: 8px;
@@ -425,63 +505,124 @@ const ApiLogsView = () => {
           </div>
         </div>
 
-        <div className="console-table-wrapper">
-          {filteredLogs.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#555', fontStyle: 'italic', fontSize: '0.85rem' }}>
-              -- No matching requests logged in this session --
-            </div>
-          ) : (
-            <table className="console-table">
-              <thead>
-                <tr>
-                  <th className="console-th" style={{ width: '120px' }}>Timestamp</th>
-                  <th className="console-th" style={{ width: '100px' }}>Service</th>
-                  <th className="console-th">Endpoint / Request Action</th>
-                  <th className="console-th" style={{ width: '90px' }}>Status</th>
-                  <th className="console-th" style={{ width: '80px', textAlign: 'right' }}>Latency</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map(log => (
-                  <tr key={log.id} className="console-tr">
-                    <td className="console-td" style={{ color: '#68707f', whiteSpace: 'nowrap' }}>
-                      {formatTime(log.timestamp)}
-                    </td>
-                    <td className="console-td">
-                      <span className={`badge badge-${log.type.toLowerCase()}`}>
-                        {log.type}
-                      </span>
-                    </td>
-                    <td className="console-td" style={{ color: log.status === 'ERROR' ? '#ff6b6b' : '#c5c9db', lineHeight: '1.4' }}>
-                      <div style={{ wordBreak: 'break-all' }}>{log.action}</div>
-                      {log.status === 'ERROR' && log.errorMsg && (
-                        <div style={{ 
-                          marginTop: '6px', 
-                          padding: '6px 10px', 
-                          background: 'rgba(231, 76, 60, 0.1)', 
-                          borderLeft: '2px solid #e74c3c',
-                          color: '#e74c3c',
-                          fontFamily: 'sans-serif',
-                          fontSize: '0.78rem',
-                          borderRadius: '0 4px 4px 0'
-                        }}>
-                          {log.errorMsg}
-                        </div>
-                      )}
-                    </td>
-                    <td className="console-td">
-                      <span className={`badge badge-${log.status.toLowerCase()}`}>
-                        {log.status}
-                      </span>
-                    </td>
-                    <td className="console-td" style={{ textAlign: 'right', fontWeight: 'bold', color: getLatencyColor(log.duration), whiteSpace: 'nowrap' }}>
-                      {log.duration !== undefined ? `${log.duration}ms` : '-'}
-                    </td>
+        <div className="console-workspace">
+          <div className="console-table-wrapper">
+            {filteredLogs.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#555', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                -- No matching requests logged in this session --
+              </div>
+            ) : (
+              <table className="console-table">
+                <thead>
+                  <tr>
+                    <th className="console-th" style={{ width: '120px' }}>Timestamp</th>
+                    <th className="console-th" style={{ width: '100px' }}>Service</th>
+                    <th className="console-th">Endpoint / Request Action</th>
+                    <th className="console-th" style={{ width: '90px' }}>Status</th>
+                    <th className="console-th" style={{ width: '80px', textAlign: 'right' }}>Latency</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {filteredLogs.map(log => (
+                    <tr 
+                      key={log.id} 
+                      className={`console-tr ${selectedLog?.id === log.id ? 'console-tr-selected' : ''}`}
+                      onClick={() => setSelectedLog(log)}
+                    >
+                      <td className="console-td" style={{ color: '#68707f', whiteSpace: 'nowrap' }}>
+                        {formatTime(log.timestamp)}
+                      </td>
+                      <td className="console-td">
+                        <span className={`badge badge-${log.type.toLowerCase()}`}>
+                          {log.type}
+                        </span>
+                      </td>
+                      <td className="console-td" style={{ color: log.status === 'ERROR' ? '#ff6b6b' : '#c5c9db', lineHeight: '1.4' }}>
+                        <div style={{ wordBreak: 'break-all' }}>{log.action}</div>
+                        {log.status === 'ERROR' && log.errorMsg && (
+                          <div style={{ 
+                            marginTop: '6px', 
+                            padding: '6px 10px', 
+                            background: 'rgba(231, 76, 60, 0.1)', 
+                            borderLeft: '2px solid #e74c3c',
+                            color: '#e74c3c',
+                            fontFamily: 'sans-serif',
+                            fontSize: '0.78rem',
+                            borderRadius: '0 4px 4px 0'
+                          }}>
+                            {log.errorMsg}
+                          </div>
+                        )}
+                      </td>
+                      <td className="console-td">
+                        <span className={`badge badge-${log.status.toLowerCase()}`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="console-td" style={{ textAlign: 'right', fontWeight: 'bold', color: getLatencyColor(log.duration), whiteSpace: 'nowrap' }}>
+                        {log.duration !== undefined ? `${log.duration}ms` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="console-details-wrapper">
+            {selectedLog ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #222', paddingBottom: '12px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span className={`badge badge-${selectedLog.type.toLowerCase()}`}>{selectedLog.type}</span>
+                      <span className={`badge badge-${selectedLog.status.toLowerCase()}`}>{selectedLog.status}</span>
+                      <span style={{ fontSize: '0.8rem', color: getLatencyColor(selectedLog.duration), fontWeight: 'bold' }}>
+                        {selectedLog.duration !== undefined ? `${selectedLog.duration}ms` : ''}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fff', wordBreak: 'break-all' }}>
+                      {selectedLog.action}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#68707f', marginTop: '4px' }}>
+                      Logged at: {new Date(selectedLog.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                  {selectedLog.responseData && (
+                    <button 
+                      className="console-btn console-btn-primary" 
+                      onClick={() => handleCopyResponse(selectedLog.responseData)}
+                      style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                    >
+                      COPY
+                    </button>
+                  )}
+                </div>
+                
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#555', fontWeight: 'bold', marginBottom: '8px' }}>
+                    Response Payload
+                  </div>
+                  {selectedLog.responseData ? (
+                    <pre className="payload-pre">
+                      {JSON.stringify(selectedLog.responseData, null, 2)}
+                    </pre>
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#555', fontStyle: 'italic', fontSize: '0.8rem', border: '1px dashed #222', borderRadius: '6px' }}>
+                      {selectedLog.status === 'ERROR' && selectedLog.errorMsg 
+                        ? `Error: ${selectedLog.errorMsg}` 
+                        : 'No response payload captured for this request.'}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#555', fontStyle: 'italic', fontSize: '0.85rem', padding: '40px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: '10px', opacity: 0.5 }}>🔍</div>
+                Select an API call from the diagnostics list to inspect its response payload.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
