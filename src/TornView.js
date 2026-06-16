@@ -1549,7 +1549,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             try {
               if (${isCapacitor}) {
                 const uData = window._tornagator_user_data;
-                const isStacking = uData && uData.energy && uData.energy.current > 100;
+                const maxEnergy = (uData && uData.energy && uData.energy.maximum) ? uData.energy.maximum : 100;
+                const isStacking = uData && uData.energy && uData.energy.current > maxEnergy;
                 if (isStacking && !window._tornagator_stacking_warning_dismissed) {
                   let warningBanner = document.getElementById('tornagator-stacking-warning');
                   if (!warningBanner) {
@@ -1585,7 +1586,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     title.style.display = 'block';
                     
                     const desc = document.createElement('span');
-                    desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/100. You might be stacking and may not want to train in the gym.';
+                    desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/' + maxEnergy + '. You might be stacking and may not want to train in the gym.';
                     desc.style.fontSize = '0.7rem';
                     desc.style.color = 'rgba(255, 255, 255, 0.9)';
                     desc.style.display = 'block';
@@ -3677,7 +3678,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
   const energyValue = userData?.energy?.current || 0;
-  const isStacking = energyValue > 100;
+  const maxEnergyValue = userData?.energy?.maximum || 100;
+  const isStacking = energyValue > maxEnergyValue;
   const showStackingWarning = isGymPage && isStacking && !dismissedWarnings[activeTabId];
 
   useEffect(() => {
@@ -4005,7 +4007,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 <div>
                   <span className="stacking-warning-title">Stacking Warning</span>
                   <span className="stacking-warning-desc">
-                    Your energy is {energyValue}/100. You might be stacking and may not want to train in the gym.
+                    Your energy is {energyValue}/{maxEnergyValue}. You might be stacking and may not want to train in the gym.
                   </span>
                 </div>
                 <button
