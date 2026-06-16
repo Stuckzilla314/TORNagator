@@ -2,3 +2,7 @@
 **Vulnerability:** User-provided URLs for Custom Quick Actions were passed directly to the `src` attribute of the Electron `<webview>` component without validation.
 **Learning:** In Electron, passing unvalidated user input to `<webview src="...">` allows execution of `javascript:` or `data:` URIs, leading to severe DOM-based XSS which is particularly dangerous in desktop environments with potential node integration depending on configuration.
 **Prevention:** Always validate and sanitize user-provided URLs before setting them as an iframe or webview source. Enforce a strict allowlist of URL schemes (e.g., `http://` or `https://`) and explicitly reject dangerous schemes like `javascript:`, `data:`, and `vbscript:`.
+## 2026-06-06 - [CRITICAL] Prevent DOM-based XSS via New Tab Inputs
+**Vulnerability:** User-provided URLs in the "New Tab" page (for direct navigation and adding favorites) were not validated for unsafe URL schemes before being passed to `onNavigate`, which eventually sets the `src` attribute of the Electron `<webview>`.
+**Learning:** Even internal UI components like custom "New Tab" pages that accept URL inputs must validate the URL scheme when running in an environment where setting iframe/webview sources to `javascript:` or `data:` is dangerous (like Electron with nodeIntegration).
+**Prevention:** Apply the same strict URL scheme validation (rejecting `javascript:`, `data:`, `vbscript:`) to all user inputs that resolve to navigation targets, not just external or saved configurations like Custom Quick Actions.
