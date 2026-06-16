@@ -100,6 +100,41 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [lowCashItem, setLowCashItem] = useState(null);
   const [showTotalProfit, setShowTotalProfit] = useState(false);
+  const [fetchingItemStock, setFetchingItemStock] = useState({});
+
+  const fetchItemStockData = useCallback(async (item) => {
+    const key = `${item.country}_${item.id}`;
+    setFetchingItemStock(prev => ({ ...prev, [key]: true }));
+    try {
+      const q = query(
+        collection(db, "stock_history"),
+        where("itemId", "==", Number(item.id)),
+        where("country", "==", item.country),
+        orderBy("timestamp", "desc"),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docData = snap.docs[0].data();
+        const latestStock = docData.stock;
+        const latestTimestamp = docData.timestamp * 1000;
+        
+        setHistoryStockOverrides(prev => ({
+          ...prev,
+          [key]: { quantity: latestStock, timestamp: latestTimestamp }
+        }));
+      } else {
+        setHistoryStockOverrides(prev => ({
+          ...prev,
+          [key]: { quantity: 0, timestamp: Date.now() }
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching single item stock:", err);
+    } finally {
+      setFetchingItemStock(prev => ({ ...prev, [key]: false }));
+    }
+  }, []);
 
   const toggleShowTotalProfit = () => {
     setShowTotalProfit(prev => {
@@ -995,8 +1030,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                       <span>Stock: {stockInfo.quantity.toLocaleString()}</span>
                       <span style={{ fontSize: '0.65rem' }}>📈</span>
                     </button>
+                  ) : fetchingItemStock[`${item.country}_${item.id}`] ? (
+                    <span style={{ color: '#888', fontSize: '0.75rem' }}>Syncing...</span>
                   ) : (
-                    <span style={{ color: '#444', fontSize: '0.75rem', fontWeight: 'bold' }}>No Stock Data</span>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fetchItemStockData(item);
+                      }}
+                      style={{
+                        color: '#3498db',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: '4px'
+                      }}
+                      title="Click to fetch stock for this item"
+                    >
+                      No Stock Data
+                    </span>
                   )}
                 </div>
               </div>
@@ -1151,8 +1204,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                             Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
                           </div>
                         </div>
+                      ) : fetchingItemStock[`${item.country}_${item.id}`] ? (
+                        <span style={{ color: '#888', fontSize: '0.75rem' }}>Syncing...</span>
                       ) : (
-                        <span style={{ color: '#444' }}>No Data</span>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchItemStockData(item);
+                          }}
+                          style={{
+                            color: '#3498db',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: '4px'
+                          }}
+                          title="Click to fetch stock for this item"
+                        >
+                          No Stock Data
+                        </span>
                       )}
                     </td>
                   </tr>
