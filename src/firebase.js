@@ -47,7 +47,7 @@ export const getDoc = async (docRef) => {
   try {
     const result = await originalGetDoc(docRef);
     const duration = Date.now() - startTime;
-    logApiCall("Firebase", `getDoc: ${path}`, "SUCCESS", duration);
+    logApiCall("Firebase", `getDoc: ${path}`, "SUCCESS", duration, null, result?.exists() ? result.data() : null);
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -78,7 +78,8 @@ export const getDocs = async (queryRef) => {
   try {
     const result = await originalGetDocs(queryRef);
     const duration = Date.now() - startTime;
-    logApiCall("Firebase", `getDocs: ${path} (returned ${result?.size || 0} docs)`, "SUCCESS", duration);
+    const docsData = result ? result.docs.map(doc => ({ id: doc.id, ...doc.data() })) : null;
+    logApiCall("Firebase", `getDocs: ${path} (returned ${result?.size || 0} docs)`, "SUCCESS", duration, null, docsData);
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;

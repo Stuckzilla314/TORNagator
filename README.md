@@ -28,6 +28,7 @@ To run the application:
 
 ```bash
 npm start
+npm run android:run
 ```
 
 This will build the React application and launch the Electron application directly. No local web server will run on `http://localhost:3000`.
