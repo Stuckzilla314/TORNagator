@@ -3,6 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { db, getDoc, getDocs } from './firebase';
 import { collection, addDoc, query, where, orderBy, limit, Timestamp, startAfter, doc, onSnapshot } from "firebase/firestore";
 import { IconWarning } from './Icons';
+import { isCapacitor } from './utils';
+
 
 /**
  * A mapping of country names to their respective item IDs available in the foreign item market.
@@ -10,7 +12,7 @@ import { IconWarning } from './Icons';
  *
  * @type {Object<string, number[]>}
  */
-const COUNTRY_MAP = {
+export const COUNTRY_MAP = {
   "Mexico": [1125, 258, 260, 432, 159, 426, 110, 229, 26, 640, 8, 259, 111, 177, 50, 1429, 175, 178, 231, 1499, 230, 63, 11, 20, 31, 99, 107, 108, 399, 409],
   "Cayman Islands": [617, 1482, 618, 620, 626, 614, 623, 613, 622, 621, 624, 619, 615, 612, 616, 625],
   "Canada": [263, 206, 205, 196, 1361, 201, 197, 328, 262, 1484, 253, 402, 645, 410, 252, 413, 1348, 1483, 1504, 261],
@@ -97,6 +99,68 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [maxBagCost, setMaxBagCost] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [lowCashItem, setLowCashItem] = useState(null);
+  const [showTotalProfit, setShowTotalProfit] = useState(false);
+
+  const toggleShowTotalProfit = () => {
+    setShowTotalProfit(prev => {
+      const next = !prev;
+      setSortConfig(config => {
+        if (config.key === 'bagProfit' && !next) {
+          return { ...config, key: 'profitPerItem' };
+        } else if (config.key === 'profitPerItem' && next) {
+          return { ...config, key: 'bagProfit' };
+        }
+        return config;
+      });
+      return next;
+    });
+  };
+
+  // Handle native Android hardware back button and swipe-to-dismiss
+  useEffect(() => {
+    const modalOpen = !!selectedItemForGraph || !!lowCashItem;
+    if (!modalOpen) return;
+
+    let listenerHandle = null;
+
+    if (isCapacitor) {
+      let isSubscribed = true;
+      import('@capacitor/app').then(({ App }) => {
+        if (!isSubscribed) return;
+        App.addListener('backButton', () => {
+          setSelectedItemForGraph(null);
+          setLowCashItem(null);
+        }).then(handle => {
+          listenerHandle = handle;
+        });
+      }).catch(err => {
+        console.warn("Failed to load @capacitor/app:", err);
+      });
+
+      return () => {
+        isSubscribed = false;
+        if (listenerHandle) {
+          listenerHandle.remove();
+        }
+      };
+    } else {
+      window.history.pushState({ modalOpen: true }, '');
+
+      const handlePopState = () => {
+        setSelectedItemForGraph(null);
+        setLowCashItem(null);
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        if (window.history.state?.modalOpen) {
+          window.history.back();
+        }
+      };
+    }
+  }, [selectedItemForGraph, lowCashItem]);
 
   const proceedToTravel = useCallback((item) => {
     if (onOpenInTorn) {
@@ -606,244 +670,498 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <button
-              onClick={handleManualSync}
-              disabled={loadingYata}
-              style={{
-                background: 'transparent',
-                border: `1px solid ${loadingYata ? '#222' : '#444'}`,
-                borderRadius: '20px',
-                padding: '4px 12px',
-                cursor: loadingYata ? 'not-allowed' : 'pointer',
-                color: loadingYata ? '#666' : '#3498db',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontWeight: '600',
-                fontSize: '0.75rem',
-                letterSpacing: '1px',
-                transition: 'all 0.3s ease',
-                opacity: loadingYata ? 0.6 : 1
-              }}
-              title="Refresh Stock & Inventory"
-            >
-              <span style={{ marginTop: '1px' }}>{loadingYata ? 'SYNCING...' : 'SYNC'}</span>
-              <span style={{ fontSize: '0.9rem' }}>🔄</span>
-            </button>
-            {yataData?.stocks && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                <span style={{ fontSize: '0.6rem', color: '#555', marginLeft: '5px' }}>
-                  Last Sync: {
-                    yataData.lastUpdated
-                      ? new Date(yataData.lastUpdated).toLocaleTimeString()
-                      : (() => {
-                        let maxUpdate = 0;
-                        Object.values(yataData.stocks).forEach(c => {
-                          if (c?.update > maxUpdate) maxUpdate = c.update;
-                        });
-                        return maxUpdate ? new Date(maxUpdate * 1000).toLocaleTimeString() : 'Unknown';
-                      })()
-                  }
+      {isCapacitor ? (
+        <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', background: 'linear-gradient(135deg, #fff 0%, #aaa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Overseas Catalog</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <button
+                onClick={handleManualSync}
+                disabled={loadingYata}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${loadingYata ? '#222' : '#444'}`,
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  cursor: loadingYata ? 'not-allowed' : 'pointer',
+                  color: loadingYata ? '#666' : '#3498db',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: '700',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px',
+                  transition: 'all 0.3s ease',
+                  opacity: loadingYata ? 0.6 : 1
+                }}
+                title="Refresh Stock & Inventory"
+              >
+                <span>{loadingYata ? 'SYNCING...' : 'SYNC'}</span>
+                <span>🔄</span>
+              </button>
+            </div>
+          </div>
+          
+          {yataData?.stocks && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '-6px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#666' }}>
+                Last Sync: {
+                  yataData.lastUpdated
+                    ? new Date(yataData.lastUpdated).toLocaleTimeString()
+                    : (() => {
+                      let maxUpdate = 0;
+                      Object.values(yataData.stocks).forEach(c => {
+                        if (c?.update > maxUpdate) maxUpdate = c.update;
+                      });
+                      return maxUpdate ? new Date(maxUpdate * 1000).toLocaleTimeString() : 'Unknown';
+                    })()
+                }
+              </span>
+              {!navigator.onLine && (
+                <span style={{ fontSize: '0.65rem', color: '#f39c12', fontWeight: 'bold' }}>
+                  [OFFLINE MODE]
                 </span>
-                {!navigator.onLine && (
-                  <span style={{ fontSize: '0.6rem', color: '#f39c12', fontWeight: 'bold' }}>
-                    [OFFLINE MODE]
-                  </span>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
+          {/* Mobile Filters */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+            <select
+              aria-label="Filter by country"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="All">All Countries</option>
+              {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              aria-label="Filter by item category"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="All">All Categories</option>
+              {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+            <input
+              aria-label="Filter by maximum bag cost"
+              type="number"
+              placeholder="Max Bag Cost ($)"
+              value={maxBagCost}
+              onChange={(e) => setMaxBagCost(e.target.value)}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+            />
+            <input
+              aria-label="Filter by maximum round trip time in minutes"
+              type="number"
+              placeholder="Max RT (mins)"
+              value={maxRoundTripMinutes}
+              onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none', width: '100%', boxSizing: 'border-box' }}
+            />
+            <select
+              aria-label="Sort by field"
+              value={sortConfig.key}
+              onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="bagProfit">Sort: Bag Profit</option>
+              <option value="profitPerItem">Sort: Profit (ea)</option>
+              <option value="bagProfitPerHour">Sort: Profit/hr</option>
+              <option value="buy_price">Sort: Buy Price</option>
+              <option value="stockQuantity">Sort: Stock</option>
+              <option value="name">Sort: Item Name</option>
+              <option value="owned">Sort: Owned</option>
+            </select>
+            <select
+              aria-label="Sort direction"
+              value={sortConfig.direction}
+              onChange={(e) => setSortConfig(prev => ({ ...prev, direction: e.target.value }))}
+              style={{ padding: '10px 12px', backgroundColor: '#1c1c1e', color: 'white', border: '1px solid #2c2c2e', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }}
+            >
+              <option value="desc">Order: Descending</option>
+              <option value="asc">Order: Ascending</option>
+            </select>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <select
-            aria-label="Filter by country"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
-          >
-            <option value="All">All Countries</option>
-            {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select
-            aria-label="Filter by item category"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
-          >
-            <option value="All">All Categories</option>
-            {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-          </select>
-          <input
-            aria-label="Filter by maximum bag cost"
-            type="number"
-            placeholder="Max Bag Cost ($)"
-            value={maxBagCost}
-            onChange={(e) => setMaxBagCost(e.target.value)}
-            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '150px' }}
-          />
-          <input
-            aria-label="Filter by maximum round trip time in minutes"
-            type="number"
-            placeholder="Max RT (mins)"
-            value={maxRoundTripMinutes}
-            onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
-            style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '130px' }}
-          />
+      ) : (
+        <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2 style={{ margin: 0 }}>Overseas Item Catalog</h2>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <button
+                onClick={handleManualSync}
+                disabled={loadingYata}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${loadingYata ? '#222' : '#444'}`,
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  cursor: loadingYata ? 'not-allowed' : 'pointer',
+                  color: loadingYata ? '#666' : '#3498db',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: '600',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px',
+                  transition: 'all 0.3s ease',
+                  opacity: loadingYata ? 0.6 : 1
+                }}
+                title="Refresh Stock & Inventory"
+              >
+                <span style={{ marginTop: '1px' }}>{loadingYata ? 'SYNCING...' : 'SYNC'}</span>
+                <span style={{ fontSize: '0.9rem' }}>🔄</span>
+              </button>
+              {yataData?.stocks && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '0.6rem', color: '#555', marginLeft: '5px' }}>
+                    Last Sync: {
+                      yataData.lastUpdated
+                        ? new Date(yataData.lastUpdated).toLocaleTimeString()
+                        : (() => {
+                          let maxUpdate = 0;
+                          Object.values(yataData.stocks).forEach(c => {
+                            if (c?.update > maxUpdate) maxUpdate = c.update;
+                          });
+                          return maxUpdate ? new Date(maxUpdate * 1000).toLocaleTimeString() : 'Unknown';
+                        })()
+                    }
+                  </span>
+                  {!navigator.onLine && (
+                    <span style={{ fontSize: '0.6rem', color: '#f39c12', fontWeight: 'bold' }}>
+                      [OFFLINE MODE]
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <select
+              aria-label="Filter by country"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
+            >
+              <option value="All">All Countries</option>
+              {Object.keys(COUNTRY_MAP).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              aria-label="Filter by item category"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
+            >
+              <option value="All">All Categories</option>
+              {availableCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+            <input
+              aria-label="Filter by maximum bag cost"
+              type="number"
+              placeholder="Max Bag Cost ($)"
+              value={maxBagCost}
+              onChange={(e) => setMaxBagCost(e.target.value)}
+              style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '150px' }}
+            />
+            <input
+              aria-label="Filter by maximum round trip time in minutes"
+              type="number"
+              placeholder="Max RT (mins)"
+              value={maxRoundTripMinutes}
+              onChange={(e) => setMaxRoundTripMinutes(e.target.value)}
+              style={{ padding: '8px 15px', backgroundColor: '#333', color: 'white', border: '1px solid #444', borderRadius: '4px', width: '130px' }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ backgroundColor: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e0e0e0' }}>
-          <thead>
-            <tr>
-              <th style={headerStyle} onClick={() => requestSort('name')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Item Name {renderSortIndicator('name')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('country')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Country {renderSortIndicator('country')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('owned')}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  Owned {renderSortIndicator('owned')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('buy_price')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Buy Price {renderSortIndicator('buy_price')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('market_value')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Market Value {renderSortIndicator('market_value')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('bagProfit')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Bag Profit {renderSortIndicator('bagProfit')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('bagProfitPerHour')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  Profit/hr {renderSortIndicator('bagProfitPerHour')}
-                </div>
-              </th>
-              <th style={headerStyle} onClick={() => requestSort('stockQuantity')}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  Stock {renderSortIndicator('stockQuantity')}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedItems.map(item => {
-              const stockInfo = item.stockInfo;
-              const buyableQuantity = stockInfo ? Math.min(stockInfo.quantity, cargoCapacity) : 0;
+      {isCapacitor ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {sortedItems.map(item => {
+            const stockInfo = item.stockInfo;
+            const totalCost = item.buy_price * cargoCapacity;
 
-              return (
-                <tr
-                  key={`${item.country}-${item.id}`}
-                  onClick={() => handleRowClick(item)}
-                  style={{
-                    transition: 'all 0.2s',
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#252525';
-                    e.currentTarget.style.transform = 'scale(1.002)';
-                    e.currentTarget.style.boxShadow = 'inset 0 0 10px rgba(52, 152, 219, 0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.transform = 'scale(1)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <td style={cellStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <img
-                        src={`https://www.torn.com/images/items/${item.id}/large.png`}
-                        alt={item.name}
-                        style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-                      />
-                      <span style={{ fontWeight: '500' }}>{item.name}</span>
+            return (
+              <div
+                key={`${item.country}-${item.id}`}
+                onClick={() => handleRowClick(item)}
+                style={{
+                  background: 'linear-gradient(145deg, #1e1e1e 0%, #131313 100%)',
+                  border: '1px solid #2d2d2d',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  transition: 'border-color 0.2s',
+                  position: 'relative'
+                }}
+              >
+                {/* Header Row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img
+                    src={`https://www.torn.com/images/items/${item.id}/large.png`}
+                    alt={item.name}
+                    style={{ width: '38px', height: '38px', objectFit: 'contain' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.name}
                     </div>
-                  </td>
-                  <td style={cellStyle}>
-                    <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
-                    <div
-                      style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px', cursor: 'help', whiteSpace: 'pre-line' }}
-                      title={`Arrive Time: ${new Date(Date.now() + (item.totalRoundTripMinutes / 2) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nReturn Time: ${new Date(Date.now() + item.totalRoundTripMinutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#3498db', fontWeight: 'bold', backgroundColor: 'rgba(52, 152, 219, 0.15)', padding: '2px 6px', borderRadius: '4px' }}>
+                        {item.country}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#888' }}>
+                        RT: {item.roundTripDisplay}
+                      </span>
+                      {item.owned > 0 && (
+                        <span style={{ fontSize: '0.7rem', color: '#2ecc71', fontWeight: 'bold', backgroundColor: 'rgba(46, 204, 113, 0.15)', padding: '2px 5px', borderRadius: '4px' }}>
+                          Owned: {item.owned.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details Section */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderTop: '1px solid #282828', borderBottom: '1px solid #282828', padding: '8px 0' }}>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Cost (ea / bag)</div>
+                    <div style={{ fontSize: '0.8rem', color: '#2ecc71', fontWeight: 'bold', marginTop: '1px' }}>
+                      ${item.buy_price.toLocaleString()} <span style={{ color: '#666', fontWeight: 'normal', fontSize: '0.7rem' }}>(${totalCost.toLocaleString()})</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Market Value</div>
+                    <div style={{ fontSize: '0.8rem', color: '#f39c12', fontWeight: 'bold', marginTop: '1px' }}>
+                      ${item.market_value.toLocaleString()}
+                    </div>
+                  </div>
+                  <div onClick={(e) => { e.stopPropagation(); toggleShowTotalProfit(); }} style={{ cursor: 'pointer' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                      {showTotalProfit ? 'Bag Profit' : 'Profit (ea)'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold', marginTop: '1px' }}>
+                      {showTotalProfit ? (
+                        `$${item.bagProfit.toLocaleString()}`
+                      ) : (
+                        `$${item.profitPerItem.toLocaleString()} ea`
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Profit / hr</div>
+                    <div style={{ fontSize: '0.8rem', color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold', marginTop: '1px' }}>
+                      ${Math.round(item.bagProfitPerHour).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Section */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#555' }}>
+                    Tap card to travel
+                  </span>
+                  
+                  {loadingYata ? (
+                    <span style={{ color: '#555', fontSize: '0.75rem' }}>Syncing...</span>
+                  ) : stockInfo ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedItemForGraph(item);
+                      }}
+                      style={{
+                        background: stockInfo.quantity === 0 ? 'rgba(231, 76, 60, 0.15)' : (stockInfo.quantity < cargoCapacity ? 'rgba(243, 156, 18, 0.15)' : 'rgba(46, 204, 113, 0.15)'),
+                        border: `1px solid ${stockInfo.quantity === 0 ? '#e74c3c' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71')}`,
+                        borderRadius: '20px',
+                        padding: '4px 12px',
+                        cursor: 'pointer',
+                        color: stockInfo.quantity === 0 ? '#e74c3c' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
+                        fontWeight: 'bold',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                      title="Click to view stock history"
                     >
-                      RT: {item.roundTripDisplay}
-                    </div>
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
-                    {(item.owned || 0).toLocaleString()}
-                  </td>
-                  <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
-                    <div>${(item.buy_price || 0).toLocaleString()}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal', marginTop: '2px' }}>
-                      (${(item.buy_price * cargoCapacity).toLocaleString()})
-                    </div>
-                  </td>
-                  <td style={{ ...cellStyle, color: '#f39c12' }}>
-                    ${(item.market_value || 0).toLocaleString()}
-                  </td>
-                  <td style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0' }}>
-                    <div style={{ fontWeight: 'bold' }}>
-                      ${item.bagProfit.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                      ${item.profitPerItem.toLocaleString()} ea
-                    </div>
-                  </td>
-                  <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
-                    ${Math.round(item.bagProfitPerHour).toLocaleString()}
-                  </td>
-                  <td style={{ ...cellStyle, textAlign: 'center' }}>
-                    {loadingYata ? (
-                      <span style={{ color: '#666' }}>...</span>
-                    ) : stockInfo ? (
-                      <div>
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedItemForGraph(item);
-                          }}
-                          style={{
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
-                            textDecoration: 'underline',
-                            padding: '4px'
-                          }}
-                          title="Click to view stock history"
-                        >
-                          {stockInfo.quantity.toLocaleString()}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
-                          Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
-                        </div>
+                      <span>Stock: {stockInfo.quantity.toLocaleString()}</span>
+                      <span style={{ fontSize: '0.65rem' }}>📈</span>
+                    </button>
+                  ) : (
+                    <span style={{ color: '#444', fontSize: '0.75rem', fontWeight: 'bold' }}>No Stock Data</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ backgroundColor: '#1e1e1e', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e0e0e0' }}>
+            <thead>
+              <tr>
+                <th style={headerStyle} onClick={() => requestSort('name')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Item Name {renderSortIndicator('name')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort('country')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Country {renderSortIndicator('country')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort('owned')}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    Owned {renderSortIndicator('owned')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort('buy_price')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Buy Price {renderSortIndicator('buy_price')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort('market_value')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Market Value {renderSortIndicator('market_value')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort(showTotalProfit ? 'bagProfit' : 'profitPerItem')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {showTotalProfit ? 'Bag Profit' : 'Profit (ea)'} {renderSortIndicator(showTotalProfit ? 'bagProfit' : 'profitPerItem')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort('bagProfitPerHour')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    Profit/hr {renderSortIndicator('bagProfitPerHour')}
+                  </div>
+                </th>
+                <th style={headerStyle} onClick={() => requestSort('stockQuantity')}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    Stock {renderSortIndicator('stockQuantity')}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedItems.map(item => {
+                const stockInfo = item.stockInfo;
+                const buyableQuantity = stockInfo ? Math.min(stockInfo.quantity, cargoCapacity) : 0;
+
+                return (
+                  <tr
+                    key={`${item.country}-${item.id}`}
+                    onClick={() => handleRowClick(item)}
+                    style={{
+                      transition: 'all 0.2s',
+                      cursor: 'pointer',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#252525';
+                      e.currentTarget.style.transform = 'scale(1.002)';
+                      e.currentTarget.style.boxShadow = 'inset 0 0 10px rgba(52, 152, 219, 0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <td style={cellStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <img
+                          src={`https://www.torn.com/images/items/${item.id}/large.png`}
+                          alt={item.name}
+                          style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                        />
+                        <span style={{ fontWeight: '500' }}>{item.name}</span>
                       </div>
-                    ) : (
-                      <span style={{ color: '#444' }}>No Data</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td style={cellStyle}>
+                      <span style={{ color: '#3498db', fontSize: '0.85rem' }}>{item.country}</span>
+                      <div
+                        style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px', cursor: 'help', whiteSpace: 'pre-line' }}
+                        title={`Arrive Time: ${new Date(Date.now() + (item.totalRoundTripMinutes / 2) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nReturn Time: ${new Date(Date.now() + item.totalRoundTripMinutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                      >
+                        RT: {item.roundTripDisplay}
+                      </div>
+                    </td>
+                    <td style={{ ...cellStyle, textAlign: 'center', fontWeight: 'bold' }}>
+                      {(item.owned || 0).toLocaleString()}
+                    </td>
+                    <td style={{ ...cellStyle, color: '#2ecc71', fontWeight: 'bold' }}>
+                      <div>${(item.buy_price || 0).toLocaleString()}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'normal', marginTop: '2px' }}>
+                        (${(item.buy_price * cargoCapacity).toLocaleString()})
+                      </div>
+                    </td>
+                    <td style={{ ...cellStyle, color: '#f39c12' }}>
+                      ${(item.market_value || 0).toLocaleString()}
+                    </td>
+                    <td 
+                      style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0', cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleShowTotalProfit();
+                      }}
+                    >
+                      {showTotalProfit ? (
+                        <div style={{ fontWeight: 'bold' }}>
+                          ${item.bagProfit.toLocaleString()}
+                        </div>
+                      ) : (
+                        <div style={{ fontWeight: 'bold' }}>
+                          ${item.profitPerItem.toLocaleString()} ea
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
+                      ${Math.round(item.bagProfitPerHour).toLocaleString()}
+                    </td>
+                    <td style={{ ...cellStyle, textAlign: 'center' }}>
+                      {loadingYata ? (
+                        <span style={{ color: '#666' }}>...</span>
+                      ) : stockInfo ? (
+                        <div>
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedItemForGraph(item);
+                            }}
+                            style={{
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              color: stockInfo.quantity === 0 ? '#ff4444' : (stockInfo.quantity < cargoCapacity ? '#f39c12' : '#2ecc71'),
+                              textDecoration: 'underline',
+                              padding: '4px'
+                            }}
+                            title="Click to view stock history"
+                          >
+                            {stockInfo.quantity.toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '2px' }}>
+                            Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ color: '#444' }}>No Data</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {sortedItems.length === 0 && (
         <div style={{ textAlign: 'center', padding: '4rem', color: '#666', border: '1px dashed #444', borderRadius: '12px', marginTop: '2rem', backgroundColor: '#1a1a1a' }}>
@@ -921,12 +1239,27 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   position: 'absolute',
                   top: '15px',
                   right: '15px',
-                  background: 'none',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   border: 'none',
-                  color: '#888',
-                  fontSize: '1.5rem',
+                  color: '#aaa',
+                  fontSize: '1.2rem',
                   cursor: 'pointer',
-                  lineHeight: 1
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                  zIndex: 10
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.color = '#aaa';
                 }}
               >
                 ×
@@ -1066,39 +1399,64 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 2000,
-          padding: '20px',
+          padding: isCapacitor ? '10px' : '20px',
           backdropFilter: 'blur(4px)'
         }} onClick={() => setSelectedItemForGraph(null)}>
           <div style={{
             backgroundColor: '#1e1e1e',
-            padding: '30px',
+            padding: isCapacitor ? '16px' : '30px',
             borderRadius: '12px',
             border: '1px solid #333',
             maxWidth: '800px',
-            width: '100%',
+            width: isCapacitor ? '95%' : '100%',
             position: 'relative',
             boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-            animation: 'fadeIn 0.2s ease-out'
+            animation: 'fadeIn 0.2s ease-out',
+            boxSizing: 'border-box'
           }} onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setSelectedItemForGraph(null)}
               aria-label="Close graph"
               style={{
                 position: 'absolute',
-                top: '15px',
-                right: '15px',
-                background: 'none',
+                top: isCapacitor ? '10px' : '15px',
+                right: isCapacitor ? '10px' : '15px',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: 'none',
-                color: '#888',
-                fontSize: '1.5rem',
+                color: '#aaa',
+                fontSize: '1.2rem',
                 cursor: 'pointer',
-                lineHeight: 1
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                zIndex: 10
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                e.currentTarget.style.color = '#aaa';
               }}
             >
               ×
             </button>
-            <h3 style={{ marginTop: 0, color: '#3498db', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Stock History: {selectedItemForGraph.name}</span>
+            <h3 style={{
+              marginTop: 0,
+              color: '#3498db',
+              display: 'flex',
+              flexDirection: isCapacitor ? 'column' : 'row',
+              justifyContent: isCapacitor ? 'flex-start' : 'space-between',
+              alignItems: isCapacitor ? 'flex-start' : 'center',
+              gap: isCapacitor ? '8px' : '0px',
+              paddingRight: isCapacitor ? '20px' : '0px'
+            }}>
+              <span style={{ fontSize: isCapacitor ? '1.1rem' : '1.3rem' }}>Stock History: {selectedItemForGraph.name}</span>
               {(() => {
                 // Tick-Aligned Median-Based Probabilistic Model (TA-MBPM)
                 // Always use full 7-day history for maximum prediction accuracy
@@ -1121,16 +1479,30 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   ? historicalData[historicalData.length - 1].stock 
                   : (selectedItemForGraph.stockQuantity || 0);
 
-                if (restocks.length < 3) {
-                  if (liveStockQuantity === 0) {
-                    return <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#666' }}>Gathering data...</div>;
+const selloutToRestockIntervals = [];
+                for (let i = 0; i < sellOuts.length; i++) {
+                  const sTime = sellOuts[i];
+                  const nextR = restocks.find(r => r > sTime);
+                  if (nextR) {
+                    selloutToRestockIntervals.push(nextR - sTime);
                   }
-                  return null;
                 }
 
-                const intervals = [];
+                const restockToRestockIntervals = [];
                 for (let i = 1; i < restocks.length; i++) {
-                  intervals.push(restocks[i] - restocks[i - 1]);
+                  restockToRestockIntervals.push(restocks[i] - restocks[i - 1]);
+                }
+
+                let intervals = selloutToRestockIntervals;
+                if (intervals.length < 3) {
+                  intervals = restockToRestockIntervals;
+                }
+
+                if (intervals.length < 3) {
+                  if (liveStockQuantity === 0) {
+                    return <div style={{ textAlign: isCapacitor ? 'left' : 'right', fontSize: '0.7rem', color: '#666' }}>Gathering data...</div>;
+                  }
+                  return null;
                 }
 
                 const sorted = [...intervals].sort((a, b) => a - b);
@@ -1141,25 +1513,49 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 const lastRestock = restocks[restocks.length - 1];
                 const now = Date.now();
 
-                // --- Adaptive Cycle Analysis (ACA) ---
-                // Adjust prediction based on the velocity of the last sell-out
-                let acaAdjustment = 1.0;
-                const lastSellOut = [...sellOuts].reverse().find(s => s >= lastRestock);
-                if (lastSellOut) {
-                  const sellDurationMins = (lastSellOut - lastRestock) / 60000;
-                  if (sellDurationMins < 30) acaAdjustment = 0.5; // High velocity -> Fast restock
-                  else if (sellDurationMins < 60) acaAdjustment = 1.0; // Normal velocity
-                  else acaAdjustment = 1.5; // Low velocity -> Slower restock
+                // Find when the stock went to 0 in the current out-of-stock period
+                let wentToZeroTimestamp = null;
+                if (liveStockQuantity === 0) {
+                  for (let i = fullHistory.length - 1; i >= 0; i--) {
+                    if (fullHistory[i].stock === 0) {
+                      wentToZeroTimestamp = fullHistory[i].timestamp;
+                    } else {
+                      break;
+                    }
+                  }
                 }
-                const adjustedMedian = median * acaAdjustment;
-                // --------------------------------------
+
+                let rawExpected;
+                if (liveStockQuantity === 0 && wentToZeroTimestamp) {
+                  rawExpected = wentToZeroTimestamp + p10;
+                } else {
+                  // --- Adaptive Cycle Analysis (ACA) ---
+                  // Adjust prediction based on the velocity of the last sell-out
+                  let acaAdjustment = 1.0;
+                  const lastSellOut = [...sellOuts].reverse().find(s => s >= lastRestock);
+                  if (lastSellOut) {
+                    const sellDurationMins = (lastSellOut - lastRestock) / 60000;
+                    if (sellDurationMins < 30) acaAdjustment = 0.5; // High velocity -> Fast restock
+                    else if (sellDurationMins < 60) acaAdjustment = 1.0; // Normal velocity
+                    else acaAdjustment = 1.5; // Low velocity -> Slower restock
+                  }
+
+                  // Use restock-to-restock intervals for in-stock cycle duration prediction
+                  const r2rSorted = [...restockToRestockIntervals].sort((a, b) => a - b);
+                  const r2rMedian = r2rSorted.length > 0 ? r2rSorted[Math.floor(r2rSorted.length / 2)] : median;
+                  const adjustedMedian = r2rMedian * acaAdjustment;
+                  rawExpected = lastRestock + adjustedMedian;
+                  // --------------------------------------
+                }
+
+
+
 
                 // --- Tick Alignment Logic ---
-                // Snap the raw prediction to the next 15-minute tick (:00, :15, :30, :45)
-                const rawExpected = lastRestock + adjustedMedian;
+                // Snap the raw prediction to the next 5-minute tick (:00, :05, :10, :15, ...)
                 const expectedDate = new Date(rawExpected);
                 const minutes = expectedDate.getMinutes();
-                const snappedMinutes = Math.ceil(minutes / 15) * 15;
+                const snappedMinutes = Math.ceil(minutes / 5) * 5;
                 expectedDate.setMinutes(snappedMinutes);
                 expectedDate.setSeconds(0);
                 expectedDate.setMilliseconds(0);
@@ -1167,20 +1563,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
                 // Proactive Tick Shifting: If we have a confirmed 0-stock data point 
                 // AFTER our expected tick, we know that tick was missed. 
-                // Shift forward to the next viable 15-minute tick.
+                // Shift forward to the next viable 5-minute tick.
                 const latestZeroPoint = [...historicalData].reverse().find(d => d.stock === 0);
                 if (latestZeroPoint && latestZeroPoint.timestamp >= snappedExpected) {
-                  // Shift to the first 15m tick AFTER the latest confirmed zero
+                  // Shift to the first 5m tick AFTER the latest confirmed zero
                   const nextTickDate = new Date(latestZeroPoint.timestamp);
                   const nextMins = nextTickDate.getMinutes();
-                  const nextSnappedMins = Math.ceil((nextMins + 1) / 15) * 15;
+                  const nextSnappedMins = Math.ceil((nextMins + 1) / 5) * 5;
                   nextTickDate.setMinutes(nextSnappedMins);
                   nextTickDate.setSeconds(0);
                   nextTickDate.setMilliseconds(0);
                   snappedExpected = nextTickDate.getTime();
                   expectedDate.setTime(snappedExpected); // Update date object for display
                 }
-                // -----------------------------
+                // --------------------------------------
+
+
 
                 let statusText = "";
                 let statusColor = "#3498db";
@@ -1208,8 +1606,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 const confidenceColor = confidence === 'High' ? '#2ecc71' : (confidence === 'Medium' ? '#f39c12' : '#e74c3c');
 
                 return (
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.85rem', color: statusColor, fontWeight: 'bold' }}>{statusText}</div>
+                  <div style={{ textAlign: isCapacitor ? 'left' : 'right' }}>
+                    <div style={{ fontSize: isCapacitor ? '0.75rem' : '0.85rem', color: statusColor, fontWeight: 'bold', whiteSpace: 'pre-line' }}>{statusText}</div>
                     <div style={{ fontSize: '0.6rem', color: '#888', marginTop: '2px' }}>
                       Window: {Math.round(p10 / 60000)}m - {Math.round(p90 / 60000)}m
                     </div>
@@ -1220,22 +1618,22 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                 );
               })()}
             </h3>
-            <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '20px' }}>Country: {selectedItemForGraph.country}</p>
+            <p style={{ color: '#888', fontSize: '0.8rem', marginBottom: '15px', marginTop: '-5px' }}>Country: {selectedItemForGraph.country}</p>
 
             {loadingHistoricalData ? (
-              <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+              <div style={{ height: isCapacitor ? '200px' : '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
                 Loading historical data...
               </div>
             ) : graphError ? (
-              <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4444', textAlign: 'center' }}>{graphError}</div>
+              <div style={{ height: isCapacitor ? '200px' : '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4444', textAlign: 'center' }}>{graphError}</div>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={isCapacitor ? 200 : 300}>
                 <LineChart
                   data={historicalData}
                   margin={{
-                    top: 20,
-                    right: 30,
-                    left: 20,
+                    top: 10,
+                    right: 15,
+                    left: 5,
                     bottom: 5,
                   }}
                 >
@@ -1246,14 +1644,16 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     domain={[Date.now() - (timeScale * 60 * 60 * 1000), Date.now()]}
                     stroke="#888"
                     tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    style={{ fontSize: '0.65rem' }}
                   />
                   <YAxis
                     stroke="#888"
                     domain={['auto', 'auto']}
                     tickFormatter={(tick) => tick?.toLocaleString() || '0'}
+                    style={{ fontSize: '0.65rem' }}
                   />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#333', border: '1px solid #555', color: '#fff' }}
+                    contentStyle={{ backgroundColor: '#333', border: '1px solid #555', color: '#fff', fontSize: '0.75rem' }}
                     labelFormatter={(label) => `Time: ${new Date(label).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`}
                     formatter={(value) => [`Stock: ${value.toLocaleString()}`, '']}
                   />
@@ -1270,8 +1670,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             )}
 
             {/* Time Scale Slider */}
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <label htmlFor="timeScaleSlider" style={{ display: 'block', marginBottom: '10px', color: '#bbb' }}>
+            <div style={{ marginTop: '15px', textAlign: 'center' }}>
+              <label htmlFor="timeScaleSlider" style={{ display: 'block', marginBottom: '6px', color: '#bbb', fontSize: '0.75rem' }}>
                 Time Window: {timeScale} hours
               </label>
               <input
@@ -1286,17 +1686,18 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
               />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
               <button
                 onClick={() => setSelectedItemForGraph(null)}
                 style={{
-                  padding: '8px 25px',
+                  padding: '6px 20px',
                   backgroundColor: '#333',
                   color: '#fff',
                   border: '1px solid #444',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   fontWeight: 'bold',
+                  fontSize: '0.8rem',
                   transition: 'background-color 0.2s'
                 }}
               >
