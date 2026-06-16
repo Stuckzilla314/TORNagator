@@ -1,7 +1,7 @@
 import React from 'react';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
-import { IconPlane, IconHospital, IconScales, IconChevronRight } from './Icons';
+import { IconPlane, IconHospital, IconScales, IconChevronRight, IconRaceway } from './Icons';
 
 /**
  * Helper utility to decode HTML entities (like `&#039;`) safely.
@@ -150,6 +150,20 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
   const landingTime = formatReleaseTime(landingUntil);
   const releaseTime = formatReleaseTime(statusUntil);
 
+  const getRacingIcon = (icons) => {
+    if (!icons || !Array.isArray(icons)) return null;
+    const icon17 = icons.find(icon => icon.id === 17);
+    if (icon17) return icon17;
+    const icon18 = icons.find(icon => icon.id === 18);
+    if (icon18) return icon18;
+    return null;
+  };
+
+  const racingIcon = getRacingIcon(userData.icons);
+  const raceUntil = racingIcon?.id === 17 ? racingIcon?.until : 0;
+  const raceTimeLeft = useTravelTimer(raceUntil);
+  const raceStartTime = formatReleaseTime(raceUntil);
+
   const lifeTime = useBarTimer(userData.life);
   const energyTime = useBarTimer(userData.energy);
   const nerveTime = useBarTimer(userData.nerve);
@@ -295,6 +309,8 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
         </a>
       )}
 
+
+
       {/* Hospital Information Section */}
       {isHospitalized && (
         <a
@@ -379,6 +395,92 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
           </div>
         </a>
       )}
+
+      {/* Racing Information Section */}
+      {(() => {
+        const raceLink = "https://www.torn.com/page.php?sid=racing";
+        let cardBorder = '#444';
+        let cardBackground = 'linear-gradient(145deg, #1e1e1e, #161616)';
+        let iconColor = '#888';
+        let titleColor = '#888';
+        let titleText = 'Race Track Status';
+        let descHtml = 'You are not currently participating in any race.';
+        let rightLabel = 'Status';
+        let rightValue = 'Not Racing';
+        let rightSubtitle = 'Click to join a race';
+
+        if (racingIcon) {
+          if (racingIcon.id === 17) {
+            cardBorder = '#9b59b6';
+            cardBackground = 'linear-gradient(145deg, #1e1e1e, #2b1a3a)';
+            iconColor = '#9b59b6';
+            titleColor = '#9b59b6';
+            titleText = 'Racing Manifest';
+            descHtml = racingIcon.description || 'Currently waiting or actively racing...';
+            if (raceTimeLeft) {
+              rightLabel = 'Time Remaining';
+              rightValue = raceTimeLeft;
+              rightSubtitle = raceStartTime ? `Estimated start/finish at ${raceStartTime}` : '';
+            } else {
+              rightLabel = 'Status';
+              rightValue = 'Racing / Waiting';
+              rightSubtitle = 'Race in progress';
+            }
+          } else if (racingIcon.id === 18) {
+            cardBorder = '#2ecc71';
+            cardBackground = 'linear-gradient(145deg, #1e1e1e, #1a3a24)';
+            iconColor = '#2ecc71';
+            titleColor = '#2ecc71';
+            titleText = 'Race Completed';
+            descHtml = racingIcon.description || 'Your race has completed. Check the results!';
+            rightLabel = 'Results';
+            rightValue = 'Ready';
+            rightSubtitle = 'Click to view results';
+          }
+        }
+
+        return (
+          <a
+            href={raceLink}
+            onClick={(e) => {
+              if (onOpenInTorn) {
+                e.preventDefault();
+                onOpenInTorn(raceLink);
+              }
+            }}
+            className="dashboard-card-link"
+            style={{
+              textDecoration: 'none',
+              color: 'inherit',
+              display: 'block',
+              cursor: 'pointer',
+              '--hover-color': titleColor
+            }}
+          >
+            <div style={{ ...cardStyle, marginBottom: '2rem', border: `1px solid ${cardBorder}`, background: cardBackground }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 className="stat-label" style={{ marginTop: 0, color: titleColor, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <IconRaceway size={18} color={iconColor} /> {titleText}
+                  </h3>
+                  <p style={{ margin: '4px 0', fontSize: '1.1rem' }} dangerouslySetInnerHTML={{ __html: decodeHtml(descHtml) }} />
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={labelStyle}>{rightLabel}</div>
+                  <div style={{ ...valueStyle, fontSize: '1.8rem', color: titleColor }}>
+                    {rightValue}
+                  </div>
+                  {rightSubtitle && (
+                    <div style={{ fontSize: '0.85rem', color: '#888' }}>
+                      {rightSubtitle}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </a>
+        );
+      })()}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
         {/* Information Cards */}

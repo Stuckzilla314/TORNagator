@@ -604,6 +604,25 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
   </div>
 );
 
+
+// 🛡️ Sentinel: Global URL sanitization to prevent DOM-based XSS in webview/iframe
+const sanitizeUrl = (url) => {
+  let safeUrl = (url || '').trim();
+  if (!safeUrl || safeUrl === 'newtab') return safeUrl;
+
+  const schemeMatch = safeUrl.match(/^([a-zA-Z0-9+.-]+):/);
+  if (schemeMatch) {
+    const scheme = schemeMatch[1].toLowerCase();
+    if (!['http', 'https'].includes(scheme)) {
+      console.warn('Blocked unsafe URL scheme:', scheme);
+      return 'https://www.torn.com/index.php'; // Fallback safe URL
+    }
+  } else if (!/^https?:\/\//i.test(safeUrl)) {
+    safeUrl = 'https://' + safeUrl;
+  }
+  return safeUrl;
+};
+
 // ─── New Tab Page ──────────────────────────────────────────────────────────────
 const DEFAULT_FAVORITES = [
   { label: 'Home', url: 'https://www.torn.com/index.php' },
@@ -625,23 +644,15 @@ const NewTabPage = ({ tabId, onNavigate }) => {
   const [newUrl, setNewUrl] = useState('');
 
   const handleGo = (urlToGo) => {
-    let url = (urlToGo || urlInput).trim();
-    if (!url) return;
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-    onNavigate(url);
+    const url = sanitizeUrl(urlToGo || urlInput);
+    if (url) onNavigate(url);
   };
 
   const handleAddFavorite = (e) => {
     e.preventDefault();
     if (!newLabel.trim() || !newUrl.trim()) return;
 
-    let url = newUrl.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-
+    const url = sanitizeUrl(newUrl);
     const newFav = { label: newLabel.trim(), url };
     setFavorites([...favorites, newFav]);
     setNewLabel('');
@@ -1549,7 +1560,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             try {
               if (${isCapacitor}) {
                 const uData = window._tornagator_user_data;
-                const isStacking = uData && uData.energy && uData.energy.current > 100;
+                const maxEnergy = (uData && uData.energy && uData.energy.maximum) ? uData.energy.maximum : 100;
+                const isStacking = uData && uData.energy && uData.energy.current > maxEnergy;
                 if (isStacking && !window._tornagator_stacking_warning_dismissed) {
                   let warningBanner = document.getElementById('tornagator-stacking-warning');
                   if (!warningBanner) {
@@ -1585,7 +1597,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     title.style.display = 'block';
                     
                     const desc = document.createElement('span');
-                    desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/100. You might be stacking and may not want to train in the gym.';
+                    desc.textContent = 'Your energy is ' + (uData && uData.energy ? uData.energy.current : 0) + '/' + maxEnergy + '. You might be stacking and may not want to train in the gym.';
                     desc.style.fontSize = '0.7rem';
                     desc.style.color = 'rgba(255, 255, 255, 0.9)';
                     desc.style.display = 'block';
@@ -3664,14 +3676,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // Auto-fetch targets on tab switch to war sidebar if not cached
   useEffect(() => {
-    if (sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+    if (isActive && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
       doFetchTargets(false);
     }
-  }, [sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
+  }, [isActive, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
 
   // Auto-sync timer effect
   useEffect(() => {
-    if (syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
+    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
 
     const intervalId = setInterval(() => {
       if (!isLoadingTargets && !isSyncingTargets) {
@@ -3681,12 +3693,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     }, syncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
   const energyValue = userData?.energy?.current || 0;
-  const isStacking = energyValue > 100;
+  const maxEnergyValue = userData?.energy?.maximum || 100;
+  const isStacking = energyValue > maxEnergyValue;
   const showStackingWarning = isGymPage && isStacking && !dismissedWarnings[activeTabId];
 
   useEffect(() => {
@@ -3736,15 +3749,10 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const handleSaveNewAction = () => {
     if (!newLabel.trim() || !newUrl.trim()) return;
 
-    // 🛡️ Sentinel: Prevent DOM-based XSS by restricting URL schemes
-    let safeUrl = newUrl.trim();
-    const scheme = safeUrl.split(':')[0].toLowerCase();
-    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+    const safeUrl = sanitizeUrl(newUrl);
+    if (safeUrl === 'https://www.torn.com/index.php' && newUrl !== safeUrl && newUrl !== 'https://www.torn.com/index.php') {
       alert('Invalid URL scheme for security reasons.');
       return;
-    }
-    if (!/^https?:\/\//i.test(safeUrl)) {
-      safeUrl = 'https://' + safeUrl;
     }
 
     setQuickActions(prev => [...prev, { label: newLabel.trim(), href: safeUrl }]);
@@ -3788,13 +3796,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   useEffect(() => {
     if (requestedUrl) {
-
-      const existingTab = tabs.find(t => areUrlsEqual(t.url, requestedUrl));
+      const safeReqUrl = sanitizeUrl(requestedUrl);
+      const existingTab = tabs.find(t => areUrlsEqual(t.url, safeReqUrl));
       if (existingTab) {
         setActiveTabId(existingTab.id);
       } else {
         const newTabId = `tab-${Date.now()}`;
-        setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
+        setTabs(prev => [...prev, { id: newTabId, url: safeReqUrl, title: 'Torn' }]);
         setActiveTabId(newTabId);
       }
       setRequestedUrl(null);
@@ -3885,16 +3893,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
-    // 🛡️ Sentinel: Defense-in-depth against DOM XSS in webview src
-    let safeHref = href || '';
-    const scheme = safeHref.split(':')[0].toLowerCase();
-    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
-      console.warn('Blocked navigation to unsafe URL scheme');
-      return;
-    }
-    if (!/^https?:\/\//i.test(safeHref) && safeHref.trim() !== '') {
-      safeHref = 'https://' + safeHref;
-    }
+    const safeHref = sanitizeUrl(href);
+    if (safeHref === 'https://www.torn.com/index.php' && href !== safeHref && href !== 'https://www.torn.com/index.php') return;
 
 
 
@@ -4014,12 +4014,14 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 <div>
                   <span className="stacking-warning-title">Stacking Warning</span>
                   <span className="stacking-warning-desc">
-                    Your energy is {energyValue}/100. You might be stacking and may not want to train in the gym.
+                    Your energy is {energyValue}/{maxEnergyValue}. You might be stacking and may not want to train in the gym.
                   </span>
                 </div>
                 <button
                   className="stacking-warning-close"
                   onClick={() => setDismissedWarnings(prev => ({ ...prev, [activeTabId]: true }))}
+                  title="Dismiss warning"
+                  aria-label="Dismiss stacking warning"
                 >
                   ×
                 </button>
@@ -4456,7 +4458,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                       padding: 0,
                                       lineHeight: '1'
                                     }}
-                                    title="Remove"
+                                    title={`Remove ${action.label}`}
+                                    aria-label={`Remove quick action ${action.label}`}
                                   >
                                     ×
                                   </button>
@@ -4483,6 +4486,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                       fontFamily: 'inherit'
                                     }}
                                     placeholder="Label"
+                                    aria-label={`Rename quick action ${action.label}`}
                                   />
 
                                   {/* Rearrange arrows */}
@@ -4498,6 +4502,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                         cursor: index === 0 ? 'default' : 'pointer',
                                         padding: '0 4px'
                                       }}
+                                      title={`Move ${action.label} left`}
+                                      aria-label={`Move ${action.label} left`}
                                     >
                                       ◀
                                     </button>
@@ -4512,6 +4518,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                         cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
                                         padding: '0 4px'
                                       }}
+                                      title={`Move ${action.label} right`}
+                                      aria-label={`Move ${action.label} right`}
                                     >
                                       ▶
                                     </button>

@@ -6,3 +6,7 @@
 **Vulnerability:** Dynamic strings (like seller names and error messages) from the API were directly concatenated into HTML strings and injected into the DOM via `innerHTML` inside the overlay script in `TornView.js`.
 **Learning:** When executing custom scripts within an Electron `<webview>` using `executeJavaScript` or similar overlay execution, standard React XSS protections (which automatically escape text nodes) do not apply. If the script manually constructs HTML strings and uses `innerHTML`, it introduces a DOM-based XSS vulnerability within the guest context.
 **Prevention:** When building HTML strings manually in injected scripts, always define and apply a custom `escapeHtml` function to sanitize dynamic variables before concatenation.
+## 2026-06-06 - [CRITICAL] Prevent DOM-based XSS via New Tab Inputs
+**Vulnerability:** User-provided URLs in the "New Tab" page (for direct navigation and adding favorites) were not validated for unsafe URL schemes before being passed to `onNavigate`, which eventually sets the `src` attribute of the Electron `<webview>`.
+**Learning:** Even internal UI components like custom "New Tab" pages that accept URL inputs must validate the URL scheme when running in an environment where setting iframe/webview sources to `javascript:` or `data:` is dangerous (like Electron with nodeIntegration).
+**Prevention:** Apply the same strict URL scheme validation (rejecting `javascript:`, `data:`, `vbscript:`) to all user inputs that resolve to navigation targets, not just external or saved configurations like Custom Quick Actions.

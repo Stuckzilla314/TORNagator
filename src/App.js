@@ -2,14 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
 import './App.css';
-import OverseasStock from './OverseasStock';
+import OverseasStock, { COUNTRY_MAP } from './OverseasStock';
 import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import ApiLogsView from './ApiLogsView';
-import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData } from './tornApi';
+import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData, fetchUserIcons } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
-import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock } from './Icons';
+import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock, IconRaceway } from './Icons';
 import { isCapacitor } from './utils';
 import { manageTravelNotification } from './notifications';
 
@@ -85,9 +85,12 @@ function useLocalStorage(key, initialValue) {
  * This prevents the entire App component tree from re-rendering every second.
  */
 function TitleBarTimer({ userData, showTabTimer }) {
-  const landingUntil = (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail')
+  const isOccupied = (userData?.status?.state === 'Traveling' || userData?.status?.state === 'Hospital' || userData?.status?.state === 'Jail');
+  const racingIcon = userData?.icons?.find(icon => icon.id === 17);
+
+  const landingUntil = isOccupied
     ? (userData?.travel?.arrival_at || userData?.travel?.timestamp || userData?.status?.until)
-    : 0;
+    : (racingIcon && racingIcon.until ? racingIcon.until : 0);
 
   const timeLeft = useTravelTimer(landingUntil);
 
@@ -101,7 +104,7 @@ function TitleBarTimer({ userData, showTabTimer }) {
 
   if (!showTabTimer || !timeLeft) return null;
 
-  const state = userData?.status?.state;
+  const state = isOccupied ? userData?.status?.state : (racingIcon ? 'Racing' : null);
 
   return (
     <span style={{
@@ -109,18 +112,21 @@ function TitleBarTimer({ userData, showTabTimer }) {
       padding: '2px 8px',
       backgroundColor: state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
                        state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
-                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
+                       state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
       border: `1px solid ${
                        state === 'Traveling' ? '#3498db' :
                        state === 'Hospital' ? '#e74c3c' :
-                       state === 'Jail' ? '#f39c12' : '#888'
+                       state === 'Jail' ? '#f39c12' :
+                       state === 'Racing' ? '#9b59b6' : '#888'
       }`,
       borderRadius: '4px',
       fontSize: '0.8rem',
       fontWeight: 'bold',
       color: state === 'Traveling' ? '#3498db' :
              state === 'Hospital' ? '#e74c3c' :
-             state === 'Jail' ? '#f39c12' : '#e0e0e0',
+             state === 'Jail' ? '#f39c12' :
+             state === 'Racing' ? '#9b59b6' : '#e0e0e0',
       display: 'flex',
       alignItems: 'center',
       gap: '6px'
@@ -128,12 +134,45 @@ function TitleBarTimer({ userData, showTabTimer }) {
       <span style={{ display: 'flex', alignItems: 'center' }}>
         {state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
          state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
-         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> : <IconClock size={13} color={"#aaa"} />}
+         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> :
+         state === 'Racing' ? <IconRaceway size={13} color={"#9b59b6"} /> : <IconClock size={13} color={"#aaa"} />}
       </span>
       <span>{timeLeft}</span>
     </span>
   );
 }
+
+const VALID_INVENTORY_CATEGORIES = new Set([
+  'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive', 
+  'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special', 
+  'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower', 
+  'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie', 
+  'Drug', 'Energy Drink'
+]);
+
+/**
+ * Determines the unique inventory categories required to fetch the quantities of tracked foreign items.
+ *
+ * @param {Object} itemsData - The fetched items metadata from Torn.
+ * @returns {string[]} An array of distinct valid category names.
+ */
+const getRequiredCategories = (itemsData) => {
+  if (!itemsData) return [];
+  const categories = new Set();
+  const trackedIds = Object.values(COUNTRY_MAP).flat();
+  
+  trackedIds.forEach(id => {
+    const item = itemsData[id];
+    if (item && item.type) {
+      const category = item.type === 'Miscellaneous' ? 'Other' : item.type;
+      if (VALID_INVENTORY_CATEGORIES.has(category)) {
+        categories.add(category);
+      }
+    }
+  });
+  
+  return Array.from(categories);
+};
 
 /**
  * The main application component.
@@ -236,8 +275,20 @@ function App() {
     if (isInitial) setLoading(true);
     setError(null);
     try {
-      const user = await fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money,perks');
-      setUserData(prev => prev ? { ...prev, ...user } : user);
+      const [user, iconsData] = await Promise.all([
+        fetchUserData(apiKey, 'basic,profile,bars,travel,personalstats,money,perks'),
+        fetchUserIcons(apiKey).catch(err => {
+          console.warn("Failed to fetch user icons:", err);
+          return null;
+        })
+      ]);
+
+      const mergedUser = {
+        ...user,
+        icons: iconsData?.icons || []
+      };
+
+      setUserData(prev => prev ? { ...prev, ...mergedUser } : mergedUser);
       try {
         localStorage.setItem('torn_api_key', apiKey);
       } catch (e) {
@@ -361,19 +412,18 @@ function App() {
   const loadOverseasData = useCallback(async () => {
     if (!apiKey) return;
     try {
-      const currentItems = itemsDataRef.current;
-      const [items, inventory] = await Promise.all([
-        currentItems ? Promise.resolve(currentItems) : fetchTornItems(apiKey),
-        fetchUserInventoryV2(apiKey)
-      ]);
-
-      if (!currentItems) {
+      let items = itemsDataRef.current;
+      if (!items) {
+        items = await fetchTornItems(apiKey);
         itemsDataRef.current = items;
         setItemsData(items);
         try {
           localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
         } catch (e) { console.warn("Items cache failed:", e); }
       }
+
+      const requiredCategories = getRequiredCategories(items);
+      const inventory = await fetchUserInventoryV2(apiKey, requiredCategories);
 
       setUserData(prev => prev ? { ...prev, inventory } : { inventory });
       try {
@@ -395,6 +445,28 @@ function App() {
       manageTravelNotification(userData, travelNotificationsEnabled);
     }
   }, [userData, travelNotificationsEnabled]);
+
+  // Sync API Key to Android Native (for widget support)
+  useEffect(() => {
+    if (window.AndroidTornBridge && window.AndroidTornBridge.setTornApiKey) {
+      try {
+        window.AndroidTornBridge.setTornApiKey(apiKey || '');
+      } catch (e) {
+        console.warn("Failed to sync API key to Android widget", e);
+      }
+    }
+  }, [apiKey]);
+
+  // Sync User Data to Android Native (for widget support)
+  useEffect(() => {
+    if (window.AndroidTornBridge && window.AndroidTornBridge.updateWidgetData) {
+      try {
+        window.AndroidTornBridge.updateWidgetData(userData ? JSON.stringify(userData) : '');
+      } catch (e) {
+        console.warn("Failed to sync user data to Android widget", e);
+      }
+    }
+  }, [userData]);
 
   // Always recurring dashboard fetch (user data only)
   useEffect(() => {
@@ -436,17 +508,30 @@ function App() {
     };
   }, [apiKey, loadDashboardData, pollInterval]);
 
-  // Fetch faction data whenever the faction or torn tab is activated
+  // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open
   useEffect(() => {
-    if (apiKey && (activeTab === 'faction' || activeTab === 'torn')) {
+    let interval;
+    if (apiKey && activeTab === 'faction') {
       if (!hasFactionSyncRun.current) {
         hasFactionSyncRun.current = true;
         loadFactionData();
       }
+
+      if (pollInterval > 0) {
+        interval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            loadFactionData();
+          }
+        }, Math.max(10000, pollInterval * 1000));
+      }
     } else {
       hasFactionSyncRun.current = false;
     }
-  }, [apiKey, activeTab, loadFactionData]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [apiKey, activeTab, loadFactionData, pollInterval]);
 
   // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {
@@ -564,8 +649,20 @@ function App() {
       // Fetch travel, categorized perks, and properties via a combined V2 selection
       const response = await fetch(`https://api.torn.com/user/?selections=travel,perks,properties&key=${apiKey}`);
       const data = await response.json();
+
+      let items = itemsDataRef.current;
+      if (!items) {
+        items = await fetchTornItems(apiKey);
+        itemsDataRef.current = items;
+        setItemsData(items);
+        try {
+          localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
+        } catch (e) { console.warn("Items cache failed:", e); }
+      }
+
+      const requiredCategories = getRequiredCategories(items);
       // Fetch inventory separately using the dedicated V2 inventory endpoint
-      const inventoryData = await fetchUserInventoryV2(apiKey);
+      const inventoryData = await fetchUserInventoryV2(apiKey, requiredCategories);
 
       if (!data.error && !manualOverride) {
         const calculated = calculateCapacity({ ...data, inventory: inventoryData });
@@ -589,7 +686,13 @@ function App() {
     borderBottom: activeTab === tab ? '2px solid #3498db' : '2px solid transparent',
     color: activeTab === tab ? '#3498db' : '#888',
     fontWeight: 'bold',
-    transition: 'all 0.3s ease'
+    transition: 'all 0.3s ease',
+    background: 'none',
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
+    fontFamily: 'inherit',
+    fontSize: 'inherit'
   });
 
   const mobileNavItemStyle = (tab) => ({
@@ -725,18 +828,18 @@ function App() {
               flexShrink: 0
             }}
           >
-            <div style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</div>
-            <div style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</div>
-            <div style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</div>
-            <div style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</div>
-            <div style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+            <button style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
+            <button style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</button>
+            <button style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</button>
+            <button style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
+            <button style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                 <line x1="8" y1="21" x2="16" y2="21" />
                 <line x1="12" y1="17" x2="12" y2="21" />
               </svg>
               API Monitor
-            </div>
+            </button>
           </nav>
         )}
 

@@ -1,5 +1,6 @@
 package com.stuckyco.tornagator;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
@@ -296,5 +297,44 @@ public class MainActivity extends BridgeActivity {
                 }
             });
         }
+
+        @JavascriptInterface
+        public void setTornApiKey(final String apiKey) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "setTornApiKey called from JS");
+                    android.content.SharedPreferences pref = getApplicationContext().getSharedPreferences("TornWidgetPrefs", android.content.Context.MODE_PRIVATE);
+                    pref.edit().putString("api_key", apiKey).apply();
+                    updateAllWidgets();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void updateWidgetData(final String userJson) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Log.v(TAG, "updateWidgetData called from JS (including racing/icon updates)");
+                    android.content.SharedPreferences pref = getApplicationContext().getSharedPreferences("TornWidgetPrefs", android.content.Context.MODE_PRIVATE);
+                    pref.edit()
+                        .putString("cached_user_data", userJson)
+                        .putLong("last_updated_time", System.currentTimeMillis())
+                        .apply();
+                    updateAllWidgets();
+                }
+            });
+        }
+    }
+
+    private void updateAllWidgets() {
+        Log.d(TAG, "Triggering update for all widgets");
+        Intent intent = new Intent(this, TornWidgetProvider.class);
+        intent.setAction(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+        int[] ids = android.appwidget.AppWidgetManager.getInstance(getApplication())
+                .getAppWidgetIds(new android.content.ComponentName(getApplication(), TornWidgetProvider.class));
+        intent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        sendBroadcast(intent);
     }
 }
