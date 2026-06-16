@@ -4011,6 +4011,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 <button
                   className="stacking-warning-close"
                   onClick={() => setDismissedWarnings(prev => ({ ...prev, [activeTabId]: true }))}
+                  title="Dismiss warning"
+                  aria-label="Dismiss stacking warning"
                 >
                   ×
                 </button>
