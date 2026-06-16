@@ -604,6 +604,25 @@ const StatusCard = ({ icon, title, description, detail, timeLeft, releaseTime, a
   </div>
 );
 
+
+// 🛡️ Sentinel: Global URL sanitization to prevent DOM-based XSS in webview/iframe
+const sanitizeUrl = (url) => {
+  let safeUrl = (url || '').trim();
+  if (!safeUrl || safeUrl === 'newtab') return safeUrl;
+
+  const schemeMatch = safeUrl.match(/^([a-zA-Z0-9+.-]+):/);
+  if (schemeMatch) {
+    const scheme = schemeMatch[1].toLowerCase();
+    if (!['http', 'https'].includes(scheme)) {
+      console.warn('Blocked unsafe URL scheme:', scheme);
+      return 'https://www.torn.com/index.php'; // Fallback safe URL
+    }
+  } else if (!/^https?:\/\//i.test(safeUrl)) {
+    safeUrl = 'https://' + safeUrl;
+  }
+  return safeUrl;
+};
+
 // ─── New Tab Page ──────────────────────────────────────────────────────────────
 const DEFAULT_FAVORITES = [
   { label: 'Home', url: 'https://www.torn.com/index.php' },
@@ -625,23 +644,15 @@ const NewTabPage = ({ tabId, onNavigate }) => {
   const [newUrl, setNewUrl] = useState('');
 
   const handleGo = (urlToGo) => {
-    let url = (urlToGo || urlInput).trim();
-    if (!url) return;
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-    onNavigate(url);
+    const url = sanitizeUrl(urlToGo || urlInput);
+    if (url) onNavigate(url);
   };
 
   const handleAddFavorite = (e) => {
     e.preventDefault();
     if (!newLabel.trim() || !newUrl.trim()) return;
 
-    let url = newUrl.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-
+    const url = sanitizeUrl(newUrl);
     const newFav = { label: newLabel.trim(), url };
     setFavorites([...favorites, newFav]);
     setNewLabel('');
@@ -2060,6 +2071,15 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 window._tornagator_scan_queue = initialSellers;
 
+                const escapeHtml = (unsafe) => {
+                  return (unsafe || '').toString()
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+                };
+
                 const getScanTotalCount = () => {
                   return window._tornagator_scan_results.length + window._tornagator_scan_queue.length + (window._tornagator_scan_current_id ? 1 : 0);
                 };
@@ -2107,7 +2127,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     sortedEl.onmouseenter = () => sortedEl.style.backgroundColor = 'rgba(255,255,255,0.05)';
                     sortedEl.onmouseleave = () => sortedEl.style.backgroundColor = 'rgba(255,255,255,0.02)';
 
-                    sortedEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + res.name + '</span><span style="color:#888; font-size:10px;">Lvl ' + res.level + ' &bull; Age ' + res.age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (res.winRate >= 70 ? '#e74c3c' : res.winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + res.winRate + '%</strong></span><span>Cri: ' + res.crimes.toLocaleString() + '</span><span>Drg: ' + res.drugs.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + res.assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + res.assessmentColor + '15; border:1px solid ' + res.assessmentColor + '44;">' + res.assessment + '</span></div>';
+                    sortedEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + escapeHtml(res.name) + '</span><span style="color:#888; font-size:10px;">Lvl ' + res.level + ' &bull; Age ' + res.age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (res.winRate >= 70 ? '#e74c3c' : res.winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + res.winRate + '%</strong></span><span>Cri: ' + res.crimes.toLocaleString() + '</span><span>Drg: ' + res.drugs.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + res.assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + res.assessmentColor + '15; border:1px solid ' + res.assessmentColor + '44;">' + res.assessment + '</span></div>';
                     listContainer.appendChild(sortedEl);
                   });
 
@@ -2216,7 +2236,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     // Update UI listing element
                     if (rowEl) {
                       rowEl.style.border = '1px solid ' + assessmentColor + '33';
-                      rowEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + seller.name + '</span><span style="color:#888; font-size:10px;">Lvl ' + level + ' &bull; Age ' + age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + winRate + '%</strong></span><span>Cri: ' + criminalOffenses.toLocaleString() + '</span><span>Drg: ' + drugsUsed.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + assessmentColor + '15; border:1px solid ' + assessmentColor + '44;">' + assessment + '</span></div>';
+                      rowEl.innerHTML = '<div style="flex:1; min-width:0; padding-right:8px;"><div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#fff;">' + escapeHtml(seller.name) + '</span><span style="color:#888; font-size:10px;">Lvl ' + level + ' &bull; Age ' + age + 'd</span></div><div style="font-size:10px; color:#aaa; display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;"><span>WR: <strong style="color:' + (winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f39c12' : '#2ecc71') + '">' + winRate + '%</strong></span><span>Cri: ' + criminalOffenses.toLocaleString() + '</span><span>Drg: ' + drugsUsed.toLocaleString() + '</span></div></div><div style="flex-shrink:0;"><span style="display:inline-block; font-size:10px; font-weight:bold; color:' + assessmentColor + '; padding:2px 6px; border-radius:10px; background-color:' + assessmentColor + '15; border:1px solid ' + assessmentColor + '44;">' + assessment + '</span></div>';
                       
                       rowEl.style.cursor = 'pointer';
                       rowEl.onclick = () => {
@@ -2252,7 +2272,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     if (rowEl) {
                       rowEl.style.backgroundColor = 'rgba(231,76,60,0.05)';
                       rowEl.style.border = '1px solid #e74c3c33';
-                      rowEl.innerHTML = '<div style="font-weight:bold; color:#fff;">' + seller.name + '</div><div style="color:#e74c3c; font-size:10px; margin-top:2px;">Fetch Failed: ' + e.message + '</div>';
+                      rowEl.innerHTML = '<div style="font-weight:bold; color:#fff;">' + escapeHtml(seller.name) + '</div><div style="color:#e74c3c; font-size:10px; margin-top:2px;">Fetch Failed: ' + escapeHtml(e.message) + '</div>';
                     }
                   }
 
@@ -2285,7 +2305,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                       rowEl.style.alignItems = 'center';
                       rowEl.style.fontSize = '11px';
                       rowEl.style.marginBottom = '4px';
-                      rowEl.innerHTML = '<div><span style="font-weight:bold; color:#fff;">' + seller.name + '</span><span style="color:#666; font-size:10px; margin-left:4px;">[' + seller.id + ']</span></div><div style="color:#888; font-style:italic;">Queueing...</div>';
+                      rowEl.innerHTML = '<div><span style="font-weight:bold; color:#fff;">' + escapeHtml(seller.name) + '</span><span style="color:#666; font-size:10px; margin-left:4px;">[' + seller.id + ']</span></div><div style="color:#888; font-style:italic;">Queueing...</div>';
                       listContainer.appendChild(rowEl);
                     }
 
@@ -3729,15 +3749,10 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const handleSaveNewAction = () => {
     if (!newLabel.trim() || !newUrl.trim()) return;
 
-    // 🛡️ Sentinel: Prevent DOM-based XSS by restricting URL schemes
-    let safeUrl = newUrl.trim();
-    const scheme = safeUrl.split(':')[0].toLowerCase();
-    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
+    const safeUrl = sanitizeUrl(newUrl);
+    if (safeUrl === 'https://www.torn.com/index.php' && newUrl !== safeUrl && newUrl !== 'https://www.torn.com/index.php') {
       alert('Invalid URL scheme for security reasons.');
       return;
-    }
-    if (!/^https?:\/\//i.test(safeUrl)) {
-      safeUrl = 'https://' + safeUrl;
     }
 
     setQuickActions(prev => [...prev, { label: newLabel.trim(), href: safeUrl }]);
@@ -3781,13 +3796,13 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   useEffect(() => {
     if (requestedUrl) {
-
-      const existingTab = tabs.find(t => areUrlsEqual(t.url, requestedUrl));
+      const safeReqUrl = sanitizeUrl(requestedUrl);
+      const existingTab = tabs.find(t => areUrlsEqual(t.url, safeReqUrl));
       if (existingTab) {
         setActiveTabId(existingTab.id);
       } else {
         const newTabId = `tab-${Date.now()}`;
-        setTabs(prev => [...prev, { id: newTabId, url: requestedUrl, title: 'Torn' }]);
+        setTabs(prev => [...prev, { id: newTabId, url: safeReqUrl, title: 'Torn' }]);
         setActiveTabId(newTabId);
       }
       setRequestedUrl(null);
@@ -3878,16 +3893,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // ── Iframe navigation
   const navigateTo = useCallback((href) => {
-    // 🛡️ Sentinel: Defense-in-depth against DOM XSS in webview src
-    let safeHref = href || '';
-    const scheme = safeHref.split(':')[0].toLowerCase();
-    if (scheme === 'javascript' || scheme === 'data' || scheme === 'vbscript') {
-      console.warn('Blocked navigation to unsafe URL scheme');
-      return;
-    }
-    if (!/^https?:\/\//i.test(safeHref) && safeHref.trim() !== '') {
-      safeHref = 'https://' + safeHref;
-    }
+    const safeHref = sanitizeUrl(href);
+    if (safeHref === 'https://www.torn.com/index.php' && href !== safeHref && href !== 'https://www.torn.com/index.php') return;
 
 
 
@@ -4013,6 +4020,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 <button
                   className="stacking-warning-close"
                   onClick={() => setDismissedWarnings(prev => ({ ...prev, [activeTabId]: true }))}
+                  title="Dismiss warning"
+                  aria-label="Dismiss stacking warning"
                 >
                   ×
                 </button>
@@ -4449,7 +4458,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                       padding: 0,
                                       lineHeight: '1'
                                     }}
-                                    title="Remove"
+                                    title={`Remove ${action.label}`}
+                                    aria-label={`Remove quick action ${action.label}`}
                                   >
                                     ×
                                   </button>
@@ -4476,6 +4486,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                       fontFamily: 'inherit'
                                     }}
                                     placeholder="Label"
+                                    aria-label={`Rename quick action ${action.label}`}
                                   />
 
                                   {/* Rearrange arrows */}
@@ -4491,6 +4502,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                         cursor: index === 0 ? 'default' : 'pointer',
                                         padding: '0 4px'
                                       }}
+                                      title={`Move ${action.label} left`}
+                                      aria-label={`Move ${action.label} left`}
                                     >
                                       ◀
                                     </button>
@@ -4505,6 +4518,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                         cursor: index === quickActions.length - 1 ? 'default' : 'pointer',
                                         padding: '0 4px'
                                       }}
+                                      title={`Move ${action.label} right`}
+                                      aria-label={`Move ${action.label} right`}
                                     >
                                       ▶
                                     </button>
