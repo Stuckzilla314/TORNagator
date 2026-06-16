@@ -121,12 +121,20 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
         
         setHistoryStockOverrides(prev => ({
           ...prev,
-          [key]: { quantity: latestStock, timestamp: latestTimestamp }
+          [key]: { 
+            quantity: latestStock, 
+            cost: docData.cost !== undefined ? docData.cost : 0,
+            timestamp: latestTimestamp 
+          }
         }));
       } else {
         setHistoryStockOverrides(prev => ({
           ...prev,
-          [key]: { quantity: 0, timestamp: Date.now() }
+          [key]: { 
+            quantity: 0, 
+            cost: 0,
+            timestamp: Date.now() 
+          }
         }));
       }
     } catch (err) {
@@ -205,7 +213,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     }
   }, [onOpenInTorn]);
   // Overrides stock quantities with the freshest value seen from Firestore history fetches.
-  // Keyed as 'country_itemId' -> { quantity, timestamp }
+  // Keyed as 'country_itemId' -> { quantity, cost, timestamp }
   const [historyStockOverrides, setHistoryStockOverrides] = useState(() => {
     try {
       const cached = sessionStorage.getItem('tornagator_stock_overrides');
@@ -244,9 +252,17 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     // Apply overrides from history fetches (higher priority than stale snapshot)
     Object.entries(historyStockOverrides).forEach(([key, override]) => {
       if (map[key]) {
-        map[key] = { ...map[key], quantity: override.quantity };
+        map[key] = { 
+          ...map[key], 
+          quantity: override.quantity,
+          cost: override.cost !== undefined && override.cost !== 0 ? override.cost : map[key].cost
+        };
       } else {
-        map[key] = { quantity: override.quantity, cost: 0, update: 0 };
+        map[key] = { 
+          quantity: override.quantity, 
+          cost: override.cost !== undefined ? override.cost : 0, 
+          update: 0 
+        };
       }
     });
     return map;
@@ -387,7 +403,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
         let history = windowSnap.docs.map(doc => ({
           timestamp: doc.data().timestamp * 1000,
-          stock: doc.data().stock
+          stock: doc.data().stock,
+          cost: doc.data().cost
         }));
 
         if (!seedSnap.empty) {
@@ -396,6 +413,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {
               timestamp: windowStart * 1000,
               stock: seedData.stock,
+              cost: seedData.cost,
               isSeed: true
             },
             ...history
@@ -407,6 +425,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {
               timestamp: windowStart * 1000,
               stock: selectedItemForGraph.stockQuantity,
+              cost: selectedItemForGraph.buy_price,
               isFallback: true
             }
           ];
@@ -420,7 +439,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           const key = `${selectedItemForGraph.country}_${selectedItemForGraph.id}`;
           setHistoryStockOverrides(prev => ({
             ...prev,
-            [key]: { quantity: latestPoint.stock, timestamp: latestPoint.timestamp }
+            [key]: { 
+              quantity: latestPoint.stock, 
+              cost: latestPoint.cost !== undefined ? latestPoint.cost : 0,
+              timestamp: latestPoint.timestamp 
+            }
           }));
         }
       } catch (err) {
