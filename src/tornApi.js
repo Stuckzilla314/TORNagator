@@ -23,6 +23,26 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
 };
 
 /**
+ * Fetches user icons using TORN v2 API.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @returns {Promise<Object>} A promise resolving to the user icons object.
+ * @throws {Error} If the API returns an error or the request fails.
+ */
+export const fetchUserIcons = async (apiKey) => {
+  try {
+    const response = await fetch(`${BASE_URL}/v2/user/icons?key=${apiKey}`);
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error.error || 'Unknown API Error');
+    }
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
  * Fetches basic faction data from the Torn API.
  * Additionally attempts to resolve and populate the names of the leader and co-leader.
  *
@@ -32,10 +52,25 @@ export const fetchUserData = async (apiKey, selections = 'basic,profile') => {
  */
 export const fetchFactionData = async (apiKey) => {
   try {
-    const response = await fetch(`${BASE_URL}/faction/?selections=basic&key=${apiKey}`);
+    const url = `${BASE_URL}/faction/?selections=basic,rankedwars,chain&key=${apiKey}`;
+    console.log('[TORNagator API] Fetching faction data from URL:', url.replace(apiKey, 'HIDDEN_KEY'));
+    const response = await fetch(url);
     const data = await response.json();
 
     if (data.error) {
+      const code = data.error.code;
+      const errMsg = (data.error.error || '').toLowerCase();
+      // If key lacks permissions for selections (like upgrades), retry basic selections
+      if (code === 2 || code === 7 || errMsg.includes('key') || errMsg.includes('access') || errMsg.includes('permission') || errMsg.includes('selection')) {
+        console.warn('[TORNagator API] Faction upgrades selection failed. Retrying fallback without upgrades...');
+        const fallbackUrl = `${BASE_URL}/faction/?selections=basic,rankedwars,chain&key=${apiKey}`;
+        const fallbackResponse = await fetch(fallbackUrl);
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.error) {
+          throw new Error(fallbackData.error.error || 'Unknown API Error');
+        }
+        return fallbackData;
+      }
       throw new Error(data.error.error || 'Unknown API Error');
     }
 
@@ -116,23 +151,47 @@ export const fetchTornItems = async (apiKey) => {
 
 /**
  * Fetches user inventory using TORN v2 API.
- * Since v2 requires category-specific calls, we fetch the common categories 
- * Note: The API does not allow fetching multiple categories at once; we fetch only 'Flower'.
+ * Since v2 requires category-specific calls, we fetch only the requested categories.
  *
  * @param {string} apiKey - The user's private API key.
+ * @param {string|string[]} [requestedCategories] - The categories to fetch. Defaults to all valid categories.
  * @returns {Promise<Array<Object>>} A promise resolving to an array of inventory items.
  * @throws {Error} If the API returns an error or the request fails.
  */
-export const fetchUserInventoryV2 = async (apiKey) => {
-  const categories = [
-    'Medical', 'Drug', 'Temporary', 'Melee', 'Primary',
-    'Secondary', 'Armor', 'Plushie', 'Flower', 'Booster', 'Miscellaneous'
+export const fetchUserInventoryV2 = async (apiKey, requestedCategories = []) => {
+  const allCategories = [
+    'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive', 
+    'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special', 
+    'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower', 
+    'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie', 
+    'Drug', 'Energy Drink'
   ];
+
+  let categoriesToFetch = [];
+  if (requestedCategories) {
+    if (Array.isArray(requestedCategories)) {
+      categoriesToFetch = requestedCategories;
+    } else if (typeof requestedCategories === 'string') {
+      categoriesToFetch = [requestedCategories];
+    }
+  }
+
+  if (categoriesToFetch.length === 0) {
+    categoriesToFetch = allCategories;
+  }
+
+  // Filter against valid categories to prevent invalid API calls
+  const validSet = new Set(allCategories);
+  categoriesToFetch = categoriesToFetch.filter(cat => validSet.has(cat));
+
+  if (categoriesToFetch.length === 0) {
+    categoriesToFetch = allCategories;
+  }
 
   const allItems = {};
   try {
     const results = await Promise.all(
-      categories.map(cat =>
+      categoriesToFetch.map(cat =>
         fetch(`${BASE_URL}/v2/user/inventory?cat=${cat}&key=${apiKey}&limit=100`)
           .then(res => res.ok ? res.json() : null)
           .catch(() => null)

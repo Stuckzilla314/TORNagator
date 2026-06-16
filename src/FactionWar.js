@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
-import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock } from './Icons';
+import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash } from './Icons';
 
 /**
  * Renders a card displaying details for a specific Ranked War (upcoming or active).
@@ -122,18 +122,413 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
  * @param {Function} props.onOpenInTorn - Callback to open links inside the Torn view.
  * @returns {React.JSX.Element|null} The rendered FactionWar component, or null if user is not in a faction.
  */
-const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
-  const [activeSubTab, setActiveSubTab] = useState('overview');
-  const [compareMode, setCompareMode] = useState(false);
-  const [enemyFactionData, setEnemyFactionData] = useState(null);
-  const [memberProfiles, setMemberProfiles] = useState({});
-  const [isLoadingTargets, setIsLoadingTargets] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
-  const [errorTargets, setErrorTargets] = useState(null);
-  const [cachedAt, setCachedAt] = useState(null);
+/**
+ * Parses suspected target stats/XP from a raw text block (e.g. from copy-pasting).
+ * 
+ * @param {string} text - Raw text containing suspected stats.
+ * @returns {Object} An object containing the parsed factionName and a map of stats by lowercase username.
+ */
+const parseSuspectedStats = (text) => {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const stats = {};
+  let factionName = '';
+  
+  if (lines.length === 0) return { factionName, stats };
+  
+  let startIndex = 0;
+  // If the first line doesn't start with a number and doesn't look like a header, treat it as the Faction name.
+  if (lines[0] && !/^\d+\s/.test(lines[0]) && !/No\b/i.test(lines[0])) {
+    factionName = lines[0];
+    startIndex = 1;
+  }
+  
+  // If the next line is a header (contains "No" or "XP"), skip it.
+  if (lines[startIndex] && /No\b/i.test(lines[startIndex])) {
+    startIndex++;
+  }
+  
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i];
+    // Split by tabs, multiple spaces, or regular spaces
+    let parts = line.split('\t').map(p => p.trim()).filter(Boolean);
+    if (parts.length < 3) {
+      parts = line.split(/\s{2,}/).map(p => p.trim()).filter(Boolean);
+    }
+    if (parts.length < 3) {
+      parts = line.split(/\s+/).map(p => p.trim()).filter(Boolean);
+    }
+    
+    if (parts.length >= 3) {
+      const index = parts[0];
+      const xpVal = parts[parts.length - 1];
+      const name = parts.slice(1, parts.length - 1).join(' ').trim();
+      
+      // Parse numeric value for sorting
+      let numericValue = 0;
+      const cleanVal = xpVal.toLowerCase().replace(/,/g, '').trim();
+      
+      // Try to parse values like 559m or 759k
+      const match = cleanVal.match(/^([\d.]+)\s*([kmbt]?)$/);
+      if (match) {
+        const num = parseFloat(match[1]);
+        const unit = match[2];
+        if (unit === 'k') numericValue = num * 1000;
+        else if (unit === 'm') numericValue = num * 1000000;
+        else if (unit === 'b') numericValue = num * 1000000000;
+        else if (unit === 't') numericValue = num * 1000000000000;
+        else numericValue = num;
+      } else {
+        const numOnly = parseFloat(cleanVal);
+        if (!isNaN(numOnly)) numericValue = numOnly;
+      }
+      
+      stats[name.toLowerCase()] = {
+        raw: xpVal,
+        value: numericValue,
+        index: parseInt(index, 10) || i
+      };
+    }
+  }
+  
+  return { factionName, stats };
+};
 
+/**
+ * Parses remaining seconds from Torn description text.
+ * E.g. "Hospitalized for 3h 12m" -> 11520 seconds
+ */
+const parseTornDescriptionTime = (description) => {
+  if (!description) return 0;
+  const clean = description.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '').trim();
+  let totalSeconds = 0;
+  
+  const dayMatch = clean.match(/(\d+)\s*d/i);
+  const hourMatch = clean.match(/(\d+)\s*h/i);
+  const minuteMatch = clean.match(/(\d+)\s*m/i);
+  const secondMatch = clean.match(/(\d+)\s*s/i);
+  
+  if (dayMatch) totalSeconds += parseInt(dayMatch[1], 10) * 86400;
+  if (hourMatch) totalSeconds += parseInt(hourMatch[1], 10) * 3600;
+  if (minuteMatch) totalSeconds += parseInt(minuteMatch[1], 10) * 60;
+  if (secondMatch) totalSeconds += parseInt(secondMatch[1], 10);
+  
+  return totalSeconds;
+};
+
+/**
+ * A collapsible section wrapper used to group faction member cards.
+ */
+const CollapsibleSection = ({ title, count, statusColor, defaultOpen = false, children }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ marginBottom: '8px' }}>
+      {/* Section header / toggle */}
+      <div
+        onClick={() => setIsOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '8px 14px',
+          backgroundColor: '#1a1a1a',
+          border: `1px solid ${statusColor}55`,
+          borderRadius: isOpen ? '8px 8px 0 0' : '8px',
+          cursor: 'pointer',
+          userSelect: 'none',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#222'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#1a1a1a'}
+      >
+        {/* Chevron */}
+        <span style={{
+          display: 'inline-block',
+          transition: 'transform 0.25s',
+          transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+          fontSize: '0.8rem',
+          color: statusColor
+        }}>▶</span>
+
+        {/* Title */}
+        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: statusColor, textTransform: 'uppercase', letterSpacing: '1px' }}>
+          {title}
+        </span>
+
+        {/* Badge */}
+        <span style={{
+          marginLeft: 'auto',
+          backgroundColor: `${statusColor}22`,
+          border: `1px solid ${statusColor}55`,
+          color: statusColor,
+          borderRadius: '12px',
+          padding: '1px 10px',
+          fontSize: '0.78rem',
+          fontWeight: 'bold',
+          minWidth: '28px',
+          textAlign: 'center'
+        }}>
+          {count}
+        </span>
+      </div>
+
+      {/* Collapsible body */}
+      {isOpen && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          padding: '6px 0 0 0',
+          borderLeft: `2px solid ${statusColor}33`,
+          marginLeft: '4px',
+          paddingLeft: '4px'
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Component for rendering an individual Faction Member Card with real-time countdown timer.
+ */
+const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn }) => {
+  const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
+  const [currentDescription, setCurrentDescription] = useState(member.status?.description);
+
+  useEffect(() => {
+    setCurrentStatusState(member.status?.state);
+    setCurrentDescription(member.status?.description);
+  }, [member.status?.state, member.status?.description]);
+
+  const [statusUntil, setStatusUntil] = useState(0);
+
+  useEffect(() => {
+    if (member.status?.until && member.status.until > 0) {
+      setStatusUntil(member.status.until);
+    } else {
+      const seconds = parseTornDescriptionTime(member.status?.description);
+      if (seconds > 0) {
+        setStatusUntil(Math.floor(Date.now() / 1000) + seconds);
+      } else {
+        setStatusUntil(0);
+      }
+    }
+  }, [member.status?.until, member.status?.description]);
+
+  useEffect(() => {
+    if (currentStatusState !== 'Hospital' || !statusUntil) return;
+
+    const calculate = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = statusUntil - now;
+      if (remaining <= 0) {
+        setCurrentStatusState('Okay');
+        setCurrentDescription('');
+      } else {
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        const formatted = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        setCurrentDescription(formatted);
+      }
+    };
+
+    calculate();
+    const interval = setInterval(calculate, 1000);
+    return () => clearInterval(interval);
+  }, [currentStatusState, statusUntil]);
+
+  const isOkay = currentStatusState === 'Okay';
+  const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
+  
+  const profile = member.profile;
+  const daysPlaying = profile.age;
+  const ps = profile.personalstats || {};
+  const attacksWon = ps.attackswon || 0;
+  const attacksLost = ps.attackslost || 0;
+  const defendsWon = ps.defendswon || 0;
+  const defendsLost = ps.defendslost || 0;
+  const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
+  const winRate = totalFights > 0 ? Math.round(((attacksWon + defendsWon) / totalFights) * 100) : null;
+  const criminalOffenses = ps.criminaloffenses || 0;
+  const drugsUsed = ps.drugsused || 0;
+  const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
+  const boostersUsed = ps.boostersused || 0;
+  const hasProfile = Object.keys(profile).length > 0;
+
+  return (
+    <a 
+      href={`https://www.torn.com/profiles.php?XID=${member.id}`} 
+      onClick={(e) => {
+        if (onOpenInTorn) {
+          e.preventDefault();
+          onOpenInTorn(`https://www.torn.com/profiles.php?XID=${member.id}`);
+        }
+      }}
+      className="dashboard-card-link"
+      style={{ borderRadius: '8px' }}
+    >
+      <div style={{ padding: '16px', backgroundColor: '#222', borderRadius: '8px', borderLeft: `6px solid ${statusColor}` }}>
+        {/* Main stats row */}
+        <div style={{ display: 'grid', gridTemplateColumns: hasImportedStats ? '2fr 1.2fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
+          {/* Name + Status */}
+          <div>
+            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>
+              {member.name}
+            </span>
+            <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
+            {member.last_action?.status && (
+              <span
+                title={member.last_action.status}
+                style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                   member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                  marginLeft: '8px',
+                  verticalAlign: 'middle',
+                  boxShadow: member.last_action.status === 'Online' ? '0 0 5px #2ecc71' :
+                             member.last_action.status === 'Idle' ? '0 0 5px #f39c12' : 'none'
+                }}
+              />
+            )}
+            <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
+              Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
+            </div>
+            <div style={{ marginTop: '4px' }}>
+              <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.9rem' }}>{currentStatusState}</span>
+              {currentDescription && currentDescription !== currentStatusState && (
+                <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>
+                  {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Suspected Stats / XP */}
+          {hasImportedStats && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Suspected XP</div>
+              {member.suspectedRaw ? (
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <IconBarChart size={14} color="#e74c3c" /> {member.suspectedRaw}
+                </div>
+              ) : (
+                <div style={{ color: '#444', fontSize: '0.85rem' }}>—</div>
+              )}
+            </div>
+          )}
+
+          {/* Days Playing */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Days Playing</div>
+            {hasProfile ? (
+              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f1c40f' }}>
+                {daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
+              </div>
+            ) : (
+              <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading...</div>
+            )}
+          </div>
+          {/* Attack / Defend record */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Atk W/L</div>
+            {hasProfile ? (
+              <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
+                <span style={{ color: '#555', margin: '0 4px' }}>/</span>
+                <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
+              </div>
+            ) : (
+              <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
+            )}
+            {hasProfile && (
+              <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>Def: <span style={{ color: '#2ecc71' }}>{defendsWon.toLocaleString()}</span>/<span style={{ color: '#e74c3c' }}>{defendsLost.toLocaleString()}</span></div>
+            )}
+          </div>
+          {/* Win Rate */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Win Rate</div>
+            {hasProfile ? (
+              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
+                {winRate !== null ? `${winRate}%` : '—'}
+              </div>
+            ) : (
+              <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
+            )}
+          </div>
+        </div>
+
+        {/* Activity strip */}
+        {hasProfile && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
+            {[
+              { 
+                label: <><IconSwords size={12} color="#e67e22" /> Crimes</>, 
+                value: criminalOffenses, 
+                color: '#e67e22',
+                own: userData.personalstats?.criminaloffenses || 0
+              },
+              { 
+                label: <><IconPill size={12} color="#9b59b6" /> Drugs</>, 
+                value: drugsUsed, 
+                color: '#9b59b6',
+                own: userData.personalstats?.drugsused || 0
+              },
+              { 
+                label: <><IconBolt size={12} color="#3498db" /> Refills</>, 
+                value: totalRefills, 
+                color: '#3498db',
+                own: (userData.personalstats?.refills || 0) + (userData.personalstats?.nerverefills || 0) + (userData.personalstats?.tokenrefills || 0)
+              },
+              { 
+                label: <><IconMuscle size={12} color="#2ecc71" /> Boosters</>, 
+                value: boostersUsed, 
+                color: '#2ecc71',
+                own: userData.personalstats?.boostersused || 0
+              },
+            ].map(({ label, value, color, own }) => {
+              const diff = value - own;
+              const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
+              const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
+
+              return (
+                <span key={color} style={{
+                  backgroundColor: '#1a1a1a',
+                  border: `1px solid ${color}44`,
+                  color: '#ccc',
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  {label}: <strong style={{ color }}>
+                    {compareMode ? diffStr : value.toLocaleString()}
+                  </strong>
+                  {compareMode && (
+                    <span style={{ fontSize: '0.7rem', color: diffColor, marginLeft: '2px', fontStyle: 'italic' }}>
+                      {diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </a>
+  );
+};
+
+const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   // Derive war state from factionData (safe to do before the guard — factionData may be null)
-  const rankedWars = factionData?.ranked_wars || {};
+  const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
   const activeWars = Object.values(rankedWars);
   const isInWar = activeWars.length > 0;
 
@@ -146,7 +541,45 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
   const cacheKey = firstEnemyFactionId ? `tornagator_targets_${firstEnemyFactionId}` : null;
 
-  // Load from sessionStorage cache on mount (or when cacheKey changes)
+  // Helper to load cache synchronously
+  const getCachedData = () => {
+    if (!cacheKey) return null;
+    try {
+      const raw = sessionStorage.getItem(cacheKey);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      sessionStorage.removeItem(cacheKey);
+    }
+    return null;
+  };
+
+  const cachedData = getCachedData();
+
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    return localStorage.getItem('tornagator_faction_active_subtab') || 'overview';
+  });
+  const [compareMode, setCompareMode] = useState(false);
+  const [enemyFactionData, setEnemyFactionData] = useState(() => cachedData?.factionData || null);
+  const [memberProfiles, setMemberProfiles] = useState(() => cachedData?.profiles || {});
+  const [isLoadingTargets, setIsLoadingTargets] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
+  const [errorTargets, setErrorTargets] = useState(null);
+  const [cachedAt, setCachedAt] = useState(() => cachedData?.fetchedAt || null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [sortBy, setSortBy] = useState(() => {
+    return localStorage.getItem('tornagator_faction_sort_by') || 'default';
+  });
+  const [sortOrder, setSortOrder] = useState(() => {
+    return localStorage.getItem('tornagator_faction_sort_order') || 'desc';
+  });
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return localStorage.getItem('tornagator_faction_status_filter') || 'all';
+  });
+  const [importedStats, setImportedStats] = useState({});
+  const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
+
+  // Sync cache if key changes later
   useEffect(() => {
     if (!cacheKey) return;
     try {
@@ -156,11 +589,91 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
         setEnemyFactionData(cached.factionData);
         setMemberProfiles(cached.profiles);
         setCachedAt(cached.fetchedAt);
+      } else {
+        setEnemyFactionData(null);
+        setMemberProfiles({});
+        setCachedAt(null);
       }
     } catch (e) {
       sessionStorage.removeItem(cacheKey);
     }
   }, [cacheKey]);
+
+  // Save active subtab to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_active_subtab', activeSubTab);
+  }, [activeSubTab]);
+
+  // Save sort selection and order to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_sort_by', sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_sort_order', sortOrder);
+  }, [sortOrder]);
+
+  useEffect(() => {
+    localStorage.setItem('tornagator_faction_status_filter', statusFilter);
+  }, [statusFilter]);
+
+  // Load targets if starting on the targets tab and they aren't loaded yet
+  useEffect(() => {
+    if (activeSubTab === 'targets' && !enemyFactionData && !isLoadingTargets && firstEnemyFactionId && apiKey) {
+      doFetchTargets();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
+
+  // Load suspected stats from localStorage when target faction ID changes
+  useEffect(() => {
+    if (!firstEnemyFactionId) return;
+    try {
+      const stored = localStorage.getItem(`tornagator_suspected_stats_${firstEnemyFactionId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setImportedStats(parsed.stats || {});
+        setSuspectedStatsFaction(parsed.factionName || '');
+      } else {
+        setImportedStats({});
+        setSuspectedStatsFaction('');
+      }
+    } catch (e) {
+      console.error('[TORNagator] Error loading suspected stats:', e);
+    }
+  }, [firstEnemyFactionId]);
+
+  const handleImportStats = (text) => {
+    const { factionName, stats } = parseSuspectedStats(text);
+    setImportedStats(stats);
+    setSuspectedStatsFaction(factionName);
+    if (firstEnemyFactionId) {
+      try {
+        localStorage.setItem(`tornagator_suspected_stats_${firstEnemyFactionId}`, JSON.stringify({ factionName, stats }));
+      } catch (e) {
+        console.error('[TORNagator] Error saving suspected stats:', e);
+      }
+    }
+  };
+
+  const handleClearStats = () => {
+    setImportedStats({});
+    setSuspectedStatsFaction('');
+    if (firstEnemyFactionId) {
+      localStorage.removeItem(`tornagator_suspected_stats_${firstEnemyFactionId}`);
+    }
+  };
+
+  // Called when navigating to the targets tab — uses cache if available
+  const handleLoadTargets = () => {
+    if (!enemyFactionData) doFetchTargets();
+  };
+
+  // Called by the Refresh button — always bypasses cache
+  const handleForceRefresh = () => {
+    if (cacheKey) sessionStorage.removeItem(cacheKey);
+    doFetchTargets();
+  };
 
   // Early return AFTER all hooks
   if (!factionData) {
@@ -216,16 +729,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     }
   };
 
-  // Called when navigating to the targets tab — uses cache if available
-  const handleLoadTargets = () => {
-    if (!enemyFactionData) doFetchTargets();
-  };
 
-  // Called by the Refresh button — always bypasses cache
-  const handleForceRefresh = () => {
-    if (cacheKey) sessionStorage.removeItem(cacheKey);
-    doFetchTargets();
-  };
 
   const cardStyle = {
     backgroundColor: '#1e1e1e',
@@ -257,7 +761,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     color: activeSubTab === tab ? '#e74c3c' : '#888',
     fontWeight: 'bold',
     transition: 'all 0.3s ease',
-    display: 'inline-block'
+    display: 'inline-block',
+    background: 'none',
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
+    fontFamily: 'inherit',
+    fontSize: 'inherit'
   });
 
   return (
@@ -290,11 +800,11 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
       {isInWar && (
         <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333' }}>
-          <div style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</div>
-          <div style={navItemStyle('targets')} onClick={() => {
+          <button style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</button>
+          <button style={navItemStyle('targets')} onClick={() => {
             setActiveSubTab('targets');
             handleLoadTargets();
-          }}>Enemy Targets</div>
+          }}>Enemy Targets</button>
         </nav>
       )}
 
@@ -342,8 +852,9 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: cachedAt ? '0.5rem' : '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
               <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><IconTarget size={22} color="#e74c3c" /> Target Selection</h3>
-              <div 
+              <button
                 onClick={() => setCompareMode(!compareMode)}
+                aria-pressed={compareMode}
                 style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -353,7 +864,8 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                   padding: '4px 12px',
                   borderRadius: '20px',
                   transition: 'all 0.2s',
-                  border: `1px solid ${compareMode ? '#e74c3c' : '#444'}`
+                  border: `1px solid ${compareMode ? '#e74c3c' : '#444'}`,
+                  fontFamily: 'inherit'
                 }}
               >
                 <div style={{ 
@@ -366,7 +878,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                 <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: compareMode ? '#fff' : '#888' }}>
                   COMPARE TO OWN
                 </span>
-              </div>
+              </button>
             </div>
             <button 
               onClick={handleForceRefresh} 
@@ -410,6 +922,235 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
             </div>
           )}
 
+          {/* Controls / Sorting Bar */}
+          {!isLoadingTargets && enemyFactionData && enemyFactionData.members && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              flexWrap: 'wrap', 
+              gap: '15px', 
+              backgroundColor: '#161616', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              border: '1px solid #2d2d2d',
+              marginBottom: '1.5rem'
+            }}>
+              {/* Sorting and Filter controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Sort By:</span>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="default">Status & Level (Default)</option>
+                    <option value="level">Level</option>
+                    {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP/Stats</option>}
+                    <option value="age">Days Playing</option>
+                    <option value="winrate">Win Rate</option>
+                  </select>
+                  
+                  <button
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#aaa',
+                      padding: '4.5px 10px',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {sortOrder === 'asc' ? '▲ ASC' : '▼ DESC'}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Show:</span>
+                  <select 
+                    value={statusFilter} 
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="all">All Members</option>
+                    <option value="online">Online / Idle</option>
+                    <option value="offline">Offline Only</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Import / Suspected stats info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {Object.keys(importedStats).length > 0 ? (
+                  <>
+                    <span style={{ fontSize: '0.8rem', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '1rem' }}>📊</span> Suspected stats loaded {suspectedStatsFaction ? `(${suspectedStatsFaction})` : ''}
+                    </span>
+                    <button
+                      onClick={() => setIsImportOpen(true)}
+                      style={{
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        border: '1px solid #3498db',
+                        borderRadius: '4px',
+                        color: '#3498db',
+                        padding: '4px 10px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Update Stats
+                    </button>
+                    <button
+                      onClick={handleClearStats}
+                      style={{
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        border: '1px solid #e74c3c',
+                        borderRadius: '4px',
+                        color: '#e74c3c',
+                        padding: '4px 10px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <IconTrash size={12} color="#e74c3c" /> Clear
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsImportOpen(true)}
+                    style={{
+                      backgroundColor: '#e74c3c',
+                      border: 'none',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '6px 12px',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 4px rgba(231, 76, 60, 0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.filter = 'brightness(1)'}
+                  >
+                    📥 Import Suspected Stats
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Import Panel */}
+          {isImportOpen && (
+            <div style={{
+              backgroundColor: '#1b1b1b',
+              border: '1px solid #e74c3c',
+              borderRadius: '8px',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              animation: 'fadeIn 0.3s ease-out'
+            }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#e74c3c', fontSize: '1.1rem' }}>Import Suspected Stats / XP</h4>
+              <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#aaa', lineHeight: '1.4' }}>
+                Paste the targets list copied from your faction forum, sheet, or Discord. The app will parse the member names and suspected stats/XP.
+              </p>
+              
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder={"Lion Force\nNo.\tName\tXP\n1\tJohan1\t559m\n2\tXqmano\t437m"}
+                style={{
+                  width: '100%',
+                  height: '150px',
+                  backgroundColor: '#111',
+                  border: '1px solid #333',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  padding: '10px',
+                  fontSize: '0.85rem',
+                  fontFamily: 'monospace',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                  marginBottom: '15px',
+                  outline: 'none'
+                }}
+              />
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => {
+                    handleImportStats(importText);
+                    setIsImportOpen(false);
+                    setImportText('');
+                    setSortBy('xp');
+                    setSortOrder('desc');
+                  }}
+                  style={{
+                    backgroundColor: '#e74c3c',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Import & Apply
+                </button>
+                <button
+                  onClick={() => {
+                    setIsImportOpen(false);
+                    setImportText('');
+                  }}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: '1px solid #444',
+                    borderRadius: '4px',
+                    color: '#aaa',
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {isLoadingTargets ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>
               <div style={{ fontSize: '1.1rem', color: '#aaa', marginBottom: '12px' }}>
@@ -422,165 +1163,109 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
           ) : errorTargets ? (
             <div style={{ color: '#e74c3c', textAlign: 'center', padding: '2rem' }}>{errorTargets}</div>
           ) : enemyFactionData && enemyFactionData.members ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {Object.entries(enemyFactionData.members)
-                .map(([id, member]) => ({ id, ...member }))
-                .sort((a, b) => {
-                  const aOkay = a.status.state === 'Okay' ? 0 : 1;
-                  const bOkay = b.status.state === 'Okay' ? 0 : 1;
-                  if (aOkay !== bOkay) return aOkay - bOkay;
-                  return a.level - b.level;
-                })
-                .map((member) => {
-                  const isOkay = member.status.state === 'Okay';
-                  const statusColor = isOkay ? '#2ecc71' : member.status.state === 'Hospital' ? '#e74c3c' : member.status.state === 'Jail' ? '#f39c12' : '#3498db';
-                  const profile = memberProfiles[member.id] || {};
-                  const daysPlaying = profile.age;
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {(() => {
+                const hasImportedStats = Object.keys(importedStats).length > 0;
+
+                const buildMember = ([id, member]) => {
+                  const profile = memberProfiles[id] || {};
                   const ps = profile.personalstats || {};
+                  const nameKey = member.name.trim().toLowerCase();
+                  const suspect = importedStats[nameKey] || null;
+
                   const attacksWon = ps.attackswon || 0;
                   const attacksLost = ps.attackslost || 0;
                   const defendsWon = ps.defendswon || 0;
                   const defendsLost = ps.defendslost || 0;
                   const totalFights = attacksWon + attacksLost + defendsWon + defendsLost;
-                  const winRate = totalFights > 0 ? Math.round(((attacksWon + defendsWon) / totalFights) * 100) : null;
-                  const criminalOffenses = ps.criminaloffenses || 0;
-                  const drugsUsed = ps.drugsused || 0;
-                  const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
-                  const boostersUsed = ps.boostersused || 0;
-                  const hasProfile = Object.keys(profile).length > 0;
-                  return (
-                    <a 
-                      key={member.id} 
-                      href={`https://www.torn.com/profiles.php?XID=${member.id}`} 
-                      onClick={(e) => {
-                        if (onOpenInTorn) {
-                          e.preventDefault();
-                          onOpenInTorn(`https://www.torn.com/profiles.php?XID=${member.id}`);
-                        }
-                      }}
-                      className="dashboard-card-link"
-                      style={{ borderRadius: '8px' }}
+                  const winRate = totalFights > 0 ? ((attacksWon + defendsWon) / totalFights) * 100 : 0;
+
+                  return {
+                    id,
+                    ...member,
+                    profile,
+                    age: profile.age || 0,
+                    winRate,
+                    suspectedVal: suspect ? suspect.value : -1,
+                    suspectedRaw: suspect ? suspect.raw : null,
+                    suspectedIndex: suspect ? suspect.index : null
+                  };
+                };
+
+                const applySortOrder = (arr) => arr.sort((a, b) => {
+                  if (sortBy === 'default') {
+                    return a.level - b.level;
+                  }
+                  let comparison = 0;
+                  if (sortBy === 'level') {
+                    comparison = a.level - b.level;
+                  } else if (sortBy === 'xp') {
+                    if (a.suspectedVal === -1 && b.suspectedVal === -1) comparison = 0;
+                    else if (a.suspectedVal === -1) return 1;
+                    else if (b.suspectedVal === -1) return -1;
+                    else comparison = a.suspectedVal - b.suspectedVal;
+                  } else if (sortBy === 'age') {
+                    comparison = a.age - b.age;
+                  } else if (sortBy === 'winrate') {
+                    comparison = a.winRate - b.winRate;
+                  }
+                  return sortOrder === 'asc' ? comparison : -comparison;
+                });
+
+                const allMembers = Object.entries(enemyFactionData.members).map(buildMember);
+                const filteredMembers = allMembers.filter(m => {
+                  const status = m.last_action?.status;
+                  if (statusFilter === 'online') {
+                    return status === 'Online' || status === 'Idle';
+                  }
+                  if (statusFilter === 'offline') {
+                    return status === 'Offline' || !status;
+                  }
+                  return true;
+                });
+
+                // Group by status
+                const groups = {
+                  okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
+                  jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
+                  other: { label: '✈️ Other', color: '#3498db', members: [] },
+                };
+
+                filteredMembers.forEach(m => {
+                  const state = m.status?.state || '';
+                  if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
+                  else if (state === 'Jail') groups.jail.members.push(m);
+                  else groups.other.members.push(m);
+                });
+
+                // Sort within each group
+                Object.values(groups).forEach(g => applySortOrder(g.members));
+
+                const renderCards = (members) => members.map((member) => (
+                  <FactionMemberCard
+                    key={member.id}
+                    member={member}
+                    userData={userData}
+                    compareMode={compareMode}
+                    hasImportedStats={hasImportedStats}
+                    onOpenInTorn={onOpenInTorn}
+                  />
+                ));
+
+                return Object.entries(groups)
+                  .filter(([, g]) => g.members.length > 0)
+                  .map(([key, g]) => (
+                    <CollapsibleSection
+                      key={key}
+                      title={g.label}
+                      count={g.members.length}
+                      statusColor={g.color}
+                      defaultOpen={key === 'okay'}
                     >
-                      <div style={{ padding: '16px', backgroundColor: '#222', borderRadius: '8px', borderLeft: `6px solid ${statusColor}` }}>
-                        {/* Main stats row */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
-                          {/* Name + Status */}
-                          <div>
-                            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                              {member.name}
-                            </span>
-                            <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
-                            <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
-                              Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
-                            </div>
-                            <div style={{ marginTop: '4px' }}>
-                              <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.9rem' }}>{member.status.state}</span>
-                              <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>{member.status.description?.replace(/<[^>]+>/g, '')}</span>
-                            </div>
-                          </div>
-                          {/* Days Playing */}
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Days Playing</div>
-                            {hasProfile ? (
-                              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f1c40f' }}>
-                                {daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
-                              </div>
-                            ) : (
-                              <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading...</div>
-                            )}
-                          </div>
-                          {/* Attack / Defend record */}
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Atk W/L</div>
-                            {hasProfile ? (
-                              <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
-                                <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
-                                <span style={{ color: '#555', margin: '0 4px' }}>/</span>
-                                <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
-                              </div>
-                            ) : (
-                              <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
-                            )}
-                            {hasProfile && (
-                              <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>Def: <span style={{ color: '#2ecc71' }}>{defendsWon.toLocaleString()}</span>/<span style={{ color: '#e74c3c' }}>{defendsLost.toLocaleString()}</span></div>
-                            )}
-                          </div>
-                          {/* Win Rate */}
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Win Rate</div>
-                            {hasProfile ? (
-                              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
-                                {winRate !== null ? `${winRate}%` : '—'}
-                              </div>
-                            ) : (
-                              <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Activity strip */}
-                        {hasProfile && (
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
-                            {[
-                              { 
-                                label: <><IconSwords size={12} color="#e67e22" /> Crimes</>, 
-                                value: criminalOffenses, 
-                                color: '#e67e22',
-                                own: userData.personalstats?.criminaloffenses || 0
-                              },
-                              { 
-                                label: <><IconPill size={12} color="#9b59b6" /> Drugs</>, 
-                                value: drugsUsed, 
-                                color: '#9b59b6',
-                                own: userData.personalstats?.drugsused || 0
-                              },
-                              { 
-                                label: <><IconBolt size={12} color="#3498db" /> Refills</>, 
-                                value: totalRefills, 
-                                color: '#3498db',
-                                own: (userData.personalstats?.refills || 0) + (userData.personalstats?.nerverefills || 0) + (userData.personalstats?.tokenrefills || 0)
-                              },
-                              { 
-                                label: <><IconMuscle size={12} color="#2ecc71" /> Boosters</>, 
-                                value: boostersUsed, 
-                                color: '#2ecc71',
-                                own: userData.personalstats?.boostersused || 0
-                              },
-                            ].map(({ label, value, color, own }) => {
-                              const diff = value - own;
-                              const diffStr = diff >= 0 ? `+${diff.toLocaleString()}` : diff.toLocaleString();
-                              const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
-
-                              return (
-                                <span key={label} style={{
-                                  backgroundColor: '#1a1a1a',
-                                  border: `1px solid ${color}44`,
-                                  color: '#ccc',
-                                  padding: '3px 10px',
-                                  borderRadius: '20px',
-                                  fontSize: '0.8rem',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '5px'
-                                }}>
-                                  {label}: <strong style={{ color }}>
-                                    {compareMode ? diffStr : value.toLocaleString()}
-                                  </strong>
-                                  {compareMode && (
-                                    <span style={{ fontSize: '0.7rem', color: diffColor, marginLeft: '2px', fontStyle: 'italic' }}>
-                                      {diff > 0 ? 'ahead' : diff < 0 ? 'behind' : 'even'}
-                                    </span>
-                                  )}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </a>
-                  );
-                })
-              }
+                      {renderCards(g.members)}
+                    </CollapsibleSection>
+                  ));
+              })()}
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '2rem' }}>No targets found.</div>

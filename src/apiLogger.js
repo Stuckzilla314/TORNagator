@@ -8,6 +8,10 @@ let sessionCounters = {
   Firebase: 0
 };
 
+// Track timestamps of TORN API calls for calculating the 5-hour rolling average
+let tornCallTimestamps = [];
+const sessionStartTime = Date.now();
+
 /**
  * Retrieves the lifetime API counters from local storage.
  *
@@ -74,9 +78,21 @@ export const getApiLogs = () => [...logs];
  * @returns {{session: {TORN: number, YATA: number, Firebase: number}, lifetime: {TORN: number, YATA: number, Firebase: number}}} The nested counter stats object.
  */
 export const getApiCounters = () => {
+  const now = Date.now();
+  const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+  // Filter out timestamps older than 5 hours to keep history accurate and memory footprint small
+  tornCallTimestamps = tornCallTimestamps.filter(t => t >= fiveHoursAgo);
+
+  const sessionDurationMs = now - sessionStartTime;
+  // Calculate rolling average calls per hour over the last 5 hours.
+  // We use effective hours (capped at 5, and at least 1/60th of an hour to avoid division by zero or huge spikes in first minute)
+  const effectiveHours = Math.min(5, Math.max(1 / 60, sessionDurationMs / 3600000));
+  const avgTornCallsPerHour = tornCallTimestamps.length / effectiveHours;
+
   return {
     session: { ...sessionCounters },
-    lifetime: getLifetimeCounters()
+    lifetime: getLifetimeCounters(),
+    avgTornCallsPerHour
   };
 };
 
@@ -107,10 +123,19 @@ export const resetLifetimeCounters = () => {
  * @param {number} duration - The duration of the call in milliseconds.
  * @param {string|null} [errorMsg=null] - The error message, if applicable.
  */
-export const logApiCall = (type, action, status, duration, errorMsg = null) => {
+export const logApiCall = (type, action, status, duration, errorMsg = null, responseData = null) => {
   // Increment session counter
   if (sessionCounters[type] !== undefined) {
     sessionCounters[type] += 1;
+  }
+  
+  // Track TORN API call timestamp
+  if (type === 'TORN') {
+    const now = Date.now();
+    tornCallTimestamps.push(now);
+    // Keep timestamps updated
+    const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+    tornCallTimestamps = tornCallTimestamps.filter(t => t >= fiveHoursAgo);
   }
   
   // Increment lifetime counter
@@ -128,7 +153,8 @@ export const logApiCall = (type, action, status, duration, errorMsg = null) => {
     action,
     status, // 'SUCCESS' or 'ERROR'
     duration, // ms
-    errorMsg
+    errorMsg,
+    responseData
   };
   
   logs.unshift(newLog);
@@ -143,6 +169,67 @@ export const logApiCall = (type, action, status, duration, errorMsg = null) => {
  * Initializes the global `window.fetch` interceptor to capture and log all outbound API requests.
  * Only initializes once. Safely ignores non-API calls and masks sensitive API keys.
  */
+/**
+ * Simple queue-based RateLimiter to limit requests to maxRequests per intervalMs.
+ */
+class RateLimiter {
+  constructor(maxRequests, intervalMs) {
+    this.maxRequests = maxRequests;
+    this.intervalMs = intervalMs;
+    this.timestamps = [];
+    this.queue = [];
+    this.running = false;
+  }
+
+  schedule(fn) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ fn, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  processQueue() {
+    if (this.running || this.queue.length === 0) return;
+    this.running = true;
+
+    const runNext = () => {
+      if (this.queue.length === 0) {
+        this.running = false;
+        return;
+      }
+
+      const now = Date.now();
+      // Keep only timestamps within the rolling window
+      this.timestamps = this.timestamps.filter(t => now - t < this.intervalMs);
+
+      if (this.timestamps.length < this.maxRequests) {
+        const { fn, resolve, reject } = this.queue.shift();
+        this.timestamps.push(now);
+        
+        try {
+          fn().then(resolve).catch(reject);
+        } catch (err) {
+          reject(err);
+        }
+        
+        // Schedule next check immediately
+        setTimeout(runNext, 0);
+      } else {
+        // Hit the rate limit. Determine wait time until oldest timestamp expires.
+        const oldestTimestamp = this.timestamps[0];
+        const delay = this.intervalMs - (now - oldestTimestamp);
+        // Add safety buffer of 50ms to ensure the window has advanced past the cutoff
+        setTimeout(runNext, Math.max(delay + 50, 0));
+      }
+    };
+
+    runNext();
+  }
+}
+
+const tornRateLimiter = new RateLimiter(100, 60000);
+const yataRateLimiter = new RateLimiter(100, 60000);
+
 let isInterceptorInitialized = false;
 export const initApiInterceptor = () => {
   if (isInterceptorInitialized) return;
@@ -150,7 +237,6 @@ export const initApiInterceptor = () => {
   
   const originalFetch = window.fetch;
   window.fetch = async (input, init) => {
-    const startTime = Date.now();
     const url = typeof input === 'string' ? input : input?.url || '';
     
     let apiType = null;
@@ -165,22 +251,142 @@ export const initApiInterceptor = () => {
     }
     
     if (apiType) {
-      try {
-        const response = await originalFetch(input, init);
-        const duration = Date.now() - startTime;
-        
-        // Log success/failure based on response status
-        if (response.ok) {
-          logApiCall(apiType, endpoint, 'SUCCESS', duration);
-        } else {
-          logApiCall(apiType, endpoint, 'ERROR', duration, `HTTP Status ${response.status}`);
+      const limiter = apiType === 'TORN' ? tornRateLimiter : yataRateLimiter;
+      return limiter.schedule(async () => {
+        const startTime = Date.now();
+        if (url.includes('key=mock_key_1234567890123456') || url.includes('key=mock_key')) {
+          const duration = Math.floor(Math.random() * 80) + 20;
+          let mockBody = {};
+          
+          if (url.includes('/user/') && url.includes('selections=')) {
+            const userIdMatch = url.match(/\/user\/(\d+)/);
+            const userId = userIdMatch ? userIdMatch[1] : '12345';
+            mockBody = {
+              player_id: parseInt(userId, 10),
+              name: userId === '12345' ? 'AntigravityMock' : `EnemyMember_${userId}`,
+              level: userId === '12345' ? 42 : Math.floor(Math.random() * 80) + 10,
+              age: 500,
+              money_onhand: 1000000,
+              status: { state: 'Okay', color: 'green', description: 'Okay' },
+              energy: { current: 90, maximum: 100, ticktime: 60, interval: 600, increment: 5 },
+              nerve: { current: 15, maximum: 20, ticktime: 30, interval: 300, increment: 1 },
+              life: { current: 5000, maximum: 5000 },
+              happy: { current: 2500, maximum: 2500 },
+              travel: { destination: 'Mexico', method: 'Airstrip', timestamp: 0 },
+              personalstats: {
+                attackswon: Math.floor(Math.random() * 200) + 50,
+                attackslost: Math.floor(Math.random() * 50) + 5,
+                defendswon: Math.floor(Math.random() * 30) + 2,
+                defendslost: Math.floor(Math.random() * 100) + 20,
+                criminaloffenses: 1500,
+                drugsused: 50,
+                refills: 10,
+                boostersused: 5
+              }
+            };
+          } else if (url.includes('/faction/') && url.includes('selections=')) {
+            mockBody = {
+              ID: 999,
+              name: 'Mock Faction',
+              leader: 12345,
+              'co-leader': 0,
+              members: {
+                '12345': { name: 'AntigravityMock', level: 42 }
+              },
+              ranked_wars: {
+                'war_1': {
+                  id: 'war_1',
+                  war: { target: 1000, start: Math.floor(Date.now() / 1000) - 3600 },
+                  factions: {
+                    '999': { name: 'Mock Faction', score: 450 },
+                    '888': { name: 'Enemy Faction', score: 320 }
+                  }
+                }
+              }
+            };
+          } else if (url.includes('/faction/')) {
+            mockBody = {
+              ID: 888,
+              name: 'Enemy Faction',
+              members: {
+                '22222': { name: 'EnemyMember1', level: 50, last_action: { status: 'Online' }, status: { state: 'Okay' } },
+                '33333': { name: 'EnemyMember2', level: 30, last_action: { status: 'Offline' }, status: { state: 'Hospital', until: Math.floor(Date.now() / 1000) + 1200 } }
+              }
+            };
+          } else if (url.includes('/torn/') && url.includes('items')) {
+            mockBody = {
+              items: {
+                '1': { name: 'Plushie', market_value: 500 },
+                '2': { name: 'Flower', market_value: 600 }
+              }
+            };
+          } else if (url.includes('/inventory')) {
+            mockBody = {
+              inventory: {
+                items: [
+                  { id: 1, amount: 10 },
+                  { id: 2, amount: 5 }
+                ]
+              }
+            };
+          } else {
+            mockBody = { name: 'Mock User', player_id: 12345 };
+          }
+
+          logApiCall(apiType, endpoint, 'SUCCESS', duration, null, mockBody);
+          return new Response(JSON.stringify(mockBody), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
         }
-        return response;
-      } catch (error) {
-        const duration = Date.now() - startTime;
-        logApiCall(apiType, endpoint, 'ERROR', duration, error.message);
-        throw error;
-      }
+
+        try {
+          const response = await originalFetch(input, init);
+          const duration = Date.now() - startTime;
+          
+          // Log success/failure based on response status
+          if (response.ok) {
+            if (apiType === 'TORN') {
+              try {
+                const clone = response.clone();
+                const data = await clone.json();
+                if (data && data.error) {
+                  logApiCall(apiType, endpoint, 'ERROR', duration, data.error.error || `Torn Error Code ${data.error.code}`, data);
+                } else {
+                  logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
+                }
+              } catch (e) {
+                logApiCall(apiType, endpoint, 'SUCCESS', duration);
+              }
+            } else {
+              try {
+                const clone = response.clone();
+                const data = await clone.json();
+                logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
+              } catch (e) {
+                logApiCall(apiType, endpoint, 'SUCCESS', duration);
+              }
+            }
+          } else {
+            let errorData = null;
+            try {
+              const clone = response.clone();
+              errorData = await clone.json();
+            } catch (e) {
+              try {
+                const clone = response.clone();
+                errorData = await clone.text();
+              } catch (inner) {}
+            }
+            logApiCall(apiType, endpoint, 'ERROR', duration, `HTTP Status ${response.status}`, errorData);
+          }
+          return response;
+        } catch (error) {
+          const duration = Date.now() - startTime;
+          logApiCall(apiType, endpoint, 'ERROR', duration, error.message);
+          throw error;
+        }
+      });
     }
     
     return originalFetch(input, init);
