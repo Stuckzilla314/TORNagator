@@ -10,3 +10,8 @@
 **Vulnerability:** User-provided URLs in the "New Tab" page (for direct navigation and adding favorites) were not validated for unsafe URL schemes before being passed to `onNavigate`, which eventually sets the `src` attribute of the Electron `<webview>`.
 **Learning:** Even internal UI components like custom "New Tab" pages that accept URL inputs must validate the URL scheme when running in an environment where setting iframe/webview sources to `javascript:` or `data:` is dangerous (like Electron with nodeIntegration).
 **Prevention:** Apply the same strict URL scheme validation (rejecting `javascript:`, `data:`, `vbscript:`) to all user inputs that resolve to navigation targets, not just external or saved configurations like Custom Quick Actions.
+
+## 2024-05-18 - [Webview IPC Access Setup]
+**Vulnerability:** Arbitrary IPC access/remote code execution via context Isolation bypass in `TornView.js` when webview code needs to query the main API using the user API key.
+**Learning:** `window.require('electron')` is unavailable in the webview when appropriately locked down. Directly injecting the `apiKey` string into the webview allows malicious remote scripts (via XSS) to steal the credentials.
+**Prevention:** Using `preload.js` script to safely expose a subset of IPC methods (e.g. `window.tornagatorIpc.sendToHost`) prevents the full Electron API from being exposed to the guest while preventing XSS vectors through API key injection into the webview scope.

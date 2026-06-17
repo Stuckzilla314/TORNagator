@@ -1,5 +1,13 @@
+const { ipcRenderer } = require('electron');
+
 (function() {
   console.warn("[TORNagator Preload] Preload script loaded in webview context");
+
+  window.tornagatorIpc = {
+    sendToHost: (channel, ...args) => {
+      ipcRenderer.sendToHost(channel, ...args);
+    }
+  };
 
   const originalLog = console.log;
   const originalError = console.error;

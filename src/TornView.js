@@ -951,7 +951,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
         window._tornagator_cargo_capacity = ${cargoCapacity || 5};
         window._tornagator_sorted_names = null;
-        window._tornagator_api_key = ${JSON.stringify(apiKey)};
+
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
       })()
@@ -1206,11 +1206,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
     };
 
+    const handleIpcMessage = async (e) => {
+      if (e.channel === 'fetch-seller-stats') {
+        const sellerId = e.args[0];
+        try {
+          const response = await fetch(`https://api.torn.com/user/${sellerId}?selections=profile,personalstats&key=${apiKey}`);
+          const data = await response.json();
+          wv.executeJavaScript(`window.handleSellerStatsResult && window.handleSellerStatsResult(${sellerId}, ${JSON.stringify(JSON.stringify(data))})`);
+        } catch (err) {
+          wv.executeJavaScript(`window.handleSellerStatsResult && window.handleSellerStatsResult(${sellerId}, ${JSON.stringify(JSON.stringify({ error: err.message }))})`);
+        }
+      }
+    };
+
     wv.addEventListener('did-navigate', handleNavigate);
     wv.addEventListener('did-navigate-in-page', handleNavigateInPage);
     wv.addEventListener('did-stop-loading', updateNavigationState);
     wv.addEventListener('page-title-updated', handleTitle);
     wv.addEventListener('console-message', handleConsole);
+    wv.addEventListener('ipc-message', handleIpcMessage);
 
     return () => {
       wv.removeEventListener('did-navigate', handleNavigate);
@@ -1218,8 +1232,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       wv.removeEventListener('did-stop-loading', updateNavigationState);
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
+      wv.removeEventListener('ipc-message', handleIpcMessage);
     };
-  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues]);
+  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues, apiKey]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -2043,13 +2058,16 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const body = panel.querySelector('#tornagator-scan-body');
                 const listContainer = panel.querySelector('#scan-results-list');
-                const apiKey = window._tornagator_api_key;
                 const userData = window._tornagator_user_data || {};
 
-                if (!apiKey) {
-                  body.innerHTML = '<div style="color:#e74c3c; text-align:center; padding:15px 0; font-size:11px; font-weight:bold;">API Key not found inside webview. Please reload or check your settings.</div>';
-                  return;
-                }
+                window._tornagator_seller_resolvers = window._tornagator_seller_resolvers || {};
+                window.handleSellerStatsResult = (id, dataStr) => {
+                  if (window._tornagator_seller_resolvers[id]) {
+                    const data = JSON.parse(dataStr);
+                    window._tornagator_seller_resolvers[id](data);
+                    delete window._tornagator_seller_resolvers[id];
+                  }
+                };
 
                 const initialSellers = [];
                 currentRows.forEach(item => {
@@ -2146,8 +2164,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const processSeller = async (seller, rowEl) => {
                   try {
-                    const response = await fetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
-                    const data = await response.json();
+                    const data = await new Promise((resolve) => {
+                      window._tornagator_seller_resolvers[seller.id] = resolve;
+                      if (window.tornagatorIpc) {
+                        window.tornagatorIpc.sendToHost('fetch-seller-stats', seller.id);
+                      } else if (window.require) {
+                        const { ipcRenderer } = window.require('electron');
+                        ipcRenderer.sendToHost('fetch-seller-stats', seller.id);
+                      } else {
+                        resolve({ error: { error: 'Not running in Electron' } });
+                      }
+                    });
 
                     if (data.error) {
                       throw new Error(data.error.error || 'API Error');
@@ -2450,7 +2477,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
         window._tornagator_cargo_capacity = ${cargoCapacity || 5};
         window._tornagator_sorted_names = null;
-        window._tornagator_api_key = ${JSON.stringify(apiKey)};
+
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
       })()
