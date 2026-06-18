@@ -1032,7 +1032,7 @@ function App() {
                 <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
               </div>
               <div style={{ display: activeTab === 'faction' ? 'block' : 'none' }}>
-                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
+                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} pollInterval={pollInterval} />
               </div>
               <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
                 <TornView 

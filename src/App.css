@@ -1591,3 +1591,10 @@
   font-family: 'Courier New', Courier, monospace;
   letter-spacing: 0.5px;
 }
+
+/* ── Background sync indicator dot ── */
+@keyframes pulse-dot {
+  0%   { opacity: 1; transform: scale(1); }
+  50%  { opacity: 0.4; transform: scale(1.4); }
+  100% { opacity: 1; transform: scale(1); }
+}

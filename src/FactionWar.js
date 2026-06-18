@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
 import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin } from './Icons';
@@ -121,6 +121,7 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
  * @param {Object} props.factionData - Basic faction data provided by parent.
  * @param {Object} props.userData - The current user's data.
  * @param {Function} props.onOpenInTorn - Callback to open links inside the Torn view.
+ * @param {number} [props.pollInterval=30] - Auto-sync interval in seconds (mirrors the global setting).
  * @returns {React.JSX.Element|null} The rendered FactionWar component, or null if user is not in a faction.
  */
 /**
@@ -686,7 +687,7 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
   );
 };
 
-const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
+const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval = 30 }) => {
   // Derive war state from factionData (safe to do before the guard — factionData may be null)
   const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
   const activeWars = Object.values(rankedWars);
@@ -722,6 +723,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [enemyFactionData, setEnemyFactionData] = useState(() => cachedData?.factionData || null);
   const [memberProfiles, setMemberProfiles] = useState(() => cachedData?.profiles || {});
   const [isLoadingTargets, setIsLoadingTargets] = useState(false);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
   const [errorTargets, setErrorTargets] = useState(null);
   const [cachedAt, setCachedAt] = useState(() => cachedData?.fetchedAt || null);
@@ -820,6 +822,70 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   }, [isImportOpen]);
 
 
+  // Ref to guard against concurrent background refreshes
+  const isRefreshingRef = useRef(false);
+
+  /**
+   * Lightweight background refresh — only fetches faction member status and last_action.
+   * Updates cards live without showing a loading screen or disrupting the user.
+   */
+  const doBackgroundStatusRefresh = useCallback(async () => {
+    if (!firstEnemyFactionId || !apiKey || isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
+    setIsBackgroundRefreshing(true);
+    try {
+      const data = await fetchFactionById(apiKey, firstEnemyFactionId);
+      if (data && data.members) {
+        // Merge only status and last_action fields into existing enemyFactionData
+        setEnemyFactionData(prev => {
+          if (!prev || !prev.members) return data;
+          const updatedMembers = { ...prev.members };
+          Object.entries(data.members).forEach(([id, freshMember]) => {
+            if (updatedMembers[id]) {
+              updatedMembers[id] = {
+                ...updatedMembers[id],
+                status: freshMember.status,
+                last_action: freshMember.last_action,
+              };
+            }
+          });
+          return { ...prev, members: updatedMembers };
+        });
+        const fetchedAt = Date.now();
+        setCachedAt(fetchedAt);
+        if (cacheKey) {
+          try {
+            const cachedRaw = sessionStorage.getItem(cacheKey);
+            if (cachedRaw) {
+              const cached = JSON.parse(cachedRaw);
+              const mergedFactionData = {
+                ...cached.factionData,
+                members: Object.fromEntries(
+                  Object.entries(cached.factionData?.members || {}).map(([id, m]) => [
+                    id,
+                    {
+                      ...m,
+                      status: data.members[id]?.status || m.status,
+                      last_action: data.members[id]?.last_action || m.last_action,
+                    }
+                  ])
+                )
+              };
+              sessionStorage.setItem(cacheKey, JSON.stringify({ ...cached, factionData: mergedFactionData, fetchedAt }));
+            }
+          } catch (e) {
+            console.warn('[TORNagator] Failed to update target status cache:', e);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[TORNagator] Background status refresh failed:', err);
+    } finally {
+      isRefreshingRef.current = false;
+      setIsBackgroundRefreshing(false);
+    }
+  }, [firstEnemyFactionId, apiKey, cacheKey]);
+
   // Load targets if starting on the targets tab and they aren't loaded yet
   useEffect(() => {
     if (activeSubTab === 'targets' && !enemyFactionData && !isLoadingTargets && firstEnemyFactionId && apiKey) {
@@ -827,6 +893,18 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
+
+  // Auto-poll background status refresh while on the targets tab
+  useEffect(() => {
+    if (activeSubTab !== 'targets' || !enemyFactionData || !firstEnemyFactionId || !apiKey || pollInterval <= 0) return;
+    const intervalMs = Math.max(10000, pollInterval * 1000);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        doBackgroundStatusRefresh();
+      }
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [activeSubTab, enemyFactionData, firstEnemyFactionId, apiKey, pollInterval, doBackgroundStatusRefresh]);
 
   // Load suspected stats from localStorage when target faction ID changes
   useEffect(() => {
@@ -872,8 +950,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     if (!enemyFactionData) doFetchTargets();
   };
 
-  // Called by the Refresh button — always bypasses cache
+  // Called by the Refresh button on mobile — does a background status refresh (no loading screen)
   const handleForceRefresh = () => {
+    doBackgroundStatusRefresh();
+  };
+
+  // Called by the full Refresh button on desktop — bypasses cache and re-fetches everything including profiles
+  const handleFullRefresh = () => {
     if (cacheKey) sessionStorage.removeItem(cacheKey);
     doFetchTargets();
   };
@@ -931,8 +1014,6 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
       setIsLoadingTargets(false);
     }
   };
-
-
 
   const cardStyle = {
     backgroundColor: '#1e1e1e',
@@ -1066,15 +1147,15 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
               {isCapacitor && (
                 <button 
                   onClick={handleForceRefresh} 
-                  disabled={isLoadingTargets} 
+                  disabled={isBackgroundRefreshing} 
                   className="targets-sync-btn"
                   style={{ 
                     background: 'transparent',
-                    border: `1px solid ${isLoadingTargets ? '#222' : '#444'}`,
+                    border: `1px solid ${isBackgroundRefreshing ? '#222' : '#444'}`,
                     borderRadius: '20px',
                     padding: '4px 10px',
-                    cursor: isLoadingTargets ? 'not-allowed' : 'pointer',
-                    color: isLoadingTargets ? '#666' : '#3498db',
+                    cursor: isBackgroundRefreshing ? 'not-allowed' : 'pointer',
+                    color: isBackgroundRefreshing ? '#666' : '#3498db',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
@@ -1082,10 +1163,10 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     fontSize: '0.75rem',
                     letterSpacing: '0.5px',
                     transition: 'all 0.3s ease',
-                    opacity: isLoadingTargets ? 0.6 : 1
+                    opacity: isBackgroundRefreshing ? 0.6 : 1
                   }}
                 >
-                  <span style={{ marginTop: '1px' }}>{isLoadingTargets ? 'SYNCING...' : 'SYNC'}</span>
+                  <span style={{ marginTop: '1px' }}>{isBackgroundRefreshing ? 'SYNCING...' : 'SYNC'}</span>
                   <span style={{ fontSize: '0.8rem' }}>🔄</span>
                 </button>
               )}
@@ -1122,16 +1203,16 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
               {!isCapacitor && (
                 <button 
-                  onClick={handleForceRefresh} 
-                  disabled={isLoadingTargets} 
+                  onClick={handleFullRefresh} 
+                  disabled={isLoadingTargets || isBackgroundRefreshing} 
                   className="targets-sync-btn"
                   style={{ 
                     background: 'transparent',
-                    border: `1px solid ${isLoadingTargets ? '#222' : '#444'}`,
+                    border: `1px solid ${(isLoadingTargets || isBackgroundRefreshing) ? '#222' : '#444'}`,
                     borderRadius: '20px',
                     padding: '4px 12px',
-                    cursor: isLoadingTargets ? 'not-allowed' : 'pointer',
-                    color: isLoadingTargets ? '#666' : '#3498db',
+                    cursor: (isLoadingTargets || isBackgroundRefreshing) ? 'not-allowed' : 'pointer',
+                    color: (isLoadingTargets || isBackgroundRefreshing) ? '#666' : '#3498db',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -1139,16 +1220,16 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     fontSize: '0.75rem',
                     letterSpacing: '1px',
                     transition: 'all 0.3s ease',
-                    opacity: isLoadingTargets ? 0.6 : 1
+                    opacity: (isLoadingTargets || isBackgroundRefreshing) ? 0.6 : 1
                   }}
                   onMouseEnter={(e) => { 
-                    if (!isLoadingTargets) {
+                    if (!isLoadingTargets && !isBackgroundRefreshing) {
                       e.currentTarget.style.borderColor = '#3498db';
                       e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
                     }
                   }}
                   onMouseLeave={(e) => { 
-                    if (!isLoadingTargets) {
+                    if (!isLoadingTargets && !isBackgroundRefreshing) {
                       e.currentTarget.style.borderColor = '#444';
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }
@@ -1162,8 +1243,18 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
           </div>
 
           {cachedAt && !isLoadingTargets && (
-            <div style={{ fontSize: '0.78rem', color: '#555', marginBottom: '1.5rem' }}>
-              ✅ Cached — last fetched {new Date(cachedAt).toLocaleTimeString()}. Click Refresh to update.
+            <div style={{ fontSize: '0.78rem', color: '#555', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✅ Last synced {new Date(cachedAt).toLocaleTimeString()}</span>
+              {isBackgroundRefreshing && (
+                <span style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#3498db',
+                  animation: 'pulse-dot 1s ease-in-out infinite'
+                }} title="Refreshing status..." />
+              )}
             </div>
           )}
 
