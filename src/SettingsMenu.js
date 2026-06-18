@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { isNotificationsSupported, checkNotificationPermission, requestNotificationPermission } from './notifications';
+import { isCapacitor } from './utils';
 
 /**
  * Renders the settings menu dropdown, allowing the user to configure app preferences
@@ -20,6 +21,8 @@ import { isNotificationsSupported, checkNotificationPermission, requestNotificat
  * @param {Function} props.setPollInterval - Setter for the polling interval.
  * @param {boolean} props.travelNotificationsEnabled - Whether travel landing notifications are enabled.
  * @param {Function} props.setTravelNotificationsEnabled - Setter for the travel landing notifications.
+ * @param {boolean} props.chainWatcherEnabled - Whether the persistent chain watcher banner is enabled (Android only).
+ * @param {Function} props.setChainWatcherEnabled - Setter for the chain watcher banner toggle.
  * @returns {React.JSX.Element} The rendered settings menu component.
  */
 const SettingsMenu = ({ 
@@ -38,7 +41,9 @@ const SettingsMenu = ({
   pollInterval,
   setPollInterval,
   travelNotificationsEnabled,
-  setTravelNotificationsEnabled
+  setTravelNotificationsEnabled,
+  chainWatcherEnabled,
+  setChainWatcherEnabled
 }) => {  
 
   const [permissionStatus, setPermissionStatus] = useState('prompt');
@@ -199,6 +204,32 @@ const SettingsMenu = ({
           <option value={0}>Manual</option>
         </select>
       </label>
+
+      {/* Chain Watcher toggle — Android/Capacitor only */}
+      {isCapacitor && (
+        <label
+          style={{
+            padding: '8px 12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: '4px',
+            backgroundColor: chainWatcherEnabled ? 'rgba(46, 204, 113, 0.1)' : 'transparent',
+            transition: 'background-color 0.2s'
+          }}
+        >
+          <span style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🔗 Chain Watcher
+          </span>
+          <input
+            type="checkbox"
+            checked={chainWatcherEnabled}
+            onChange={(e) => setChainWatcherEnabled(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+        </label>
+      )}
 
       <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>

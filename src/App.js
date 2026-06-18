@@ -66,7 +66,7 @@ function useLocalStorage(key, initialValue) {
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
       'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
       'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase',
-      'dashboard_poll_interval', 'travel_notifications_enabled'
+      'dashboard_poll_interval', 'travel_notifications_enabled', 'chain_watcher_enabled'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -175,6 +175,89 @@ const getRequiredCategories = (itemsData) => {
 };
 
 /**
+ * Persistent chain watcher banner for Android/Capacitor.
+ * Displayed above the mobile nav bar when chain watcher is enabled in settings.
+ * Ticks down locally and resyncs whenever new factionData arrives from the API poll.
+ *
+ * @param {Object} props - The component props.
+ * @param {Object|null} props.factionData - The faction data object from the Torn API.
+ * @returns {React.JSX.Element|null} The rendered banner, or null if no active chain.
+ */
+function ChainWatcherBanner({ factionData }) {
+  const chain = factionData?.chain || {};
+  const timeout = chain.timeout || 0;
+  const current = chain.current || 0;
+
+  const [localTimeout, setLocalTimeout] = React.useState(timeout);
+
+  // Resync from API data whenever factionData updates
+  React.useEffect(() => {
+    setLocalTimeout(timeout);
+  }, [timeout]);
+
+  // Tick down locally every second
+  React.useEffect(() => {
+    if (localTimeout <= 0) return;
+    const timer = setInterval(() => {
+      setLocalTimeout(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localTimeout]);
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const hasActiveChain = current > 0 || localTimeout > 0;
+
+  // Determine color based on time remaining
+  let bannerColor, textColor, glowColor, statusLabel;
+  if (!hasActiveChain || localTimeout <= 0) {
+    bannerColor = 'rgba(40, 40, 40, 0.95)';
+    textColor = '#666';
+    glowColor = 'transparent';
+    statusLabel = 'No Active Chain';
+  } else if (localTimeout < 60) {
+    bannerColor = 'rgba(180, 20, 20, 0.92)';
+    textColor = '#fff';
+    glowColor = 'rgba(231, 76, 60, 0.6)';
+    statusLabel = null;
+  } else if (localTimeout < 120) {
+    bannerColor = 'rgba(160, 100, 0, 0.92)';
+    textColor = '#fff';
+    glowColor = 'rgba(243, 156, 18, 0.5)';
+    statusLabel = null;
+  } else {
+    bannerColor = 'rgba(15, 90, 40, 0.92)';
+    textColor = '#fff';
+    glowColor = 'rgba(46, 204, 113, 0.4)';
+    statusLabel = null;
+  }
+
+  return (
+    <div className="chain-watcher-banner" style={{ backgroundColor: bannerColor, boxShadow: glowColor !== 'transparent' ? `0 0 8px ${glowColor}` : 'none' }}>
+      <span className="chain-watcher-banner-label" style={{ color: textColor }}>
+        🔗 Chain
+      </span>
+      {statusLabel ? (
+        <span className="chain-watcher-banner-status" style={{ color: textColor }}>{statusLabel}</span>
+      ) : (
+        <>
+          <span className="chain-watcher-banner-hits" style={{ color: textColor }}>
+            {current.toLocaleString()} hits
+          </span>
+          <span className="chain-watcher-banner-timer" style={{ color: textColor }}>
+            {formatTime(localTimeout)}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * The main application component.
  * Handles top-level state including user authentication (API key), data fetching intervals,
  * and routing between the main dashboard, game view, and API logs view.
@@ -199,7 +282,8 @@ function App() {
       'tornagator_lifetime_yata',
       'tornagator_lifetime_firebase',
       'dashboard_poll_interval',
-      'travel_notifications_enabled'
+      'travel_notifications_enabled',
+      'chain_watcher_enabled'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -337,6 +421,7 @@ function App() {
   const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
   const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
+  const [chainWatcherEnabled, setChainWatcherEnabled] = useLocalStorage('chain_watcher_enabled', false);
 
   const [isMobile, setIsMobile] = useState(isCapacitor || window.innerWidth <= 768);
 
@@ -590,10 +675,11 @@ function App() {
     };
   }, [apiKey, loadDashboardData, pollInterval]);
 
-  // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open
+  // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open or chain watcher is enabled
   useEffect(() => {
     let interval;
-    if (apiKey && activeTab === 'faction') {
+    const shouldFetch = apiKey && (activeTab === 'faction' || (isCapacitor && chainWatcherEnabled));
+    if (shouldFetch) {
       if (!hasFactionSyncRun.current) {
         hasFactionSyncRun.current = true;
         loadFactionData();
@@ -613,7 +699,7 @@ function App() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [apiKey, activeTab, loadFactionData, pollInterval]);
+  }, [apiKey, activeTab, loadFactionData, pollInterval, chainWatcherEnabled]);
 
   // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {
@@ -881,6 +967,8 @@ function App() {
               setPollInterval={setPollInterval}
               travelNotificationsEnabled={travelNotificationsEnabled}
               setTravelNotificationsEnabled={setTravelNotificationsEnabled}
+              chainWatcherEnabled={chainWatcherEnabled}
+              setChainWatcherEnabled={setChainWatcherEnabled}
             />
           )}
         </div>
@@ -984,6 +1072,11 @@ function App() {
           {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
           {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
         </div>
+
+        {/* Chain Watcher Banner — Capacitor/Android only, above nav bar */}
+        {isCapacitor && chainWatcherEnabled && apiKey && userData && (
+          <ChainWatcherBanner factionData={factionData} />
+        )}
 
         {/* Render Capacitor mobile nav at the bottom */}
         {isCapacitor && apiKey && userData && (

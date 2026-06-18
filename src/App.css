@@ -1547,5 +1547,47 @@
   gap: 4px;
 }
 
+/* ── Chain Watcher Mobile Banner ── */
+.chain-watcher-banner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  padding: 0 14px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: background-color 0.5s ease, box-shadow 0.5s ease;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 9;
+}
 
+.chain-watcher-banner-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  opacity: 0.85;
+}
 
+.chain-watcher-banner-status {
+  font-size: 0.68rem;
+  font-weight: 600;
+  flex: 1;
+  text-align: center;
+}
+
+.chain-watcher-banner-hits {
+  font-size: 0.68rem;
+  font-weight: 600;
+  flex: 1;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.chain-watcher-banner-timer {
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.5px;
+}
