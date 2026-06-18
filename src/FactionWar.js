@@ -376,7 +376,7 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
         <div className="member-card-wrapper minimal" style={{ borderLeft: `4px solid ${statusColor}`, padding: '6px 12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {/* Line 1: Name, Online status, and Pin */}
+              {/* Line 1: Name, Online status, Suspected XP, and Pin */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
                 <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.95rem' }}>
                   {member.name}
@@ -393,6 +393,11 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                       boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' : 'none'
                     }}
                   />
+                )}
+                {member.suspectedRaw && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.72rem', color: '#e74c3c', fontWeight: 'bold' }}>
+                    <IconBarChart size={11} color="#e74c3c" /> {member.suspectedRaw}
+                  </span>
                 )}
                 <span
                   onClick={(e) => {
