@@ -236,6 +236,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useLocalStorage('active_tab', 'dashboard');
+  const [tabHistory, setTabHistory] = useState([activeTab]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [requestedUrl, setRequestedUrl] = useState(null);
   const [targetCountry, setTargetCountry] = useState(null);
@@ -245,6 +246,77 @@ function App() {
     setTargetCountry(country);
     setActiveTab('torn');
   }, [setActiveTab]);
+
+  // Track tab history
+  useEffect(() => {
+    setTabHistory(prev => {
+      if (prev[prev.length - 1] === activeTab) return prev;
+      return [...prev, activeTab];
+    });
+  }, [activeTab]);
+
+  const isSettingsOpenRef = useRef(isSettingsOpen);
+  useEffect(() => {
+    isSettingsOpenRef.current = isSettingsOpen;
+  }, [isSettingsOpen]);
+
+  const tabHistoryRef = useRef(tabHistory);
+  useEffect(() => {
+    tabHistoryRef.current = tabHistory;
+  }, [tabHistory]);
+
+  // Android native back button listener
+  useEffect(() => {
+    if (!isCapacitor) return;
+
+    let backListenerHandle = null;
+
+    import('@capacitor/app').then(({ App: CapacitorApp }) => {
+      CapacitorApp.addListener('backButton', () => {
+        console.log('[App] Android hardware back button pressed');
+
+        // 1. If settings is open, close settings
+        if (isSettingsOpenRef.current) {
+          setIsSettingsOpen(false);
+          return;
+        }
+
+        // 2. Dispatch a cancelable custom event for child components to intercept
+        const event = new CustomEvent('androidBack', { cancelable: true });
+        const defaultPrevented = !document.dispatchEvent(event);
+
+        if (defaultPrevented) {
+          console.log('[App] Back button press intercepted by a child component.');
+          return;
+        }
+
+        // 3. Fallback: Go back to the previous tab in history
+        const currentHistory = tabHistoryRef.current;
+        if (currentHistory.length <= 1) {
+          console.log('[App] No more tab history, exiting app.');
+          CapacitorApp.exitApp();
+        } else {
+          const newHistory = [...currentHistory];
+          newHistory.pop(); // Remove the current tab
+          const prevTab = newHistory[newHistory.length - 1];
+          console.log(`[App] Tab history fallback: switching back to ${prevTab}`);
+          setTabHistory(newHistory);
+          setActiveTab(prevTab);
+        }
+      }).then(handle => {
+        backListenerHandle = handle;
+      });
+    }).catch(err => {
+      console.warn("Failed to load @capacitor/app:", err);
+    });
+
+    return () => {
+      if (backListenerHandle) {
+        backListenerHandle.remove();
+      }
+    };
+  }, [setActiveTab]);
+
 
   useEffect(() => {
     if (!window.require) return;

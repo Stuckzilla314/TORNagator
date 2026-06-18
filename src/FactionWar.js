@@ -805,6 +805,21 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     localStorage.setItem('tornagator_faction_status_filter', statusFilter);
   }, [statusFilter]);
 
+  // Handle android native back button to close the import modal
+  useEffect(() => {
+    const handleAndroidBack = (e) => {
+      if (isImportOpen) {
+        setIsImportOpen(false);
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('androidBack', handleAndroidBack);
+    return () => {
+      document.removeEventListener('androidBack', handleAndroidBack);
+    };
+  }, [isImportOpen]);
+
+
   // Load targets if starting on the targets tab and they aren't loaded yet
   useEffect(() => {
     if (activeSubTab === 'targets' && !enemyFactionData && !isLoadingTargets && firstEnemyFactionId && apiKey) {

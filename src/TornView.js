@@ -2481,9 +2481,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       setCanGoBack(!!nativeCanGoBack);
       setCanGoForward(!!nativeCanGoForward);
 
-      if (tabId && url && url !== tabUrl) {
-        const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
-        onUpdate(tabId, { url, title: resolvedTitle });
+      if (tabId) {
+        const updates = {
+          canGoBack: !!nativeCanGoBack,
+          canGoForward: !!nativeCanGoForward
+        };
+        if (url && url !== tabUrl) {
+          const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
+          updates.url = url;
+          updates.title = resolvedTitle;
+        }
+        onUpdate(tabId, updates);
       }
 
       // Inject stats redirects and styles on Capacitor overlay
@@ -3438,6 +3446,48 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   // Force a re-render after toggling so the controlled children update.
   const [, forceRerender] = useState(0);
   const bumpRender = useCallback(() => forceRerender(n => n + 1), []);
+
+  // Handle android back button inside TORN tab
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleAndroidBack = (e) => {
+      console.log('[TornView] androidBack event captured');
+      if (isImportOpen) {
+        setIsImportOpen(false);
+        e.preventDefault();
+        return;
+      }
+      if (isAddingNew) {
+        setIsAddingNew(false);
+        e.preventDefault();
+        return;
+      }
+      if (isEditingQuick) {
+        setIsEditingQuick(false);
+        e.preventDefault();
+        return;
+      }
+
+      // Find the active tab
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab && activeTab.canGoBack) {
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
+            console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
+            window.AndroidTornBridge.goBack(activeTab.id);
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('androidBack', handleAndroidBack);
+    return () => {
+      document.removeEventListener('androidBack', handleAndroidBack);
+    };
+  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs]);
+
 
   // Memoize the mapping, filtering, and sorting of enemy faction members
   const sortedAndFilteredGroups = useMemo(() => {

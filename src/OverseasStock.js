@@ -164,27 +164,16 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     const modalOpen = !!selectedItemForGraph || !!lowCashItem;
     if (!modalOpen) return;
 
-    let listenerHandle = null;
-
     if (isCapacitor) {
-      let isSubscribed = true;
-      import('@capacitor/app').then(({ App }) => {
-        if (!isSubscribed) return;
-        App.addListener('backButton', () => {
-          setSelectedItemForGraph(null);
-          setLowCashItem(null);
-        }).then(handle => {
-          listenerHandle = handle;
-        });
-      }).catch(err => {
-        console.warn("Failed to load @capacitor/app:", err);
-      });
+      const handleAndroidBack = (e) => {
+        setSelectedItemForGraph(null);
+        setLowCashItem(null);
+        e.preventDefault();
+      };
 
+      document.addEventListener('androidBack', handleAndroidBack);
       return () => {
-        isSubscribed = false;
-        if (listenerHandle) {
-          listenerHandle.remove();
-        }
+        document.removeEventListener('androidBack', handleAndroidBack);
       };
     } else {
       window.history.pushState({ modalOpen: true }, '');
