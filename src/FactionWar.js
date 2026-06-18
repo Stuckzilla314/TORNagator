@@ -294,7 +294,7 @@ const CollapsibleSection = ({ title, count, statusColor, defaultOpen = false, ch
 /**
  * Component for rendering an individual Faction Member Card with real-time countdown timer.
  */
-const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn, isPinned, onTogglePin }) => {
+const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn, isPinned, onTogglePin, isMinimal }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -358,6 +358,73 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
   const totalRefills = (ps.refills || 0) + (ps.nerverefills || 0) + (ps.tokenrefills || 0);
   const boostersUsed = ps.boostersused || 0;
   const hasProfile = Object.keys(profile).length > 0;
+
+  if (isMinimal) {
+    return (
+      <a 
+        href={`https://www.torn.com/profiles.php?XID=${member.id}`} 
+        onClick={(e) => {
+          if (onOpenInTorn) {
+            e.preventDefault();
+            onOpenInTorn(`https://www.torn.com/profiles.php?XID=${member.id}`);
+          }
+        }}
+        className="dashboard-card-link is-minimal"
+        style={{ borderRadius: '6px' }}
+      >
+        <div className="member-card-wrapper minimal" style={{ borderLeft: `4px solid ${statusColor}`, padding: '6px 12px' }}>
+          {/* Line 1: Name, Online status, and Pin */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
+            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.95rem' }}>
+              {member.name}
+            </span>
+            {member.last_action?.status && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                   member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                  boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' : 'none'
+                }}
+              />
+            )}
+            <span
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onTogglePin) onTogglePin(member.id);
+              }}
+              className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+              style={{
+                padding: '2px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '4px',
+              }}
+              title={isPinned ? "Unpin Target" : "Pin Target"}
+            >
+              <IconPin size={13} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+            </span>
+          </div>
+
+          {/* Line 2: Status */}
+          <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
+            <span>{currentStatusState}</span>
+            {currentStatusState === 'Hospital' && currentDescription && (
+              <span style={{ color: '#aaa', fontSize: '0.78rem' }}>
+                ({currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')})
+              </span>
+            )}
+          </div>
+        </div>
+      </a>
+    );
+  }
 
   return (
     <a 
@@ -636,6 +703,9 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   });
   const [statusFilter, setStatusFilter] = useState(() => {
     return localStorage.getItem('tornagator_faction_status_filter') || 'all';
+  });
+  const [layoutView, setLayoutView] = useState(() => {
+    return localStorage.getItem('tornagator_faction_layout_view') || 'detailed';
   });
   const [importedStats, setImportedStats] = useState({});
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
@@ -1141,6 +1211,32 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     <option value="offline">Offline Only</option>
                   </select>
                 </div>
+
+                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>View:</span>
+                  <select 
+                    value={layoutView} 
+                    onChange={(e) => {
+                      setLayoutView(e.target.value);
+                      localStorage.setItem('tornagator_faction_layout_view', e.target.value);
+                    }}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      flex: isCapacitor ? 1 : 'none',
+                      maxWidth: isCapacitor ? 'none' : 'auto'
+                    }}
+                  >
+                    <option value="detailed">Detailed</option>
+                    <option value="minimal">Minimal</option>
+                  </select>
+                </div>
               </div>
 
               {/* Import / Suspected stats info */}
@@ -1417,6 +1513,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     onOpenInTorn={onOpenInTorn}
                     isPinned={!!pinnedIds[member.id]}
                     onTogglePin={handleTogglePin}
+                    isMinimal={layoutView === 'minimal'}
                   />
                 ));
 
