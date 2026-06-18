@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
-import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash } from './Icons';
+import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin } from './Icons';
 import { isCapacitor } from './utils';
 
 /**
@@ -294,7 +294,7 @@ const CollapsibleSection = ({ title, count, statusColor, defaultOpen = false, ch
 /**
  * Component for rendering an individual Faction Member Card with real-time countdown timer.
  */
-const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn }) => {
+const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn, isPinned, onTogglePin }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -378,6 +378,30 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
             <div>
               <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>
                 {member.name}
+              </span>
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onTogglePin) onTogglePin(member.id);
+                }}
+                className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  verticalAlign: 'middle',
+                  marginLeft: '8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s',
+                }}
+                title={isPinned ? "Unpin Target" : "Pin Target"}
+              >
+                <IconPin size={15} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
               </span>
               <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
               {member.last_action?.status && (
@@ -615,6 +639,31 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   });
   const [importedStats, setImportedStats] = useState({});
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
+
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tornagator_pinned_targets');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.error('Failed to parse pinned targets from localStorage', e);
+      return {};
+    }
+  });
+
+  const handleTogglePin = (memberId) => {
+    setPinnedIds(prev => {
+      const updated = { ...prev, [memberId]: !prev[memberId] };
+      if (!updated[memberId]) {
+        delete updated[memberId];
+      }
+      try {
+        localStorage.setItem('tornagator_pinned_targets', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save pinned targets to localStorage', e);
+      }
+      return updated;
+    });
+  };
 
   // Sync cache if key changes later
   useEffect(() => {
@@ -1336,14 +1385,18 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                   return true;
                 });
 
-                // Group by status
+                // Separate pinned and unpinned members
+                const pinnedMembers = filteredMembers.filter(m => pinnedIds[m.id]);
+                const unpinnedMembers = filteredMembers.filter(m => !pinnedIds[m.id]);
+
+                // Group by status for unpinned members
                 const groups = {
                   okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
                   jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
                   other: { label: '✈️ Other', color: '#3498db', members: [] },
                 };
 
-                filteredMembers.forEach(m => {
+                unpinnedMembers.forEach(m => {
                   const state = m.status?.state || '';
                   if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
                   else if (state === 'Jail') groups.jail.members.push(m);
@@ -1352,6 +1405,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
                 // Sort within each group
                 Object.values(groups).forEach(g => applySortOrder(g.members));
+                applySortOrder(pinnedMembers);
 
                 const renderCards = (members) => members.map((member) => (
                   <FactionMemberCard
@@ -1361,10 +1415,12 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     compareMode={compareMode}
                     hasImportedStats={hasImportedStats}
                     onOpenInTorn={onOpenInTorn}
+                    isPinned={!!pinnedIds[member.id]}
+                    onTogglePin={handleTogglePin}
                   />
                 ));
 
-                return Object.entries(groups)
+                const renderedGroups = Object.entries(groups)
                   .filter(([, g]) => g.members.length > 0)
                   .map(([key, g]) => (
                     <CollapsibleSection
@@ -1377,6 +1433,22 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                       {renderCards(g.members)}
                     </CollapsibleSection>
                   ));
+
+                if (pinnedMembers.length > 0) {
+                  renderedGroups.unshift(
+                    <CollapsibleSection
+                      key="pinned"
+                      title="📌 Pinned Targets"
+                      count={pinnedMembers.length}
+                      statusColor="#f1c40f"
+                      defaultOpen={true}
+                    >
+                      {renderCards(pinnedMembers)}
+                    </CollapsibleSection>
+                  );
+                }
+
+                return renderedGroups;
               })()}
             </div>
           ) : (

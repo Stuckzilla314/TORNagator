@@ -249,6 +249,16 @@ export const IconSword = ({ size = 16, color = 'currentColor', style, className 
   </svg>
 );
 
+export const IconPin = ({ size = 16, color = 'currentColor', fill = 'none', style, className } = {}) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill={fill} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={style} className={className} aria-hidden="true">
+    <line x1="12" y1="17" x2="12" y2="22"/>
+    <path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.48A2 2 0 0 1 15 9.28V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.28c0 .4-.12.79-.34 1.11L5.88 14a2 2 0 0 0-.44 1.24V17z"/>
+  </svg>
+);
+
+
 export const IconPeace = ({ size = 16, color = 'currentColor', style, className } = {}) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
     fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
