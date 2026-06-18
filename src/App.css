@@ -1340,6 +1340,29 @@
   transform: scale(1.15);
 }
 
+.member-card-attack-btn {
+  background-color: #e74c3c;
+  color: #fff;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.member-card-attack-btn:hover {
+  background-color: #c0392b;
+  transform: scale(1.05);
+}
+.member-card-attack-btn:active {
+  transform: scale(0.95);
+}
+
+
 
 /* Mobile Responsiveness for Faction War Tab (.is-mobile) */
 .is-mobile .faction-war-header {

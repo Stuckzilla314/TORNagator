@@ -373,53 +373,71 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
         style={{ borderRadius: '6px' }}
       >
         <div className="member-card-wrapper minimal" style={{ borderLeft: `4px solid ${statusColor}`, padding: '6px 12px' }}>
-          {/* Line 1: Name, Online status, and Pin */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
-            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.95rem' }}>
-              {member.name}
-            </span>
-            {member.last_action?.status && (
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
-                                   member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
-                  boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' : 'none'
-                }}
-              />
-            )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Line 1: Name, Online status, and Pin */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
+                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                  {member.name}
+                </span>
+                {member.last_action?.status && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                       member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                      boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' : 'none'
+                    }}
+                  />
+                )}
+                <span
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onTogglePin) onTogglePin(member.id);
+                  }}
+                  className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+                  style={{
+                    padding: '2px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '4px',
+                  }}
+                  title={isPinned ? "Unpin Target" : "Pin Target"}
+                >
+                  <IconPin size={13} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+                </span>
+              </div>
+
+              {/* Line 2: Status */}
+              <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
+                <span>{currentStatusState}</span>
+                {currentStatusState === 'Hospital' && currentDescription && (
+                  <span style={{ color: '#aaa', fontSize: '0.78rem' }}>
+                    ({currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Direct Attack Button on the right */}
             <span
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (onTogglePin) onTogglePin(member.id);
+                if (onOpenInTorn) {
+                  onOpenInTorn(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`);
+                }
               }}
-              className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
-              style={{
-                padding: '2px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '4px',
-              }}
-              title={isPinned ? "Unpin Target" : "Pin Target"}
+              className="member-card-attack-btn"
             >
-              <IconPin size={13} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+              <IconSwords size={12} color="#fff" /> Attack
             </span>
-          </div>
-
-          {/* Line 2: Status */}
-          <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
-            <span>{currentStatusState}</span>
-            {currentStatusState === 'Hospital' && currentDescription && (
-              <span style={{ color: '#aaa', fontSize: '0.78rem' }}>
-                ({currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')})
-              </span>
-            )}
           </div>
         </div>
       </a>
@@ -488,6 +506,19 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                   }}
                 />
               )}
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onOpenInTorn) {
+                    onOpenInTorn(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`);
+                  }
+                }}
+                className="member-card-attack-btn"
+                style={{ marginLeft: '12px', verticalAlign: 'middle' }}
+              >
+                <IconSwords size={12} color="#fff" /> Attack
+              </span>
               <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
                 Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
               </div>
