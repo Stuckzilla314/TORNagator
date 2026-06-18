@@ -436,7 +436,7 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
               }}
               className="member-card-attack-btn"
             >
-              <IconSwords size={12} color="#fff" /> Attack
+              <IconSwords size={12} color="currentColor" /> Attack
             </span>
           </div>
         </div>
@@ -506,6 +506,20 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                   }}
                 />
               )}
+              <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
+                Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
+              </div>
+            </div>
+            
+            <div className="member-card-status-col">
+              <div className="member-card-status-wrapper">
+                <span className="member-card-status-text" style={{ color: statusColor }}>{currentStatusState}</span>
+                {currentDescription && currentDescription !== currentStatusState && (
+                  <span className="member-card-status-desc">
+                    {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                  </span>
+                )}
+              </div>
               <span
                 onClick={(e) => {
                   e.preventDefault();
@@ -515,22 +529,9 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                   }
                 }}
                 className="member-card-attack-btn"
-                style={{ marginLeft: '12px', verticalAlign: 'middle' }}
               >
-                <IconSwords size={12} color="#fff" /> Attack
+                <IconSwords size={12} color="currentColor" /> Attack
               </span>
-              <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
-                Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
-              </div>
-            </div>
-            
-            <div className="member-card-status-col">
-              <span className="member-card-status-text" style={{ color: statusColor }}>{currentStatusState}</span>
-              {currentDescription && currentDescription !== currentStatusState && (
-                <span className="member-card-status-desc">
-                  {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
-                </span>
-              )}
             </div>
           </div>
 
