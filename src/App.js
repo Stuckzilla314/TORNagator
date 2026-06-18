@@ -266,6 +266,16 @@ function App() {
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
   const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
 
+  const [isMobile, setIsMobile] = useState(isCapacitor || window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(isCapacitor || window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   const isElectron = typeof window !== 'undefined' && window.process && window.process.versions && window.process.versions.electron;
 
@@ -712,16 +722,19 @@ function App() {
   });
 
   return (
-    <div style={{
-      backgroundColor: '#0f0f0f',
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      color: '#e0e0e0',
-      lineHeight: '1.6',
-      overflow: 'hidden',
-      boxSizing: 'border-box'
-    }}>
+    <div 
+      className={isMobile ? 'is-mobile' : ''}
+      style={{
+        backgroundColor: '#0f0f0f',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        color: '#e0e0e0',
+        lineHeight: '1.6',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
+      }}
+    >
       {isElectron && (
         <div style={{
           height: '40px',
@@ -848,7 +861,7 @@ function App() {
           flex: 1,
           overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
           position: 'relative',
-          padding: activeTab === 'torn' ? '0' : '20px',
+          padding: activeTab === 'torn' ? '0' : (isMobile ? '10px' : '20px'),
           boxSizing: 'border-box'
         }}>
           {!apiKey && <LoginForm onLogin={setApiKey} />}
