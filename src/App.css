@@ -1558,9 +1558,19 @@
   width: 100%;
   box-sizing: border-box;
   flex-shrink: 0;
-  transition: background-color 0.5s ease, box-shadow 0.5s ease;
+  transition: background-color 0.5s ease, box-shadow 0.5s ease, filter 0.2s ease;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   z-index: 9;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chain-watcher-banner:hover {
+  filter: brightness(1.15);
+}
+
+.chain-watcher-banner:active {
+  filter: brightness(0.9);
 }
 
 .chain-watcher-banner-label {

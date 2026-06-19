@@ -7,7 +7,7 @@ import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import ApiLogsView from './ApiLogsView';
-import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData, fetchUserIcons } from './tornApi';
+import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData, fetchUserIcons, fetchUserTargets } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock, IconRaceway } from './Icons';
 import { isCapacitor } from './utils';
@@ -66,7 +66,7 @@ function useLocalStorage(key, initialValue) {
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
       'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
       'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase',
-      'dashboard_poll_interval', 'travel_notifications_enabled', 'chain_watcher_enabled'
+      'dashboard_poll_interval', 'travel_notifications_enabled', 'chain_watcher_enabled', 'chain_watcher_interval'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -183,12 +183,13 @@ const getRequiredCategories = (itemsData) => {
  * @param {Object|null} props.factionData - The faction data object from the Torn API.
  * @returns {React.JSX.Element|null} The rendered banner, or null if no active chain.
  */
-function ChainWatcherBanner({ factionData }) {
+function ChainWatcherBanner({ factionData, apiKey, onOpenInTorn }) {
   const chain = factionData?.chain || {};
   const timeout = chain.timeout || 0;
   const current = chain.current || 0;
 
   const [localTimeout, setLocalTimeout] = React.useState(timeout);
+  const [isFetching, setIsFetching] = React.useState(false);
 
   // Resync from API data whenever factionData updates
   React.useEffect(() => {
@@ -208,6 +209,36 @@ function ChainWatcherBanner({ factionData }) {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleClick = async () => {
+    if (!onOpenInTorn || isFetching) return;
+    if (!apiKey) {
+      alert("API Key is required to fetch targets.");
+      return;
+    }
+
+    setIsFetching(true);
+    try {
+      const targetsList = await fetchUserTargets(apiKey);
+      const target = targetsList.find(t => {
+        const state = t.status?.state || '';
+        const desc = t.status?.description || '';
+        
+        return state === 'Okay' && desc === 'Okay';
+      });
+
+      if (target) {
+        onOpenInTorn(`https://www.torn.com/page.php?sid=attack&user2ID=${target.id}`);
+      } else {
+        alert("No available targets with state 'Okay' and description 'Okay' found.");
+      }
+    } catch (e) {
+      console.error("Error navigating to target:", e);
+      alert("Failed to retrieve targets. Please check your network connection.");
+    } finally {
+      setIsFetching(false);
+    }
   };
 
   const hasActiveChain = current > 0 || localTimeout > 0;
@@ -237,7 +268,16 @@ function ChainWatcherBanner({ factionData }) {
   }
 
   return (
-    <div className="chain-watcher-banner" style={{ backgroundColor: bannerColor, boxShadow: glowColor !== 'transparent' ? `0 0 8px ${glowColor}` : 'none' }}>
+    <div 
+      className="chain-watcher-banner" 
+      onClick={handleClick}
+      style={{ 
+        backgroundColor: bannerColor, 
+        boxShadow: glowColor !== 'transparent' ? `0 0 8px ${glowColor}` : 'none',
+        cursor: isFetching ? 'wait' : 'pointer',
+        opacity: isFetching ? 0.7 : 1
+      }}
+    >
       <span className="chain-watcher-banner-label" style={{ color: textColor }}>
         🔗 Chain
       </span>
@@ -283,7 +323,8 @@ function App() {
       'tornagator_lifetime_firebase',
       'dashboard_poll_interval',
       'travel_notifications_enabled',
-      'chain_watcher_enabled'
+      'chain_watcher_enabled',
+      'chain_watcher_interval'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -422,6 +463,7 @@ function App() {
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
   const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
   const [chainWatcherEnabled, setChainWatcherEnabled] = useLocalStorage('chain_watcher_enabled', false);
+  const [chainWatcherInterval, setChainWatcherInterval] = useLocalStorage('chain_watcher_interval', 10);
 
   const [isMobile, setIsMobile] = useState(isCapacitor || window.innerWidth <= 768);
 
@@ -678,14 +720,24 @@ function App() {
   // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open or chain watcher is enabled
   useEffect(() => {
     let interval;
-    const shouldFetch = apiKey && (activeTab === 'faction' || (isCapacitor && chainWatcherEnabled));
+    const isChainWatcherActive = isCapacitor && chainWatcherEnabled;
+    const shouldFetch = apiKey && (activeTab === 'faction' || isChainWatcherActive);
+
     if (shouldFetch) {
       if (!hasFactionSyncRun.current) {
         hasFactionSyncRun.current = true;
         loadFactionData();
       }
 
-      if (pollInterval > 0) {
+      if (isChainWatcherActive) {
+        // Use the chain watcher interval setting (in seconds)
+        interval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            loadFactionData();
+          }
+        }, chainWatcherInterval * 1000);
+      } else if (pollInterval > 0) {
+        // Fallback to general poll interval when chain watcher is off (only when faction tab is open)
         interval = setInterval(() => {
           if (document.visibilityState === 'visible') {
             loadFactionData();
@@ -699,7 +751,7 @@ function App() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [apiKey, activeTab, loadFactionData, pollInterval, chainWatcherEnabled]);
+  }, [apiKey, activeTab, loadFactionData, pollInterval, chainWatcherEnabled, chainWatcherInterval]);
 
   // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {
@@ -969,6 +1021,8 @@ function App() {
               setTravelNotificationsEnabled={setTravelNotificationsEnabled}
               chainWatcherEnabled={chainWatcherEnabled}
               setChainWatcherEnabled={setChainWatcherEnabled}
+              chainWatcherInterval={chainWatcherInterval}
+              setChainWatcherInterval={setChainWatcherInterval}
             />
           )}
         </div>
@@ -1075,7 +1129,7 @@ function App() {
 
         {/* Chain Watcher Banner — Capacitor/Android only, above nav bar */}
         {isCapacitor && chainWatcherEnabled && apiKey && userData && (
-          <ChainWatcherBanner factionData={factionData} />
+          <ChainWatcherBanner factionData={factionData} apiKey={apiKey} onOpenInTorn={handleOpenInTorn} />
         )}
 
         {/* Render Capacitor mobile nav at the bottom */}

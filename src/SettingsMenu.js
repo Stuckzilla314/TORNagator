@@ -23,6 +23,8 @@ import { isCapacitor } from './utils';
  * @param {Function} props.setTravelNotificationsEnabled - Setter for the travel landing notifications.
  * @param {boolean} props.chainWatcherEnabled - Whether the persistent chain watcher banner is enabled (Android only).
  * @param {Function} props.setChainWatcherEnabled - Setter for the chain watcher banner toggle.
+ * @param {number} props.chainWatcherInterval - The polling interval for the chain watcher banner.
+ * @param {Function} props.setChainWatcherInterval - Setter for the chain watcher polling interval.
  * @returns {React.JSX.Element} The rendered settings menu component.
  */
 const SettingsMenu = ({ 
@@ -43,7 +45,9 @@ const SettingsMenu = ({
   travelNotificationsEnabled,
   setTravelNotificationsEnabled,
   chainWatcherEnabled,
-  setChainWatcherEnabled
+  setChainWatcherEnabled,
+  chainWatcherInterval,
+  setChainWatcherInterval
 }) => {  
 
   const [permissionStatus, setPermissionStatus] = useState('prompt');
@@ -222,12 +226,57 @@ const SettingsMenu = ({
           <span style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
             🔗 Chain Watcher
           </span>
-          <input
-            type="checkbox"
-            checked={chainWatcherEnabled}
-            onChange={(e) => setChainWatcherEnabled(e.target.checked)}
-            style={{ cursor: 'pointer' }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+            <select
+              value={chainWatcherInterval}
+              onChange={(e) => setChainWatcherInterval(parseInt(e.target.value, 10))}
+              disabled={!chainWatcherEnabled}
+              style={{
+                backgroundColor: '#2b2b2b',
+                color: '#fff',
+                border: '1px solid #444',
+                borderRadius: '4px',
+                padding: '2px 20px 2px 6px',
+                fontSize: '0.75rem',
+                cursor: chainWatcherEnabled ? 'pointer' : 'not-allowed',
+                outline: 'none',
+                opacity: chainWatcherEnabled ? 1 : 0.5,
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 6px center',
+                backgroundSize: '10px',
+                transition: 'border-color 0.2s, background-color 0.2s'
+              }}
+              onMouseEnter={e => {
+                if (chainWatcherEnabled) {
+                  e.target.style.borderColor = '#3498db';
+                  e.target.style.backgroundColor = '#333';
+                }
+              }}
+              onMouseLeave={e => {
+                if (chainWatcherEnabled) {
+                  e.target.style.borderColor = '#444';
+                  e.target.style.backgroundColor = '#2b2b2b';
+                }
+              }}
+            >
+              <option value={5}>5s</option>
+              <option value={10}>10s</option>
+              <option value={20}>20s</option>
+              <option value={30}>30s</option>
+              <option value={45}>45s</option>
+              <option value={60}>1m</option>
+            </select>
+            <input
+              type="checkbox"
+              checked={chainWatcherEnabled}
+              onChange={(e) => setChainWatcherEnabled(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+          </div>
         </label>
       )}
 
