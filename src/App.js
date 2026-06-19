@@ -682,8 +682,10 @@ function App() {
     let interval;
     let lastFetchTime = Date.now();
 
+    const isDashboardVisible = activeTab === 'dashboard' || activeTab === 'torn';
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && pollInterval > 0) {
+      if (document.visibilityState === 'visible' && isDashboardVisible && pollInterval > 0) {
         if (Date.now() - lastFetchTime >= (pollInterval * 1000 - 1000)) {
           loadDashboardData(false);
           lastFetchTime = Date.now();
@@ -702,7 +704,7 @@ function App() {
 
       if (pollInterval > 0) {
         interval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
+          if (document.visibilityState === 'visible' && isDashboardVisible) {
             if (Date.now() - lastFetchTime >= (pollInterval * 1000 - 1000)) {
               loadDashboardData(false);
               lastFetchTime = Date.now();
@@ -715,7 +717,18 @@ function App() {
       if (interval) clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [apiKey, loadDashboardData, pollInterval]);
+  }, [apiKey, loadDashboardData, pollInterval, activeTab]);
+
+  // Trigger a sync when switching to dashboard or torn tab if they were not the active tab
+  const prevActiveTabRef = useRef(activeTab);
+  useEffect(() => {
+    const wasDashboardVisible = prevActiveTabRef.current === 'dashboard' || prevActiveTabRef.current === 'torn';
+    const isDashboardVisible = activeTab === 'dashboard' || activeTab === 'torn';
+    if (apiKey && isDashboardVisible && !wasDashboardVisible) {
+      loadDashboardData(false);
+    }
+    prevActiveTabRef.current = activeTab;
+  }, [activeTab, apiKey, loadDashboardData]);
 
   // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open or chain watcher is enabled
   useEffect(() => {
@@ -774,13 +787,17 @@ function App() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        if (!hasOverseasSyncRun.current) {
+          hasOverseasSyncRun.current = true;
+          loadOverseasData();
+        }
         checkOverseasSync();
       }
     };
 
     if (apiKey && activeTab === 'stock' && stockAutoSync) {
       // Initial fetch
-      if (!hasOverseasSyncRun.current) {
+      if (!hasOverseasSyncRun.current && document.visibilityState === 'visible') {
         hasOverseasSyncRun.current = true;
         loadOverseasData();
       }
@@ -1086,7 +1103,7 @@ function App() {
                 <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
               </div>
               <div style={{ display: activeTab === 'faction' ? 'block' : 'none' }}>
-                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} pollInterval={pollInterval} />
+                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} pollInterval={pollInterval} isActive={activeTab === 'faction'} />
               </div>
               <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
                 <TornView 

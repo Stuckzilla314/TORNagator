@@ -954,10 +954,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        window._tornagator_tab_id = ${JSON.stringify(tabId)};
       })()
     `;
     wvInstance.executeJavaScript(injectScript).catch(() => { });
-  }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
+  }, [itemsData, cargoCapacity, apiKey, userData, factionData, tabId]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
     if (!targetCountry) return;
@@ -1167,6 +1168,69 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }
   }, [targetCountry, setTargetCountry, tabUrl, tabId]);
 
+  const handleBridgeMessage = useCallback(async (payload) => {
+    if (payload.type === 'fetch') {
+      const { id, url } = payload;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const responseScript = `
+          (() => {
+            window._tornagator_fetch_responses = window._tornagator_fetch_responses || {};
+            window._tornagator_fetch_responses['${id}'] = ${JSON.stringify({ data })};
+          })()
+        `;
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+            window.AndroidTornBridge.executeInOverlay(tabId, responseScript);
+          }
+        } else {
+          const wv = webviewRef.current;
+          if (wv) {
+            wv.executeJavaScript(responseScript).catch(() => {});
+          }
+        }
+      } catch (err) {
+        const responseScript = `
+          (() => {
+            window._tornagator_fetch_responses = window._tornagator_fetch_responses || {};
+            window._tornagator_fetch_responses['${id}'] = ${JSON.stringify({ error: err.message })};
+          })()
+        `;
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+            window.AndroidTornBridge.executeInOverlay(tabId, responseScript);
+          }
+        } else {
+          const wv = webviewRef.current;
+          if (wv) {
+            wv.executeJavaScript(responseScript).catch(() => {});
+          }
+        }
+      }
+    }
+  }, [tabId]);
+
+  useEffect(() => {
+    if (!isCapacitor) return;
+
+    const handleBridgeEvent = (e) => {
+      try {
+        const payload = JSON.parse(e.detail);
+        if (payload.tabId === tabId) {
+          handleBridgeMessage(payload);
+        }
+      } catch (err) {
+        console.error("Failed to parse bridge event payload:", err);
+      }
+    };
+
+    window.addEventListener('tornagatorBridge', handleBridgeEvent);
+    return () => {
+      window.removeEventListener('tornagatorBridge', handleBridgeEvent);
+    };
+  }, [tabId, handleBridgeMessage]);
+
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isElectron) return;
@@ -1204,6 +1268,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window.process.stdout.write(`[Webview-${tabId || 'unknown'}] ${e.message}\n`);
       }
       console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
+      if (e.message && e.message.startsWith("TORNAGATOR_BRIDGE:")) {
+        try {
+          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length()));
+          handleBridgeMessage(payload);
+        } catch (err) {
+          console.error("Failed to parse bridge message payload:", err);
+        }
+      }
     };
 
     wv.addEventListener('did-navigate', handleNavigate);
@@ -1219,7 +1291,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues]);
+  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues, handleBridgeMessage]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -1987,6 +2059,32 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const session = Date.now();
                 window._tornagator_scan_session = session;
 
+                const hostFetch = (url) => {
+                  return new Promise((resolve, reject) => {
+                    const id = Math.random().toString(36).substr(2, 9);
+                    window._tornagator_pending_fetches = window._tornagator_pending_fetches || [];
+                    console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                      type: "fetch",
+                      id: id,
+                      url: url,
+                      tabId: window._tornagator_tab_id
+                    }));
+
+                    const checkInterval = setInterval(() => {
+                      if (window._tornagator_fetch_responses && window._tornagator_fetch_responses[id]) {
+                        clearInterval(checkInterval);
+                        const res = window._tornagator_fetch_responses[id];
+                        delete window._tornagator_fetch_responses[id];
+                        if (res.error) {
+                          reject(new Error(res.error));
+                        } else {
+                          resolve(res.data);
+                        }
+                      }
+                    }, 50);
+                  });
+                };
+
                 // Clear any running queue processing and states
                 window._tornagator_scan_queue = [];
                 window._tornagator_scan_results = [];
@@ -2146,8 +2244,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const processSeller = async (seller, rowEl) => {
                   try {
-                    const response = await fetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
-                    const data = await response.json();
+                    const data = await hostFetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
 
                     if (data.error) {
                       throw new Error(data.error.error || 'API Error');
@@ -2453,6 +2550,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        window._tornagator_tab_id = ${JSON.stringify(tabId)};
       })()
     `;
 
@@ -3726,24 +3824,32 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // Auto-fetch targets on tab switch to war sidebar if not cached
   useEffect(() => {
-    if (isActive && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+    if (isActive && !sidebarCollapsed && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
       doFetchTargets(false);
     }
-  }, [isActive, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
+  }, [isActive, sidebarCollapsed, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
 
   // Auto-sync timer effect
   useEffect(() => {
-    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
+    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war' || sidebarCollapsed) return;
 
     const intervalId = setInterval(() => {
-      if (!isLoadingTargets && !isSyncingTargets) {
+      if (document.visibilityState === 'visible' && !isLoadingTargets && !isSyncingTargets) {
         if (loadFactionData) loadFactionData();
         doFetchTargets(true);
       }
     }, syncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, sidebarCollapsed, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+
+  // Trigger target status refresh immediately when sidebar war tab becomes active and visible
+  useEffect(() => {
+    if (isActive && !sidebarCollapsed && sidebarTab === 'war' && enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+      doFetchTargets(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, sidebarCollapsed, sidebarTab]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
