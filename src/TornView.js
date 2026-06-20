@@ -3057,7 +3057,17 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
           )}
 
           <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
-            Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
+            Lvl {member.level}
+            {member.suspectedRaw && (
+              <>
+                {' • '}
+                <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
+                </span>
+              </>
+            )}
+            {' • '}
+            <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
           </div>
         </div>
 
@@ -3106,23 +3116,14 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
 
       {isOpen && (
         <>
-          {/* Suspected XP info & Profile indicators */}
-          {(member.suspectedRaw || hasProfile) && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
+          {/* Profile indicators */}
+          {hasProfile && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
               <div>
-                {member.suspectedRaw && (
-                  <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                    <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
-                  </span>
-                )}
-              </div>
-              <div>
-                {hasProfile && (
-                  <span style={{ color: '#888' }}>
-                    {profile.age ? `${profile.age.toLocaleString()}d` : ''}
-                    {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
-                  </span>
-                )}
+                <span style={{ color: '#888' }}>
+                  {profile.age ? `${profile.age.toLocaleString()}d` : ''}
+                  {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
+                </span>
               </div>
             </div>
           )}
