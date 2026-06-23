@@ -111,31 +111,30 @@ function TitleBarTimer({ userData, showTabTimer }) {
       marginLeft: '12px',
       padding: '2px 8px',
       backgroundColor: state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
-                       state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
-                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
-                       state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-      border: `1px solid ${
-                       state === 'Traveling' ? '#3498db' :
-                       state === 'Hospital' ? '#e74c3c' :
-                       state === 'Jail' ? '#f39c12' :
-                       state === 'Racing' ? '#9b59b6' : '#888'
-      }`,
+        state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
+          state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
+            state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+      border: `1px solid ${state === 'Traveling' ? '#3498db' :
+          state === 'Hospital' ? '#e74c3c' :
+            state === 'Jail' ? '#f39c12' :
+              state === 'Racing' ? '#9b59b6' : '#888'
+        }`,
       borderRadius: '4px',
       fontSize: '0.8rem',
       fontWeight: 'bold',
       color: state === 'Traveling' ? '#3498db' :
-             state === 'Hospital' ? '#e74c3c' :
-             state === 'Jail' ? '#f39c12' :
-             state === 'Racing' ? '#9b59b6' : '#e0e0e0',
+        state === 'Hospital' ? '#e74c3c' :
+          state === 'Jail' ? '#f39c12' :
+            state === 'Racing' ? '#9b59b6' : '#e0e0e0',
       display: 'flex',
       alignItems: 'center',
       gap: '6px'
     }}>
       <span style={{ display: 'flex', alignItems: 'center' }}>
         {state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
-         state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
-         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> :
-         state === 'Racing' ? <IconRaceway size={13} color={"#9b59b6"} /> : <IconClock size={13} color={"#aaa"} />}
+          state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
+            state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> :
+              state === 'Racing' ? <IconRaceway size={13} color={"#9b59b6"} /> : <IconClock size={13} color={"#aaa"} />}
       </span>
       <span>{timeLeft}</span>
     </span>
@@ -143,10 +142,10 @@ function TitleBarTimer({ userData, showTabTimer }) {
 }
 
 const VALID_INVENTORY_CATEGORIES = new Set([
-  'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive', 
-  'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special', 
-  'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower', 
-  'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie', 
+  'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive',
+  'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special',
+  'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower',
+  'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie',
   'Drug', 'Energy Drink'
 ]);
 
@@ -160,7 +159,7 @@ const getRequiredCategories = (itemsData) => {
   if (!itemsData) return [];
   const categories = new Set();
   const trackedIds = Object.values(COUNTRY_MAP).flat();
-  
+
   trackedIds.forEach(id => {
     const item = itemsData[id];
     if (item && item.type) {
@@ -170,7 +169,7 @@ const getRequiredCategories = (itemsData) => {
       }
     }
   });
-  
+
   return Array.from(categories);
 };
 
@@ -224,7 +223,7 @@ function ChainWatcherBanner({ factionData, apiKey, onOpenInTorn }) {
       const target = targetsList.find(t => {
         const state = t.status?.state || '';
         const desc = t.status?.description || '';
-        
+
         return state === 'Okay' && desc === 'Okay';
       });
 
@@ -268,11 +267,11 @@ function ChainWatcherBanner({ factionData, apiKey, onOpenInTorn }) {
   }
 
   return (
-    <div 
-      className="chain-watcher-banner" 
+    <div
+      className="chain-watcher-banner"
       onClick={handleClick}
-      style={{ 
-        backgroundColor: bannerColor, 
+      style={{
+        backgroundColor: bannerColor,
         boxShadow: glowColor !== 'transparent' ? `0 0 8px ${glowColor}` : 'none',
         cursor: isFetching ? 'wait' : 'pointer',
         opacity: isFetching ? 0.7 : 1
@@ -545,7 +544,7 @@ function App() {
             try {
               const { data } = JSON.parse(cachedItemsRaw);
               items = data;
-            } catch (e) {}
+            } catch (e) { }
           }
         }
         if (!items) {
@@ -553,7 +552,7 @@ function App() {
           if (items) {
             try {
               localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
-            } catch (e) {}
+            } catch (e) { }
           }
         }
         if (items) {
@@ -829,7 +828,7 @@ function App() {
     // 1. Base capacity check based on method or property setup
     const method = data.travel?.method || "";
     const base15Methods = ["Airstrip", "Private", "Business", "Pilot", "WLT Block"];
-    let total = 5;
+    let total = 10;
 
     // WLT Stock benefit check
     const hasWLT = (data.stock_perks || []).some(perk => perk.toLowerCase().includes("wlt block"));
@@ -840,7 +839,7 @@ function App() {
     );
 
     if (base15Methods.includes(method) || hasAirstripPI || hasWLT) {
-      total = 15;
+      total = 20;
     }
 
     // 2. Aggregate perks from categorized selections (faction_perks, job_perks, etc.)
@@ -949,7 +948,7 @@ function App() {
   });
 
   return (
-    <div 
+    <div
       className={isMobile ? 'is-mobile' : ''}
       style={{
         backgroundColor: '#0f0f0f',
@@ -1106,12 +1105,12 @@ function App() {
                 <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} pollInterval={pollInterval} isActive={activeTab === 'faction'} />
               </div>
               <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
-                <TornView 
-                  userData={userData} 
+                <TornView
+                  userData={userData}
                   factionData={factionData}
                   loadFactionData={loadFactionData}
-                  apiKey={apiKey} 
-                  requestedUrl={requestedUrl} 
+                  apiKey={apiKey}
+                  requestedUrl={requestedUrl}
                   setRequestedUrl={setRequestedUrl}
                   targetCountry={targetCountry}
                   setTargetCountry={setTargetCountry}
@@ -1169,22 +1168,22 @@ function App() {
           >
             <div style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
               <span>Dashboard</span>
             </div>
             <div style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               <span>Faction War</span>
             </div>
             <div style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
               <span>Overseas</span>
             </div>
