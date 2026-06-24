@@ -692,7 +692,7 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
   );
 };
 
-const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval = 30 }) => {
+const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval = 30, isActive }) => {
   // Derive war state from factionData (safe to do before the guard — factionData may be null)
   const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
   const activeWars = Object.values(rankedWars);
@@ -893,15 +893,16 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
 
   // Load targets if starting on the targets tab and they aren't loaded yet
   useEffect(() => {
+    if (!isActive) return;
     if (activeSubTab === 'targets' && !enemyFactionData && !isLoadingTargets && firstEnemyFactionId && apiKey) {
       doFetchTargets();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
+  }, [isActive, activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
 
   // Auto-poll background status refresh while on the targets tab
   useEffect(() => {
-    if (activeSubTab !== 'targets' || !enemyFactionData || !firstEnemyFactionId || !apiKey || pollInterval <= 0) return;
+    if (!isActive || activeSubTab !== 'targets' || !enemyFactionData || !firstEnemyFactionId || !apiKey || pollInterval <= 0) return;
     const intervalMs = Math.max(10000, pollInterval * 1000);
     const id = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -909,7 +910,15 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
       }
     }, intervalMs);
     return () => clearInterval(id);
-  }, [activeSubTab, enemyFactionData, firstEnemyFactionId, apiKey, pollInterval, doBackgroundStatusRefresh]);
+  }, [isActive, activeSubTab, enemyFactionData, firstEnemyFactionId, apiKey, pollInterval, doBackgroundStatusRefresh]);
+
+  // Trigger a single background status update on tab reactivation if targets are already loaded
+  useEffect(() => {
+    if (isActive && activeSubTab === 'targets' && enemyFactionData && !isLoadingTargets && !isBackgroundRefreshing && firstEnemyFactionId && apiKey) {
+      doBackgroundStatusRefresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, activeSubTab]);
 
   // Load suspected stats from localStorage when target faction ID changes
   useEffect(() => {
