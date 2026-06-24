@@ -115,9 +115,9 @@ function TitleBarTimer({ userData, showTabTimer }) {
           state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
             state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
       border: `1px solid ${state === 'Traveling' ? '#3498db' :
-          state === 'Hospital' ? '#e74c3c' :
-            state === 'Jail' ? '#f39c12' :
-              state === 'Racing' ? '#9b59b6' : '#888'
+        state === 'Hospital' ? '#e74c3c' :
+          state === 'Jail' ? '#f39c12' :
+            state === 'Racing' ? '#9b59b6' : '#888'
         }`,
       borderRadius: '4px',
       fontSize: '0.8rem',
@@ -839,7 +839,7 @@ function App() {
     );
 
     if (base15Methods.includes(method) || hasAirstripPI || hasWLT) {
-      total = 20;
+      total = 15;
     }
 
     // 2. Aggregate perks from categorized selections (faction_perks, job_perks, etc.)
