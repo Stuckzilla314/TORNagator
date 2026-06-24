@@ -7,7 +7,7 @@ import {
   IconCoin, IconWarning, IconChevronRight,
   IconChevronLeft, IconRefresh,
   IconTarget, IconPeace, IconSwords,
-  IconBarChart, IconClock, IconPill, IconMuscle, IconLink,
+  IconBarChart, IconClock, IconPill, IconMuscle, IconLink, IconPin,
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
@@ -2935,7 +2935,7 @@ const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = fa
  */
 // MemberSidebarRow supports controlled open mode (isOpen + onToggle) so the
 // parent can persist expanded state across data syncs.
-const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle }) => {
+const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle, isPinned, onTogglePin }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -3055,6 +3055,27 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
               }}
             />
           )}
+          <span
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onTogglePin) onTogglePin(member.id);
+            }}
+            className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+            style={{
+              padding: '2px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
+              marginLeft: '4px',
+              verticalAlign: 'middle',
+            }}
+            title={isPinned ? "Unpin Target" : "Pin Target"}
+          >
+            <IconPin size={11} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+          </span>
 
           <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
             Lvl {member.level}
@@ -3437,6 +3458,53 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
 
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tornagator_pinned_targets');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.error('[TORNagator] Failed to parse pinned targets from localStorage', e);
+      return {};
+    }
+  });
+
+  const handleTogglePin = useCallback((memberId) => {
+    setPinnedIds(prev => {
+      const updated = { ...prev, [memberId]: !prev[memberId] };
+      if (!updated[memberId]) {
+        delete updated[memberId];
+      }
+      try {
+        localStorage.setItem('tornagator_pinned_targets', JSON.stringify(updated));
+      } catch (e) {
+        console.error('[TORNagator] Failed to save pinned targets to localStorage', e);
+      }
+      return updated;
+    });
+  }, []);
+
+  // Sync pinned targets when switching to the TORN tab or storage changes
+  useEffect(() => {
+    if (isActive) {
+      try {
+        const stored = localStorage.getItem('tornagator_pinned_targets');
+        setPinnedIds(stored ? JSON.parse(stored) : {});
+      } catch (e) {}
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'tornagator_pinned_targets') {
+        try {
+          setPinnedIds(e.newValue ? JSON.parse(e.newValue) : {});
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Stable maps (useRef) that track open/closed state for sidebar sections and
   // individual member rows across data syncs.  We use refs (not state) so that
   // updating them never triggers a re-render — the open state is read directly
@@ -3562,13 +3630,19 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       return true;
     });
 
-    const groups = {
-      okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
-      jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
-      other: { label: '✈️ Other', color: '#3498db', members: [] },
-    };
+    // Separate pinned and unpinned members
+    const pinnedMembers = filteredMembers.filter(m => pinnedIds[m.id]);
+    const unpinnedMembers = filteredMembers.filter(m => !pinnedIds[m.id]);
 
-    filteredMembers.forEach(m => {
+    const groups = {};
+    if (pinnedMembers.length > 0) {
+      groups.pinned = { label: '📌 Pinned Targets', color: '#f1c40f', members: pinnedMembers };
+    }
+    groups.okay = { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] };
+    groups.jail = { label: '🔒 In Jail', color: '#f39c12', members: [] };
+    groups.other = { label: '✈️ Other', color: '#3498db', members: [] };
+
+    unpinnedMembers.forEach(m => {
       const state = m.status?.state || '';
       if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
       else if (state === 'Jail') groups.jail.members.push(m);
@@ -3578,7 +3652,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     Object.values(groups).forEach(g => applySortOrder(g.members));
 
     return groups;
-  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter]);
+  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter, pinnedIds]);
 
   // Sync cache state when cacheKey changes
   useEffect(() => {
@@ -5186,7 +5260,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               // Seed default section-open state on first render
                               Object.entries(sortedAndFilteredGroups).forEach(([key]) => {
                                 if (sectionOpenState.current[key] === undefined) {
-                                  sectionOpenState.current[key] = key === 'okay';
+                                  sectionOpenState.current[key] = key === 'okay' || key === 'pinned';
                                 }
                               });
 
@@ -5202,6 +5276,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                     memberOpenState.current[member.id] = !memberOpenState.current[member.id];
                                     bumpRender();
                                   }}
+                                  isPinned={!!pinnedIds[member.id]}
+                                  onTogglePin={handleTogglePin}
                                 />
                               ));
 
