@@ -951,7 +951,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
         window._tornagator_cargo_capacity = ${cargoCapacity || 5};
         window._tornagator_sorted_names = null;
-        window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
         window._tornagator_tab_id = ${JSON.stringify(tabId)};
@@ -1172,7 +1171,27 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     if (payload.type === 'fetch') {
       const { id, url } = payload;
       try {
-        const response = await fetch(url);
+        let finalUrl = url;
+        // Securely inject API key on the host side if targeting Torn API
+        if (finalUrl.startsWith('https://api.torn.com/')) {
+          if (!apiKey) {
+            throw new Error('API Key missing');
+          }
+          try {
+            const urlObj = new URL(finalUrl);
+            if (!urlObj.searchParams.has('key')) {
+              urlObj.searchParams.append('key', apiKey);
+              finalUrl = urlObj.toString();
+            }
+          } catch (e) {
+            // fallback if URL parsing fails
+            if (!finalUrl.includes('key=')) {
+              finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'key=' + apiKey;
+            }
+          }
+        }
+
+        const response = await fetch(finalUrl);
         const data = await response.json();
         const responseScript = `
           (() => {
@@ -1209,7 +1228,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         }
       }
     }
-  }, [tabId]);
+  }, [tabId, apiKey]);
 
   useEffect(() => {
     if (!isCapacitor) return;
@@ -2141,13 +2160,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const body = panel.querySelector('#tornagator-scan-body');
                 const listContainer = panel.querySelector('#scan-results-list');
-                const apiKey = window._tornagator_api_key;
                 const userData = window._tornagator_user_data || {};
-
-                if (!apiKey) {
-                  body.innerHTML = '<div style="color:#e74c3c; text-align:center; padding:15px 0; font-size:11px; font-weight:bold;">API Key not found inside webview. Please reload or check your settings.</div>';
-                  return;
-                }
 
                 const initialSellers = [];
                 currentRows.forEach(item => {
@@ -2244,7 +2257,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const processSeller = async (seller, rowEl) => {
                   try {
-                    const data = await hostFetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
+                    const data = await hostFetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats');
 
                     if (data.error) {
                       throw new Error(data.error.error || 'API Error');
@@ -2547,7 +2560,6 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
         window._tornagator_cargo_capacity = ${cargoCapacity || 5};
         window._tornagator_sorted_names = null;
-        window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
         window._tornagator_tab_id = ${JSON.stringify(tabId)};
