@@ -708,7 +708,13 @@ function App() {
     transition: 'color 0.2s ease',
     fontSize: '0.68rem',
     fontWeight: activeTab === tab ? 'bold' : 'normal',
-    padding: '2px 0'
+    padding: '2px 0',
+    background: 'none',
+    borderTop: 'none',
+    borderRight: 'none',
+    borderBottom: 'none',
+    borderLeft: 'none',
+    fontFamily: 'inherit'
   });
 
   return (
@@ -918,39 +924,39 @@ function App() {
               zIndex: 10
             }}
           >
-            <div style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
+            <button style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                 <polyline points="9 22 9 12 15 12 15 22"/>
               </svg>
               <span>Dashboard</span>
-            </div>
-            <div style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
+            </button>
+            <button style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
               <span>Faction War</span>
-            </div>
-            <div style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
+            </button>
+            <button style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
               <span>Overseas</span>
-            </div>
-            <div style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
+            </button>
+            <button style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
               <IconGamepad size={20} color={activeTab === 'torn' ? '#3498db' : '#777'} />
               <span>TORN</span>
-            </div>
-            <div style={mobileNavItemStyle('apilogs')} onClick={() => setActiveTab('apilogs')}>
+            </button>
+            <button style={mobileNavItemStyle('apilogs')} onClick={() => setActiveTab('apilogs')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                 <line x1="8" y1="21" x2="16" y2="21" />
                 <line x1="12" y1="17" x2="12" y2="21" />
               </svg>
               <span>API Monitor</span>
-            </div>
+            </button>
           </nav>
         )}
       </div>
