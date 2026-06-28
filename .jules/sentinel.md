@@ -10,3 +10,9 @@
 **Vulnerability:** User-provided URLs in the "New Tab" page (for direct navigation and adding favorites) were not validated for unsafe URL schemes before being passed to `onNavigate`, which eventually sets the `src` attribute of the Electron `<webview>`.
 **Learning:** Even internal UI components like custom "New Tab" pages that accept URL inputs must validate the URL scheme when running in an environment where setting iframe/webview sources to `javascript:` or `data:` is dangerous (like Electron with nodeIntegration).
 **Prevention:** Apply the same strict URL scheme validation (rejecting `javascript:`, `data:`, `vbscript:`) to all user inputs that resolve to navigation targets, not just external or saved configurations like Custom Quick Actions.
+## 2024-05-18 - SSRF and Credential Leak in Webview IPC
+**Vulnerability:** Untrusted guest webview could emit an IPC message to `handleBridgeMessage` commanding the host app to `fetch` an arbitrary URL while blindly appending the user's `apiKey` to the request, resulting in Server-Side Request Forgery (SSRF) and leaking the API key to external servers. The raw `apiKey` was also directly injected into the guest context.
+**Learning:** In electron applications combining `webview` with IPC bridges, do not inject secrets into the guest context directly. Always perform authenticated fetch requests on the host context on behalf of the guest, and strictly validate the target URL.
+**Prevention:**
+1. Use boolean flags (e.g. `has_api_key = !!apiKey`) instead of injecting the actual API key string into the guest.
+2. In the host IPC handler (`handleBridgeMessage`), explicitly validate URLs (`url.startsWith('https://api.torn.com/')`) before executing a `fetch` on behalf of the guest.
