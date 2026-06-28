@@ -5,3 +5,7 @@
 ## 2024-05-24 - Semantic Button Usage for Interactive UI Elements
 **Learning:** In this application, several interactive UI components such as navigation tabs and toggle switches were built using semantic-less `div` elements with `onClick` handlers. This creates poor accessibility as these elements cannot be natively focused via keyboard navigation and do not expose their interactive role to screen readers without extensive ARIA roles and keyboard event listeners. Replacing them with native `<button>` tags instantly fixes keyboard tab-order and focus management. Resetting button styles (`background: none`, `border: none`, `fontFamily: inherit`, etc.) allows the visual design to remain identical to the previous `div` layout. Additionally, toggle buttons should use the `aria-pressed` attribute to communicate their state to assistive technologies.
 **Action:** Always prefer native `<button>` elements for custom interactive tabs, toggles, and controls instead of `div` or `span`. If a design requires specific styling, strip the native button styling via CSS. Add `aria-pressed` for toggles.
+
+## 2024-05-25 - ARIA Pressed for Toggles
+**Learning:** When refactoring non-semantic `div` toggles to native `<button>` elements, it is vital to apply `aria-pressed={state}` rather than just adding the `<button>` tag, so that assistive technologies can read out whether the toggle is currently active or inactive.
+**Action:** Always bind the state variable to `aria-pressed` when implementing toggle buttons.

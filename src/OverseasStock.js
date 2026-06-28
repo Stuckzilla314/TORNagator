@@ -942,7 +942,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                       ${item.market_value.toLocaleString()}
                     </div>
                   </div>
-                  <div onClick={(e) => { e.stopPropagation(); toggleShowTotalProfit(); }} style={{ cursor: 'pointer' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleShowTotalProfit(); }}
+                    style={{ cursor: 'pointer', background: 'none', borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: 'none', fontFamily: 'inherit', padding: 0, textAlign: 'inherit' }}
+                    aria-pressed={showTotalProfit}
+                  >
                     <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>
                       {showTotalProfit ? 'Bag Profit' : 'Profit (ea)'}
                     </div>
@@ -953,7 +957,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                         `$${item.profitPerItem.toLocaleString()} ea`
                       )}
                     </div>
-                  </div>
+                  </button>
                   <div>
                     <div style={{ fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Profit / hr</div>
                     <div style={{ fontSize: '0.8rem', color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold', marginTop: '1px' }}>
@@ -1107,21 +1111,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                       ${(item.market_value || 0).toLocaleString()}
                     </td>
                     <td 
-                      style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0', cursor: 'pointer' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleShowTotalProfit();
-                      }}
+                      style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0' }}
                     >
-                      {showTotalProfit ? (
-                        <div style={{ fontWeight: 'bold' }}>
-                          ${item.bagProfit.toLocaleString()}
-                        </div>
-                      ) : (
-                        <div style={{ fontWeight: 'bold' }}>
-                          ${item.profitPerItem.toLocaleString()} ea
-                        </div>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleShowTotalProfit();
+                        }}
+                        style={{ cursor: 'pointer', background: 'none', borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: 'none', fontFamily: 'inherit', padding: 0, textAlign: 'inherit', color: 'inherit', width: '100%', height: '100%' }}
+                        aria-pressed={showTotalProfit}
+                      >
+                        {showTotalProfit ? (
+                          <div style={{ fontWeight: 'bold' }}>
+                            ${item.bagProfit.toLocaleString()}
+                          </div>
+                        ) : (
+                          <div style={{ fontWeight: 'bold' }}>
+                            ${item.profitPerItem.toLocaleString()} ea
+                          </div>
+                        )}
+                      </button>
                     </td>
                     <td style={{ ...cellStyle, color: item.bagProfitPerHour > 0 ? '#2ecc71' : '#e0e0e0', fontWeight: 'bold' }}>
                       ${Math.round(item.bagProfitPerHour).toLocaleString()}
