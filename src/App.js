@@ -1123,6 +1123,7 @@ function App() {
                   showNavControls={showNavControls}
                   isActive={activeTab === 'torn'}
                   baldrHighestStat={baldrHighestStat}
+                  setBaldrHighestStat={setBaldrHighestStat}
                 />
               </div>
               <div style={{ display: activeTab === 'apilogs' ? 'block' : 'none' }}>

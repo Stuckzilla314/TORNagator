@@ -899,7 +899,7 @@ const STATS_REDIR_SCRIPT = `
   })()
 `;
 
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -1208,8 +1208,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           }
         }
       }
+    } else if (payload.type === 'set_baldr_primary') {
+      if (setBaldrHighestStat) {
+        setBaldrHighestStat(payload.stat);
+      }
     }
-  }, [tabId]);
+  }, [tabId, setBaldrHighestStat]);
 
   useEffect(() => {
     if (!isCapacitor) return;
@@ -1929,35 +1933,45 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   const titleEl = stat.el.parentNode.querySelector('[class^="title-"]');
                   if (titleEl) titleEl.style.color = highlightColor;
                   
-                  // Add a star next to the primary stat title
+                  // Add a star next to the stat title
                   const starBadgeId = 'tornagator-primary-star-' + key;
                   let starBadge = document.getElementById(starBadgeId);
+                  const isPrimary = (key === primaryKey);
                   
-                  if (key === primaryKey) {
-                    if (!starBadge) {
-                      starBadge = document.createElement('span');
-                      starBadge.id = starBadgeId;
-                      starBadge.textContent = '★ ';
-                      starBadge.style.color = '#f39c12'; // Gold star
-                      starBadge.style.fontSize = '12px';
-                      starBadge.style.marginRight = '4px';
-                      starBadge.style.verticalAlign = 'middle';
-                      
-                      // Try to find the label element (the sibling of stat.el)
-                      let labelEl = Array.from(stat.el.parentNode.children).find(el => el !== stat.el && !el.id.includes('tornagator'));
-                      
-                      if (labelEl) {
-                        labelEl.prepend(starBadge);
-                      } else {
-                        // Fallback: prepend to the parent container
-                        stat.el.parentNode.prepend(starBadge);
-                      }
-                    }
-                  } else {
-                    if (starBadge) {
-                      starBadge.remove();
+                  if (!starBadge) {
+                    starBadge = document.createElement('span');
+                    starBadge.id = starBadgeId;
+                    starBadge.style.fontSize = '12px';
+                    starBadge.style.marginRight = '4px';
+                    starBadge.style.verticalAlign = 'middle';
+                    starBadge.style.cursor = 'pointer';
+                    starBadge.title = isPrimary ? 'Primary Stat (Baldr Ratio)' : 'Click to set as Primary Stat';
+                    
+                    starBadge.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('TORNAGATOR_BRIDGE:' + JSON.stringify({
+                        tabId: '${tabId}',
+                        type: 'set_baldr_primary',
+                        stat: key
+                      }));
+                    });
+                    
+                    // Try to find the label element (the sibling of stat.el)
+                    let labelEl = Array.from(stat.el.parentNode.children).find(el => el !== stat.el && !el.id.includes('tornagator'));
+                    
+                    if (labelEl) {
+                      labelEl.prepend(starBadge);
+                    } else {
+                      // Fallback: prepend to the parent container
+                      stat.el.parentNode.prepend(starBadge);
                     }
                   }
+                  
+                  // Update star styling
+                  starBadge.textContent = '★ ';
+                  starBadge.style.color = isPrimary ? '#f39c12' : '#666'; // Gold or Gray
+                  starBadge.style.textShadow = isPrimary ? '0 0 2px rgba(243,156,18,0.5)' : 'none';
                 });
               }
             } catch (err) {
@@ -3645,7 +3659,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered TornView component.
  */
-const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat }) => {
+const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat, setBaldrHighestStat }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -4534,6 +4548,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 userData={userData}
                 factionData={factionData}
                 baldrHighestStat={baldrHighestStat}
+                setBaldrHighestStat={setBaldrHighestStat}
               />
             ))}
           </div>
