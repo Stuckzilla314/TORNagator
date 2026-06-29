@@ -1902,14 +1902,20 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   // Render badge
                   if (diff > 0) {
                     badge.textContent = '+' + formatDiff(diff);
+                    badge.style.display = 'inline-block';
                     badge.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
                     badge.style.color = '#888';
                     badge.style.border = '1px solid #444';
                   } else {
-                    badge.textContent = key === primaryKey ? '★ Main' : '✓';
-                    badge.style.backgroundColor = 'rgba(115, 176, 5, 0.1)';
-                    badge.style.color = '#73B005';
-                    badge.style.border = '1px solid #73B005';
+                    if (key === primaryKey) {
+                      badge.textContent = '★ Main';
+                      badge.style.display = 'inline-block';
+                      badge.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                      badge.style.color = '#73B005';
+                      badge.style.border = '1px solid #444';
+                    } else {
+                      badge.style.display = 'none';
+                    }
                   }
                 });
               }
