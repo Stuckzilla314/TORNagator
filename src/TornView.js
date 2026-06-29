@@ -1917,6 +1917,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                       badge.style.display = 'none';
                     }
                   }
+                  
+                  // Color the stat elements
+                  let highlightColor = '';
+                  if (diff > 0) {
+                    const percentAway = diff / stat.target;
+                    if (percentAway < 0.1) {
+                      highlightColor = '#73B005'; // Green
+                    } else if (percentAway < 0.3) {
+                      highlightColor = '#e67e22'; // Yellow
+                    } else {
+                      highlightColor = '#e74c3c'; // Red
+                    }
+                  } else {
+                    highlightColor = ''; // Default
+                  }
+                  
+                  stat.el.style.color = highlightColor;
+                  const titleEl = stat.el.parentNode.querySelector('[class^="title-"]');
+                  if (titleEl) titleEl.style.color = highlightColor;
                 });
               }
             } catch (err) {
