@@ -4088,14 +4088,24 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
             {!sidebarCollapsed && (
               <div className={`torn-sidebar-inner ${sidebarTab === 'war' ? 'war-tab-active' : ''}`}>
                 {/* Player header */}
-                <div
+                <button
+                  type="button"
                   onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
                   className="torn-sidebar-header"
+                  aria-expanded={!isHeaderCollapsed}
                   style={{
+                    background: 'none',
+                    border: 'none',
+                    fontFamily: 'inherit',
+                    fontSize: 'inherit',
+                    color: 'inherit',
+                    width: '100%',
+                    textAlign: 'left',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    padding: 0,
                     paddingBottom: isHeaderCollapsed ? '8px' : '12px',
                     userSelect: 'none'
                   }}
@@ -4146,7 +4156,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                   }}>
                     ▶
                   </span>
-                </div>
+                </button>
 
                 {/* Sidebar Tabs */}
                 <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '6px', marginBottom: '4px' }}>
