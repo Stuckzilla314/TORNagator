@@ -1826,37 +1826,48 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   low1Key = 'defense';
                   low2Key = 'dexterity';
                 } else if (primaryKey === 'dexterity') {
-                  secondaryKey = 'speed';
-                  low1Key = 'defense';
-                  low2Key = 'strength';
+                  secondaryKey = 'defense';
+                  low1Key = 'strength';
+                  low2Key = 'speed';
                 }
 
-                // Find primary value
-                let primaryVal = strVal;
-                if (primaryKey === 'defense') primaryVal = defVal;
-                else if (primaryKey === 'speed') primaryVal = speVal;
-                else if (primaryKey === 'dexterity') primaryVal = dexVal;
+                const ratios = {};
+                ratios[primaryKey] = 30.86;
+                ratios[secondaryKey] = 24.69;
+                ratios[low1Key] = 22.22;
+                ratios[low2Key] = 22.22;
 
-                // Calculate targets
+                // Implied totals for each stat
+                const impliedTotals = {
+                  strength: strVal / (ratios.strength / 100),
+                  defense: defVal / (ratios.defense / 100),
+                  speed: speVal / (ratios.speed / 100),
+                  dexterity: dexVal / (ratios.dexterity / 100),
+                };
+
+                // Find max implied total
+                let maxTotal = 0;
+                let boundingStatKey = 'strength';
+                for (const key of Object.keys(impliedTotals)) {
+                  if (impliedTotals[key] > maxTotal) {
+                    maxTotal = impliedTotals[key];
+                    boundingStatKey = key;
+                  }
+                }
+
+                // Calculate targets based on the max implied total
                 const targets = {};
-                targets[primaryKey] = primaryVal;
-                targets[secondaryKey] = Math.round(primaryVal * (24.69 / 30.86));
-                targets[low1Key] = Math.round(primaryVal * (22.22 / 30.86));
-                targets[low2Key] = Math.round(primaryVal * (22.22 / 30.86));
+                targets.strength = Math.ceil(maxTotal * (ratios.strength / 100));
+                targets.defense = Math.ceil(maxTotal * (ratios.defense / 100));
+                targets.speed = Math.ceil(maxTotal * (ratios.speed / 100));
+                targets.dexterity = Math.ceil(maxTotal * (ratios.dexterity / 100));
 
-                // Helper to calculate trains needed using difference equation
-                const calculateTrainsNeeded = (current, target, dotVal, factionPerkVal) => {
-                  if (target <= current) return 0;
-                  if (dotVal <= 0) return 999999999;
-                  
-                  const mod = 1 + (factionPerkVal / 100);
-                  const A = mod * dotVal * energyPerTrain * (3.48e-7 * Math.log(currentHappy + 250) + 3.09e-6);
-                  const B = mod * dotVal * energyPerTrain * (6.83e-5 * (currentHappy + 250) - 0.03);
-                  
-                  if (A <= 0) return 0;
-                  
-                  const trains = Math.ceil((Math.log(target + B/A) - Math.log(current + B/A)) / Math.log(1 + A));
-                  return isNaN(trains) || trains < 0 ? 0 : trains;
+                // Helper to format stat differences
+                const formatDiff = (num) => {
+                  if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'b';
+                  if (num >= 1000000) return (num / 1000000).toFixed(2) + 'm';
+                  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+                  return num.toString();
                 };
 
                 const statMap = {
@@ -1868,7 +1879,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 Object.keys(statMap).forEach(key => {
                   const stat = statMap[key];
-                  const trains = calculateTrainsNeeded(stat.current, stat.target, stat.dot, stat.perk);
+                  const diff = stat.target - stat.current;
                   
                   // Injected badge ID
                   const badgeId = 'tornagator-gym-trains-' + key;
@@ -1889,20 +1900,13 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   }
                   
                   // Render badge
-                  if (trains > 0) {
-                    if (stat.dot <= 0) {
-                      badge.textContent = 'Unlock gym';
-                      badge.style.backgroundColor = 'rgba(231, 76, 60, 0.1)';
-                      badge.style.color = '#e74c3c';
-                      badge.style.border = '1px solid rgba(231, 76, 60, 0.3)';
-                    } else {
-                      badge.textContent = '+' + trains.toLocaleString() + ' t';
-                      badge.style.backgroundColor = 'rgba(230, 126, 34, 0.15)';
-                      badge.style.color = '#e67e22';
-                      badge.style.border = '1px solid rgba(230, 126, 34, 0.3)';
-                    }
+                  if (diff > 0) {
+                    badge.textContent = '+' + formatDiff(diff);
+                    badge.style.backgroundColor = 'rgba(230, 126, 34, 0.15)';
+                    badge.style.color = '#e67e22';
+                    badge.style.border = '1px solid rgba(230, 126, 34, 0.3)';
                   } else {
-                    badge.textContent = key === primaryKey ? 'Target' : '✓';
+                    badge.textContent = key === primaryKey ? '★ Main' : '✓';
                     badge.style.backgroundColor = 'rgba(46, 204, 113, 0.15)';
                     badge.style.color = '#2ecc71';
                     badge.style.border = '1px solid rgba(46, 204, 113, 0.3)';
