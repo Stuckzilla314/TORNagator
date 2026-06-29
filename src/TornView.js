@@ -1907,15 +1907,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     badge.style.color = '#888';
                     badge.style.border = '1px solid #444';
                   } else {
-                    if (key === primaryKey) {
-                      badge.textContent = '★ Main';
-                      badge.style.display = 'inline-block';
-                      badge.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
-                      badge.style.color = '#73B005';
-                      badge.style.border = '1px solid #444';
-                    } else {
-                      badge.style.display = 'none';
-                    }
+                    badge.style.display = 'none';
                   }
                   
                   // Color the stat elements
@@ -1936,6 +1928,36 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   stat.el.style.color = highlightColor;
                   const titleEl = stat.el.parentNode.querySelector('[class^="title-"]');
                   if (titleEl) titleEl.style.color = highlightColor;
+                  
+                  // Add a star next to the primary stat title
+                  const starBadgeId = 'tornagator-primary-star-' + key;
+                  let starBadge = document.getElementById(starBadgeId);
+                  
+                  if (key === primaryKey) {
+                    if (!starBadge) {
+                      starBadge = document.createElement('span');
+                      starBadge.id = starBadgeId;
+                      starBadge.textContent = '★ ';
+                      starBadge.style.color = '#f39c12'; // Gold star
+                      starBadge.style.fontSize = '12px';
+                      starBadge.style.marginRight = '4px';
+                      starBadge.style.verticalAlign = 'middle';
+                      
+                      // Try to find the label element (the sibling of stat.el)
+                      let labelEl = Array.from(stat.el.parentNode.children).find(el => el !== stat.el && !el.id.includes('tornagator'));
+                      
+                      if (labelEl) {
+                        labelEl.prepend(starBadge);
+                      } else {
+                        // Fallback: prepend to the parent container
+                        stat.el.parentNode.prepend(starBadge);
+                      }
+                    }
+                  } else {
+                    if (starBadge) {
+                      starBadge.remove();
+                    }
+                  }
                 });
               }
             } catch (err) {
