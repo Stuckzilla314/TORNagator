@@ -1889,10 +1889,10 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                     badge.id = badgeId;
                     badge.style.display = 'inline-block';
                     badge.style.marginLeft = '8px';
-                    badge.style.fontSize = '10px';
-                    badge.style.fontWeight = 'bold';
-                    badge.style.padding = '2px 6px';
-                    badge.style.borderRadius = '10px';
+                    badge.style.fontSize = '11px';
+                    badge.style.letterSpacing = '0.5px';
+                    badge.style.padding = '2px 5px';
+                    badge.style.borderRadius = '3px';
                     badge.style.verticalAlign = 'middle';
                     
                     // Append right after the span value element
@@ -1902,14 +1902,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   // Render badge
                   if (diff > 0) {
                     badge.textContent = '+' + formatDiff(diff);
-                    badge.style.backgroundColor = 'rgba(230, 126, 34, 0.15)';
-                    badge.style.color = '#e67e22';
-                    badge.style.border = '1px solid rgba(230, 126, 34, 0.3)';
+                    badge.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                    badge.style.color = '#888';
+                    badge.style.border = '1px solid #444';
                   } else {
                     badge.textContent = key === primaryKey ? '★ Main' : '✓';
-                    badge.style.backgroundColor = 'rgba(46, 204, 113, 0.15)';
-                    badge.style.color = '#2ecc71';
-                    badge.style.border = '1px solid rgba(46, 204, 113, 0.3)';
+                    badge.style.backgroundColor = 'rgba(115, 176, 5, 0.1)';
+                    badge.style.color = '#73B005';
+                    badge.style.border = '1px solid #73B005';
                   }
                 });
               }
