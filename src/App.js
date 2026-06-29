@@ -463,6 +463,8 @@ function App() {
   const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
   const [chainWatcherEnabled, setChainWatcherEnabled] = useLocalStorage('chain_watcher_enabled', false);
   const [chainWatcherInterval, setChainWatcherInterval] = useLocalStorage('chain_watcher_interval', 10);
+  const [baldrHighestStat, setBaldrHighestStat] = useLocalStorage('tornagator_baldr_highest_stat', 'strength');
+
 
   const [isMobile, setIsMobile] = useState(isCapacitor || window.innerWidth <= 768);
 
@@ -1039,6 +1041,8 @@ function App() {
               setChainWatcherEnabled={setChainWatcherEnabled}
               chainWatcherInterval={chainWatcherInterval}
               setChainWatcherInterval={setChainWatcherInterval}
+              baldrHighestStat={baldrHighestStat}
+              setBaldrHighestStat={setBaldrHighestStat}
             />
           )}
         </div>
@@ -1118,6 +1122,7 @@ function App() {
                   cargoCapacity={cargoCapacity}
                   showNavControls={showNavControls}
                   isActive={activeTab === 'torn'}
+                  baldrHighestStat={baldrHighestStat}
                 />
               </div>
               <div style={{ display: activeTab === 'apilogs' ? 'block' : 'none' }}>

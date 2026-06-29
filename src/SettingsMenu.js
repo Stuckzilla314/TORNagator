@@ -47,7 +47,9 @@ const SettingsMenu = ({
   chainWatcherEnabled,
   setChainWatcherEnabled,
   chainWatcherInterval,
-  setChainWatcherInterval
+  setChainWatcherInterval,
+  baldrHighestStat,
+  setBaldrHighestStat
 }) => {  
 
   const [permissionStatus, setPermissionStatus] = useState('prompt');
@@ -279,6 +281,56 @@ const SettingsMenu = ({
           </div>
         </label>
       )}
+
+      <label 
+        style={{
+          padding: '8px 12px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: '4px',
+          backgroundColor: 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <span style={{ fontSize: '0.9rem' }}>Highest Stat</span>
+        <select
+          value={baldrHighestStat}
+          onChange={(e) => setBaldrHighestStat(e.target.value)}
+          style={{
+            backgroundColor: '#2b2b2b',
+            color: '#fff',
+            border: '1px solid #444',
+            borderRadius: '4px',
+            padding: '4px 26px 4px 10px',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            outline: 'none',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none',
+            backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 8px center',
+            backgroundSize: '12px',
+            transition: 'border-color 0.2s, background-color 0.2s'
+          }}
+          onMouseEnter={e => {
+            e.target.style.borderColor = '#3498db';
+            e.target.style.backgroundColor = '#333';
+          }}
+          onMouseLeave={e => {
+            e.target.style.borderColor = '#444';
+            e.target.style.backgroundColor = '#2b2b2b';
+          }}
+        >
+          <option value="strength">Strength</option>
+          <option value="defense">Defense</option>
+          <option value="speed">Speed</option>
+          <option value="dexterity">Dexterity</option>
+        </select>
+      </label>
 
       <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>

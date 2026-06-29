@@ -899,7 +899,7 @@ const STATS_REDIR_SCRIPT = `
   })()
 `;
 
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -1475,6 +1475,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           }
 
           if (isGym) {
+            console.log('[TORNagator] Overlay script isGym block executing, url:', window.location.href);
             try {
               const header = document.querySelector('.content-title');
               if (header) {
@@ -1526,14 +1527,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const hasData = (userData && userData.faction_perks !== undefined) || (factionData && factionData.upgrades !== undefined);
                 const dataStr = JSON.stringify(stats) + '_' + hasData;
                 const existing = document.getElementById('tornagator-gym-steadfast');
-                if (existing) {
-                  if (existing.dataset.stats === dataStr) {
-                    return null;
-                  }
-                  existing.remove();
-                }
+                const shouldRecreate = !existing || existing.dataset.stats !== dataStr;
 
-                if (userData || factionData) {
+                if (shouldRecreate && (userData || factionData)) {
+                  if (existing) {
+                    existing.remove();
+                  }
                   const container = document.createElement('div');
                   container.id = 'tornagator-gym-steadfast';
                   container.dataset.stats = dataStr;
@@ -1708,6 +1707,210 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               }
             } catch (err) {
               console.error('[TORNagator] Stacking warning injection error:', err);
+            }
+
+            // 3. Baldr's Gym Optimizer - Injects "trains needed" next to stat values
+            try {
+              // Re-read userData/factionData from window globals (different scope from steadfast block)
+              const baldrUserData = window._tornagator_user_data;
+              const baldrFactionData = window._tornagator_faction_data;
+
+              // Read faction steadfast perks for accurate gain multiplier
+              const baldrStats = { strength: 0, defense: 0, speed: 0, dexterity: 0 };
+              if (baldrUserData && Array.isArray(baldrUserData.faction_perks)) {
+                baldrUserData.faction_perks.forEach(function(perk) {
+                  var p = perk.toLowerCase();
+                  if (p.includes('gym gains')) {
+                    var m = p.match(/\\+\\s*([\\d.]+)\\s*%/);
+                    if (m) {
+                      var val = parseFloat(m[1]);
+                      if (p.includes('strength')) baldrStats.strength = val;
+                      else if (p.includes('defense') || p.includes('defence')) baldrStats.defense = val;
+                      else if (p.includes('speed')) baldrStats.speed = val;
+                      else if (p.includes('dexterity')) baldrStats.dexterity = val;
+                    }
+                  }
+                });
+              }
+
+              // Get current stats from DOM
+              const strEl = document.querySelector('li[class*="strength___"] span[class*="propertyValue___"]');
+              const defEl = document.querySelector('li[class*="defense___"] span[class*="propertyValue___"]');
+              const speEl = document.querySelector('li[class*="speed___"] span[class*="propertyValue___"]');
+              const dexEl = document.querySelector('li[class*="dexterity___"] span[class*="propertyValue___"]');
+
+              if (strEl && defEl && speEl && dexEl) {
+                const strVal = parseInt(strEl.textContent.replace(/,/g, ''), 10) || 0;
+                const defVal = parseInt(defEl.textContent.replace(/,/g, ''), 10) || 0;
+                const speVal = parseInt(speEl.textContent.replace(/,/g, ''), 10) || 0;
+                const dexVal = parseInt(dexEl.textContent.replace(/,/g, ''), 10) || 0;
+
+                // Detect active gym
+                const activeBtn = document.querySelector('button[class*="gymButton___"][class*="active___"]') || 
+                                  document.querySelector('[class*="gymButton___"][class*="active___"]');
+                
+                let gymName = 'Unknown';
+                let energyPerTrain = 10;
+                if (activeBtn) {
+                  const label = activeBtn.getAttribute('aria-label') || '';
+                  gymName = label.split('.')[0].trim();
+                  
+                  const energyMatch = label.match(/Energy usage\s*-\s*(\d+)/i);
+                  if (energyMatch) {
+                    energyPerTrain = parseInt(energyMatch[1], 10);
+                  }
+                }
+
+                // Gym dots table
+                const gymDotsTable = {
+                  "Premier Fitness": { str: 2.0, spe: 2.0, def: 2.0, dex: 2.0, energy: 5 },
+                  "Average Joes": { str: 2.4, spe: 2.4, def: 2.8, dex: 2.4, energy: 5 },
+                  "Woody's Workout Club": { str: 2.8, spe: 3.2, def: 3.0, dex: 2.8, energy: 5 },
+                  "Beach Bods": { str: 3.2, spe: 3.2, def: 3.2, dex: 0.0, energy: 5 },
+                  "Silver Gym": { str: 3.4, spe: 3.6, def: 3.4, dex: 3.4, energy: 5 },
+                  "Pour Femme": { str: 3.4, spe: 3.6, def: 3.6, dex: 3.8, energy: 5 },
+                  "Davies Den": { str: 3.7, spe: 0.0, def: 3.7, dex: 3.7, energy: 5 },
+                  "Global Gym": { str: 4.0, spe: 4.0, def: 4.0, dex: 4.0, energy: 5 },
+
+                  "Knuckle Heads": { str: 4.8, spe: 4.4, def: 4.0, dex: 4.2, energy: 10 },
+                  "Pioneer Fitness": { str: 4.4, spe: 4.6, def: 4.8, dex: 4.4, energy: 10 },
+                  "Anabolic Anomalies": { str: 5.0, spe: 4.6, def: 5.2, dex: 4.6, energy: 10 },
+                  "Core": { str: 5.0, spe: 5.2, def: 5.0, dex: 5.0, energy: 10 },
+                  "Racing Fitness": { str: 5.0, spe: 5.4, def: 4.8, dex: 5.2, energy: 10 },
+                  "Complete Cardio": { str: 5.5, spe: 5.8, def: 5.5, dex: 5.2, energy: 10 },
+                  "Legs, Bums and Tums": { str: 0.0, spe: 5.6, def: 5.6, dex: 5.8, energy: 10 },
+                  "Deep Burn": { str: 6.0, spe: 6.0, def: 6.0, dex: 6.0, energy: 10 },
+
+                  "Apollo Gym": { str: 6.0, spe: 6.2, def: 6.4, dex: 6.2, energy: 10 },
+                  "Gun Shop": { str: 6.6, spe: 6.4, def: 6.2, dex: 6.2, energy: 10 },
+                  "Force Training": { str: 6.4, spe: 6.6, def: 6.4, dex: 6.8, energy: 10 },
+                  "Cha Cha's": { str: 6.4, spe: 6.4, def: 6.8, dex: 7.0, energy: 10 },
+                  "Atlas": { str: 7.0, spe: 6.4, def: 6.4, dex: 6.6, energy: 10 },
+                  "Last Round": { str: 6.8, spe: 6.6, def: 7.0, dex: 6.6, energy: 10 },
+                  "The Edge": { str: 6.8, spe: 7.0, def: 7.0, dex: 6.8, energy: 10 },
+                  "George's": { str: 7.3, spe: 7.3, def: 7.3, dex: 7.3, energy: 10 },
+                  "George's Gym": { str: 7.3, spe: 7.3, def: 7.3, dex: 7.3, energy: 10 },
+
+                  "Balboa's Gym": { str: 0.0, spe: 0.0, def: 7.5, dex: 7.5, energy: 25 },
+                  "Frontline Fitness": { str: 7.5, spe: 7.5, def: 0.0, dex: 0.0, energy: 25 },
+                  "Gym 3000": { str: 8.0, spe: 0.0, def: 0.0, dex: 0.0, energy: 50 },
+                  "Mr. Isoyamas": { str: 0.0, spe: 0.0, def: 8.0, dex: 0.0, energy: 50 },
+                  "Mr. Isoyama's": { str: 0.0, spe: 0.0, def: 8.0, dex: 0.0, energy: 50 },
+                  "Total Rebound": { str: 0.0, spe: 8.0, def: 0.0, dex: 0.0, energy: 50 },
+                  "Elites": { str: 0.0, spe: 0.0, def: 0.0, dex: 8.0, energy: 50 },
+                  "The Sports Science Lab": { str: 9.0, spe: 9.0, def: 9.0, dex: 9.0, energy: 50 }
+                };
+
+                const dots = gymDotsTable[gymName] || { str: 5.5, spe: 5.8, def: 5.5, dex: 5.2, energy: energyPerTrain };
+
+                // Get current happy
+                const currentHappy = (baldrUserData && baldrUserData.happy && baldrUserData.happy.current) || 4000;
+
+                // Setup relation keys - primaryKey interpolated from React state at build time
+                const primaryKey = "${(baldrHighestStat || 'strength').toLowerCase() === 'defence' ? 'defense' : (baldrHighestStat || 'strength').toLowerCase()}";
+                
+                let secondaryKey = 'speed';
+                let low1Key = 'defense';
+                let low2Key = 'dexterity';
+
+                if (primaryKey === 'strength') {
+                  secondaryKey = 'speed';
+                  low1Key = 'defense';
+                  low2Key = 'dexterity';
+                } else if (primaryKey === 'defense') {
+                  secondaryKey = 'dexterity';
+                  low1Key = 'strength';
+                  low2Key = 'speed';
+                } else if (primaryKey === 'speed') {
+                  secondaryKey = 'strength';
+                  low1Key = 'defense';
+                  low2Key = 'dexterity';
+                } else if (primaryKey === 'dexterity') {
+                  secondaryKey = 'speed';
+                  low1Key = 'defense';
+                  low2Key = 'strength';
+                }
+
+                // Find primary value
+                let primaryVal = strVal;
+                if (primaryKey === 'defense') primaryVal = defVal;
+                else if (primaryKey === 'speed') primaryVal = speVal;
+                else if (primaryKey === 'dexterity') primaryVal = dexVal;
+
+                // Calculate targets
+                const targets = {};
+                targets[primaryKey] = primaryVal;
+                targets[secondaryKey] = Math.round(primaryVal * (24.69 / 30.86));
+                targets[low1Key] = Math.round(primaryVal * (22.22 / 30.86));
+                targets[low2Key] = Math.round(primaryVal * (22.22 / 30.86));
+
+                // Helper to calculate trains needed using difference equation
+                const calculateTrainsNeeded = (current, target, dotVal, factionPerkVal) => {
+                  if (target <= current) return 0;
+                  if (dotVal <= 0) return 999999999;
+                  
+                  const mod = 1 + (factionPerkVal / 100);
+                  const A = mod * dotVal * energyPerTrain * (3.48e-7 * Math.log(currentHappy + 250) + 3.09e-6);
+                  const B = mod * dotVal * energyPerTrain * (6.83e-5 * (currentHappy + 250) - 0.03);
+                  
+                  if (A <= 0) return 0;
+                  
+                  const trains = Math.ceil((Math.log(target + B/A) - Math.log(current + B/A)) / Math.log(1 + A));
+                  return isNaN(trains) || trains < 0 ? 0 : trains;
+                };
+
+                const statMap = {
+                  strength: { current: strVal, target: targets.strength, dot: dots.str, perk: baldrStats.strength, el: strEl },
+                  defense: { current: defVal, target: targets.defense, dot: dots.def, perk: baldrStats.defense, el: defEl },
+                  speed: { current: speVal, target: targets.speed, dot: dots.spe, perk: baldrStats.speed, el: speEl },
+                  dexterity: { current: dexVal, target: targets.dexterity, dot: dots.dex, perk: baldrStats.dexterity, el: dexEl }
+                };
+
+                Object.keys(statMap).forEach(key => {
+                  const stat = statMap[key];
+                  const trains = calculateTrainsNeeded(stat.current, stat.target, stat.dot, stat.perk);
+                  
+                  // Injected badge ID
+                  const badgeId = 'tornagator-gym-trains-' + key;
+                  let badge = document.getElementById(badgeId);
+                  if (!badge) {
+                    badge = document.createElement('span');
+                    badge.id = badgeId;
+                    badge.style.display = 'inline-block';
+                    badge.style.marginLeft = '8px';
+                    badge.style.fontSize = '10px';
+                    badge.style.fontWeight = 'bold';
+                    badge.style.padding = '2px 6px';
+                    badge.style.borderRadius = '10px';
+                    badge.style.verticalAlign = 'middle';
+                    
+                    // Append right after the span value element
+                    stat.el.parentNode.appendChild(badge);
+                  }
+                  
+                  // Render badge
+                  if (trains > 0) {
+                    if (stat.dot <= 0) {
+                      badge.textContent = 'Unlock gym';
+                      badge.style.backgroundColor = 'rgba(231, 76, 60, 0.1)';
+                      badge.style.color = '#e74c3c';
+                      badge.style.border = '1px solid rgba(231, 76, 60, 0.3)';
+                    } else {
+                      badge.textContent = '+' + trains.toLocaleString() + ' t';
+                      badge.style.backgroundColor = 'rgba(230, 126, 34, 0.15)';
+                      badge.style.color = '#e67e22';
+                      badge.style.border = '1px solid rgba(230, 126, 34, 0.3)';
+                    }
+                  } else {
+                    badge.textContent = key === primaryKey ? 'Target' : '✓';
+                    badge.style.backgroundColor = 'rgba(46, 204, 113, 0.15)';
+                    badge.style.color = '#2ecc71';
+                    badge.style.border = '1px solid rgba(46, 204, 113, 0.3)';
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('[TORNagator] Baldr Gym Optimizer injection error:', err);
             }
           }
 
@@ -2480,7 +2683,13 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
 
+        console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
+
         if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+
+        if (isGym) {
+          window._tornagator_last_injected_script = script;
+        }
 
         window.AndroidTornBridge.executeInOverlay(tabId, script);
       }, 1000);
@@ -2519,7 +2728,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
       return () => clearInterval(profitInterval);
     }
-  }, [isActive, isNewTab, userData, tabUrl, tabId]);
+  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat]);
 
   const placeholderRef = useRef(null);
 
@@ -3385,7 +3594,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered TornView component.
  */
-const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive }) => {
+const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -4273,6 +4482,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 showNavControls={showNavControls}
                 userData={userData}
                 factionData={factionData}
+                baldrHighestStat={baldrHighestStat}
               />
             ))}
           </div>
