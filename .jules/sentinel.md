@@ -10,3 +10,7 @@
 **Vulnerability:** User-provided URLs in the "New Tab" page (for direct navigation and adding favorites) were not validated for unsafe URL schemes before being passed to `onNavigate`, which eventually sets the `src` attribute of the Electron `<webview>`.
 **Learning:** Even internal UI components like custom "New Tab" pages that accept URL inputs must validate the URL scheme when running in an environment where setting iframe/webview sources to `javascript:` or `data:` is dangerous (like Electron with nodeIntegration).
 **Prevention:** Apply the same strict URL scheme validation (rejecting `javascript:`, `data:`, `vbscript:`) to all user inputs that resolve to navigation targets, not just external or saved configurations like Custom Quick Actions.
+## 2026-06-25 - [CRITICAL] Prevent Server-Side Request Forgery via IPC Bridge
+**Vulnerability:** The custom IPC bridge (`TORNAGATOR_BRIDGE`) accepted an arbitrary `url` from the untrusted `<webview>` guest and executed a `fetch(url)` on the host React process, passing the response back to the guest.
+**Learning:** This is a classic Server-Side Request Forgery (SSRF) vulnerability. An untrusted guest context could force the host process to make arbitrary HTTP requests to internal networks, loopback interfaces, or third-party services using the host's credentials or IP.
+**Prevention:** Always validate and strictly allowlist the destination URL (`https://api.torn.com/`) on the host side *before* executing the fetch to ensure the proxy acts securely.

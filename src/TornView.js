@@ -1172,6 +1172,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     if (payload.type === 'fetch') {
       const { id, url } = payload;
       try {
+        if (!url || !url.startsWith('https://api.torn.com/')) {
+          throw new Error('Invalid or unauthorized URL scheme');
+        }
         const response = await fetch(url);
         const data = await response.json();
         const responseScript = `
