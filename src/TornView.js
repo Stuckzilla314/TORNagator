@@ -1172,6 +1172,10 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     if (payload.type === 'fetch') {
       const { id, url } = payload;
       try {
+        // Prevent SSRF by validating the requested URL is an authorized TORN API endpoint
+        if (!url.startsWith('https://api.torn.com/')) {
+          throw new Error('Invalid or unauthorized URL for proxy fetch');
+        }
         const response = await fetch(url);
         const data = await response.json();
         const responseScript = `
