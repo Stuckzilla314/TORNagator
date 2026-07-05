@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { isNotificationsSupported, checkNotificationPermission, requestNotificationPermission } from './notifications';
+import { isCapacitor } from './utils';
 
 /**
  * Renders the settings menu dropdown, allowing the user to configure app preferences
@@ -20,6 +21,10 @@ import { isNotificationsSupported, checkNotificationPermission, requestNotificat
  * @param {Function} props.setPollInterval - Setter for the polling interval.
  * @param {boolean} props.travelNotificationsEnabled - Whether travel landing notifications are enabled.
  * @param {Function} props.setTravelNotificationsEnabled - Setter for the travel landing notifications.
+ * @param {boolean} props.chainWatcherEnabled - Whether the persistent chain watcher banner is enabled (Android only).
+ * @param {Function} props.setChainWatcherEnabled - Setter for the chain watcher banner toggle.
+ * @param {number} props.chainWatcherInterval - The polling interval for the chain watcher banner.
+ * @param {Function} props.setChainWatcherInterval - Setter for the chain watcher polling interval.
  * @returns {React.JSX.Element} The rendered settings menu component.
  */
 const SettingsMenu = ({ 
@@ -38,7 +43,13 @@ const SettingsMenu = ({
   pollInterval,
   setPollInterval,
   travelNotificationsEnabled,
-  setTravelNotificationsEnabled
+  setTravelNotificationsEnabled,
+  chainWatcherEnabled,
+  setChainWatcherEnabled,
+  chainWatcherInterval,
+  setChainWatcherInterval,
+  baldrHighestStat,
+  setBaldrHighestStat
 }) => {  
 
   const [permissionStatus, setPermissionStatus] = useState('prompt');
@@ -200,6 +211,127 @@ const SettingsMenu = ({
         </select>
       </label>
 
+      {/* Chain Watcher toggle — Android/Capacitor only */}
+      {isCapacitor && (
+        <label
+          style={{
+            padding: '8px 12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: '4px',
+            backgroundColor: chainWatcherEnabled ? 'rgba(46, 204, 113, 0.1)' : 'transparent',
+            transition: 'background-color 0.2s'
+          }}
+        >
+          <span style={{ fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🔗 Chain Watcher
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+            <select
+              value={chainWatcherInterval}
+              onChange={(e) => setChainWatcherInterval(parseInt(e.target.value, 10))}
+              disabled={!chainWatcherEnabled}
+              style={{
+                backgroundColor: '#2b2b2b',
+                color: '#fff',
+                border: '1px solid #444',
+                borderRadius: '4px',
+                padding: '2px 20px 2px 6px',
+                fontSize: '0.75rem',
+                cursor: chainWatcherEnabled ? 'pointer' : 'not-allowed',
+                outline: 'none',
+                opacity: chainWatcherEnabled ? 1 : 0.5,
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 6px center',
+                backgroundSize: '10px',
+                transition: 'border-color 0.2s, background-color 0.2s'
+              }}
+              onMouseEnter={e => {
+                if (chainWatcherEnabled) {
+                  e.target.style.borderColor = '#3498db';
+                  e.target.style.backgroundColor = '#333';
+                }
+              }}
+              onMouseLeave={e => {
+                if (chainWatcherEnabled) {
+                  e.target.style.borderColor = '#444';
+                  e.target.style.backgroundColor = '#2b2b2b';
+                }
+              }}
+            >
+              <option value={5}>5s</option>
+              <option value={10}>10s</option>
+              <option value={20}>20s</option>
+              <option value={30}>30s</option>
+              <option value={45}>45s</option>
+              <option value={60}>1m</option>
+            </select>
+            <input
+              type="checkbox"
+              checked={chainWatcherEnabled}
+              onChange={(e) => setChainWatcherEnabled(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+          </div>
+        </label>
+      )}
+
+      <label
+        style={{
+          padding: '8px 12px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: '4px',
+          backgroundColor: 'transparent',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <span style={{ fontSize: '0.9rem' }}>Highest Stat</span>
+        <select
+          value={baldrHighestStat}
+          onChange={(e) => setBaldrHighestStat(e.target.value)}
+          style={{
+            backgroundColor: '#2b2b2b',
+            color: '#fff',
+            border: '1px solid #444',
+            borderRadius: '4px',
+            padding: '4px 26px 4px 10px',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            outline: 'none',
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            MozAppearance: 'none',
+            backgroundImage: 'url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 8px center',
+            backgroundSize: '12px',
+            transition: 'border-color 0.2s, background-color 0.2s'
+          }}
+          onMouseEnter={e => {
+            e.target.style.borderColor = '#3498db';
+            e.target.style.backgroundColor = '#333';
+          }}
+          onMouseLeave={e => {
+            e.target.style.borderColor = '#444';
+            e.target.style.backgroundColor = '#2b2b2b';
+          }}
+        >
+          <option value="strength">Strength</option>
+          <option value="defense">Defense</option>
+          <option value="speed">Speed</option>
+          <option value="dexterity">Dexterity</option>
+        </select>
+      </label>
+
       <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
           <span style={{ fontSize: '0.8rem', color: '#888' }}>Cargo Capacity</span>
@@ -326,49 +458,29 @@ const SettingsMenu = ({
         </div>
       )}
 
-      <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('dump-torn-dom'));
-          }}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: '#e74c3c',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '0.8rem',
-            transition: 'background-color 0.2s',
-            textAlign: 'center'
-          }}
-          onMouseEnter={e => { e.target.style.backgroundColor = '#c0392b'; }}
-          onMouseLeave={e => { e.target.style.backgroundColor = '#e74c3c'; }}
-        >
-          Dump Crimes DOM
-        </button>
-
-        <button
-          onClick={handleOpenDevTools}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: '#34495e',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '0.8rem',
-            transition: 'background-color 0.2s',
-            textAlign: 'center'
-          }}
-          onMouseEnter={e => { e.target.style.backgroundColor = '#2c3e50'; }}
-          onMouseLeave={e => { e.target.style.backgroundColor = '#34495e'; }}
-        >
-          Open DevTools
-        </button>
-      </div>
+      {!isCapacitor && (
+        <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            onClick={handleOpenDevTools}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#34495e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              transition: 'background-color 0.2s',
+              textAlign: 'center'
+            }}
+            onMouseEnter={e => { e.target.style.backgroundColor = '#2c3e50'; }}
+            onMouseLeave={e => { e.target.style.backgroundColor = '#34495e'; }}
+          >
+            Open DevTools
+          </button>
+        </div>
+      )}
     </div>
   );
 };

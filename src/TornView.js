@@ -7,7 +7,7 @@ import {
   IconCoin, IconWarning, IconChevronRight,
   IconChevronLeft, IconRefresh,
   IconTarget, IconPeace, IconSwords,
-  IconBarChart, IconClock, IconPill, IconMuscle, IconLink,
+  IconBarChart, IconClock, IconPill, IconMuscle, IconLink, IconPin,
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
@@ -899,7 +899,7 @@ const STATS_REDIR_SCRIPT = `
   })()
 `;
 
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -954,10 +954,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        window._tornagator_tab_id = ${JSON.stringify(tabId)};
       })()
     `;
     wvInstance.executeJavaScript(injectScript).catch(() => { });
-  }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
+  }, [itemsData, cargoCapacity, apiKey, userData, factionData, tabId]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
     if (!targetCountry) return;
@@ -1167,6 +1168,73 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }
   }, [targetCountry, setTargetCountry, tabUrl, tabId]);
 
+  const handleBridgeMessage = useCallback(async (payload) => {
+    if (payload.type === 'fetch') {
+      const { id, url } = payload;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        const responseScript = `
+          (() => {
+            window._tornagator_fetch_responses = window._tornagator_fetch_responses || {};
+            window._tornagator_fetch_responses['${id}'] = ${JSON.stringify({ data })};
+          })()
+        `;
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+            window.AndroidTornBridge.executeInOverlay(tabId, responseScript);
+          }
+        } else {
+          const wv = webviewRef.current;
+          if (wv) {
+            wv.executeJavaScript(responseScript).catch(() => {});
+          }
+        }
+      } catch (err) {
+        const responseScript = `
+          (() => {
+            window._tornagator_fetch_responses = window._tornagator_fetch_responses || {};
+            window._tornagator_fetch_responses['${id}'] = ${JSON.stringify({ error: err.message })};
+          })()
+        `;
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+            window.AndroidTornBridge.executeInOverlay(tabId, responseScript);
+          }
+        } else {
+          const wv = webviewRef.current;
+          if (wv) {
+            wv.executeJavaScript(responseScript).catch(() => {});
+          }
+        }
+      }
+    } else if (payload.type === 'set_baldr_primary') {
+      if (setBaldrHighestStat) {
+        setBaldrHighestStat(payload.stat);
+      }
+    }
+  }, [tabId, setBaldrHighestStat]);
+
+  useEffect(() => {
+    if (!isCapacitor) return;
+
+    const handleBridgeEvent = (e) => {
+      try {
+        const payload = JSON.parse(e.detail);
+        if (payload.tabId === tabId) {
+          handleBridgeMessage(payload);
+        }
+      } catch (err) {
+        console.error("Failed to parse bridge event payload:", err);
+      }
+    };
+
+    window.addEventListener('tornagatorBridge', handleBridgeEvent);
+    return () => {
+      window.removeEventListener('tornagatorBridge', handleBridgeEvent);
+    };
+  }, [tabId, handleBridgeMessage]);
+
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isElectron) return;
@@ -1204,6 +1272,14 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window.process.stdout.write(`[Webview-${tabId || 'unknown'}] ${e.message}\n`);
       }
       console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
+      if (e.message && e.message.startsWith("TORNAGATOR_BRIDGE:")) {
+        try {
+          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length()));
+          handleBridgeMessage(payload);
+        } catch (err) {
+          console.error("Failed to parse bridge message payload:", err);
+        }
+      }
     };
 
     wv.addEventListener('did-navigate', handleNavigate);
@@ -1219,7 +1295,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues]);
+  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues, handleBridgeMessage]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -1403,6 +1479,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           }
 
           if (isGym) {
+            console.log('[TORNagator] Overlay script isGym block executing, url:', window.location.href);
             try {
               const header = document.querySelector('.content-title');
               if (header) {
@@ -1454,14 +1531,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const hasData = (userData && userData.faction_perks !== undefined) || (factionData && factionData.upgrades !== undefined);
                 const dataStr = JSON.stringify(stats) + '_' + hasData;
                 const existing = document.getElementById('tornagator-gym-steadfast');
-                if (existing) {
-                  if (existing.dataset.stats === dataStr) {
-                    return null;
-                  }
-                  existing.remove();
-                }
+                const shouldRecreate = !existing || existing.dataset.stats !== dataStr;
 
-                if (userData || factionData) {
+                if (shouldRecreate && (userData || factionData)) {
+                  if (existing) {
+                    existing.remove();
+                  }
                   const container = document.createElement('div');
                   container.id = 'tornagator-gym-steadfast';
                   container.dataset.stats = dataStr;
@@ -1636,6 +1711,271 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               }
             } catch (err) {
               console.error('[TORNagator] Stacking warning injection error:', err);
+            }
+
+            // 3. Baldr's Gym Optimizer - Injects "trains needed" next to stat values
+            try {
+              // Re-read userData/factionData from window globals (different scope from steadfast block)
+              const baldrUserData = window._tornagator_user_data;
+              const baldrFactionData = window._tornagator_faction_data;
+
+              // Read faction steadfast perks for accurate gain multiplier
+              const baldrStats = { strength: 0, defense: 0, speed: 0, dexterity: 0 };
+              if (baldrUserData && Array.isArray(baldrUserData.faction_perks)) {
+                baldrUserData.faction_perks.forEach(function(perk) {
+                  var p = perk.toLowerCase();
+                  if (p.includes('gym gains')) {
+                    var m = p.match(/\\+\\s*([\\d.]+)\\s*%/);
+                    if (m) {
+                      var val = parseFloat(m[1]);
+                      if (p.includes('strength')) baldrStats.strength = val;
+                      else if (p.includes('defense') || p.includes('defence')) baldrStats.defense = val;
+                      else if (p.includes('speed')) baldrStats.speed = val;
+                      else if (p.includes('dexterity')) baldrStats.dexterity = val;
+                    }
+                  }
+                });
+              }
+
+              // Get current stats from DOM
+              const strEl = document.querySelector('li[class*="strength___"] span[class*="propertyValue___"]');
+              const defEl = document.querySelector('li[class*="defense___"] span[class*="propertyValue___"]');
+              const speEl = document.querySelector('li[class*="speed___"] span[class*="propertyValue___"]');
+              const dexEl = document.querySelector('li[class*="dexterity___"] span[class*="propertyValue___"]');
+
+              if (strEl && defEl && speEl && dexEl) {
+                const strVal = parseInt(strEl.textContent.replace(/,/g, ''), 10) || 0;
+                const defVal = parseInt(defEl.textContent.replace(/,/g, ''), 10) || 0;
+                const speVal = parseInt(speEl.textContent.replace(/,/g, ''), 10) || 0;
+                const dexVal = parseInt(dexEl.textContent.replace(/,/g, ''), 10) || 0;
+
+                // Detect active gym
+                const activeBtn = document.querySelector('button[class*="gymButton___"][class*="active___"]') ||
+                                  document.querySelector('[class*="gymButton___"][class*="active___"]');
+
+                let gymName = 'Unknown';
+                let energyPerTrain = 10;
+                if (activeBtn) {
+                  const label = activeBtn.getAttribute('aria-label') || '';
+                  gymName = label.split('.')[0].trim();
+
+                  const energyMatch = label.match(/Energy usage\s*-\s*(\d+)/i);
+                  if (energyMatch) {
+                    energyPerTrain = parseInt(energyMatch[1], 10);
+                  }
+                }
+
+                // Gym dots table
+                const gymDotsTable = {
+                  "Premier Fitness": { str: 2.0, spe: 2.0, def: 2.0, dex: 2.0, energy: 5 },
+                  "Average Joes": { str: 2.4, spe: 2.4, def: 2.8, dex: 2.4, energy: 5 },
+                  "Woody's Workout Club": { str: 2.8, spe: 3.2, def: 3.0, dex: 2.8, energy: 5 },
+                  "Beach Bods": { str: 3.2, spe: 3.2, def: 3.2, dex: 0.0, energy: 5 },
+                  "Silver Gym": { str: 3.4, spe: 3.6, def: 3.4, dex: 3.4, energy: 5 },
+                  "Pour Femme": { str: 3.4, spe: 3.6, def: 3.6, dex: 3.8, energy: 5 },
+                  "Davies Den": { str: 3.7, spe: 0.0, def: 3.7, dex: 3.7, energy: 5 },
+                  "Global Gym": { str: 4.0, spe: 4.0, def: 4.0, dex: 4.0, energy: 5 },
+
+                  "Knuckle Heads": { str: 4.8, spe: 4.4, def: 4.0, dex: 4.2, energy: 10 },
+                  "Pioneer Fitness": { str: 4.4, spe: 4.6, def: 4.8, dex: 4.4, energy: 10 },
+                  "Anabolic Anomalies": { str: 5.0, spe: 4.6, def: 5.2, dex: 4.6, energy: 10 },
+                  "Core": { str: 5.0, spe: 5.2, def: 5.0, dex: 5.0, energy: 10 },
+                  "Racing Fitness": { str: 5.0, spe: 5.4, def: 4.8, dex: 5.2, energy: 10 },
+                  "Complete Cardio": { str: 5.5, spe: 5.8, def: 5.5, dex: 5.2, energy: 10 },
+                  "Legs, Bums and Tums": { str: 0.0, spe: 5.6, def: 5.6, dex: 5.8, energy: 10 },
+                  "Deep Burn": { str: 6.0, spe: 6.0, def: 6.0, dex: 6.0, energy: 10 },
+
+                  "Apollo Gym": { str: 6.0, spe: 6.2, def: 6.4, dex: 6.2, energy: 10 },
+                  "Gun Shop": { str: 6.6, spe: 6.4, def: 6.2, dex: 6.2, energy: 10 },
+                  "Force Training": { str: 6.4, spe: 6.6, def: 6.4, dex: 6.8, energy: 10 },
+                  "Cha Cha's": { str: 6.4, spe: 6.4, def: 6.8, dex: 7.0, energy: 10 },
+                  "Atlas": { str: 7.0, spe: 6.4, def: 6.4, dex: 6.6, energy: 10 },
+                  "Last Round": { str: 6.8, spe: 6.6, def: 7.0, dex: 6.6, energy: 10 },
+                  "The Edge": { str: 6.8, spe: 7.0, def: 7.0, dex: 6.8, energy: 10 },
+                  "George's": { str: 7.3, spe: 7.3, def: 7.3, dex: 7.3, energy: 10 },
+                  "George's Gym": { str: 7.3, spe: 7.3, def: 7.3, dex: 7.3, energy: 10 },
+
+                  "Balboa's Gym": { str: 0.0, spe: 0.0, def: 7.5, dex: 7.5, energy: 25 },
+                  "Frontline Fitness": { str: 7.5, spe: 7.5, def: 0.0, dex: 0.0, energy: 25 },
+                  "Gym 3000": { str: 8.0, spe: 0.0, def: 0.0, dex: 0.0, energy: 50 },
+                  "Mr. Isoyamas": { str: 0.0, spe: 0.0, def: 8.0, dex: 0.0, energy: 50 },
+                  "Mr. Isoyama's": { str: 0.0, spe: 0.0, def: 8.0, dex: 0.0, energy: 50 },
+                  "Total Rebound": { str: 0.0, spe: 8.0, def: 0.0, dex: 0.0, energy: 50 },
+                  "Elites": { str: 0.0, spe: 0.0, def: 0.0, dex: 8.0, energy: 50 },
+                  "The Sports Science Lab": { str: 9.0, spe: 9.0, def: 9.0, dex: 9.0, energy: 50 }
+                };
+
+                const dots = gymDotsTable[gymName] || { str: 5.5, spe: 5.8, def: 5.5, dex: 5.2, energy: energyPerTrain };
+
+                // Get current happy
+                const currentHappy = (baldrUserData && baldrUserData.happy && baldrUserData.happy.current) || 4000;
+
+                // Setup relation keys - primaryKey interpolated from React state at build time
+                const primaryKey = "${(baldrHighestStat || 'strength').toLowerCase() === 'defence' ? 'defense' : (baldrHighestStat || 'strength').toLowerCase()}";
+
+                let secondaryKey = 'speed';
+                let low1Key = 'defense';
+                let low2Key = 'dexterity';
+
+                if (primaryKey === 'strength') {
+                  secondaryKey = 'speed';
+                  low1Key = 'defense';
+                  low2Key = 'dexterity';
+                } else if (primaryKey === 'defense') {
+                  secondaryKey = 'dexterity';
+                  low1Key = 'strength';
+                  low2Key = 'speed';
+                } else if (primaryKey === 'speed') {
+                  secondaryKey = 'strength';
+                  low1Key = 'defense';
+                  low2Key = 'dexterity';
+                } else if (primaryKey === 'dexterity') {
+                  secondaryKey = 'defense';
+                  low1Key = 'strength';
+                  low2Key = 'speed';
+                }
+
+                const ratios = {};
+                ratios[primaryKey] = 30.86;
+                ratios[secondaryKey] = 24.69;
+                ratios[low1Key] = 22.22;
+                ratios[low2Key] = 22.22;
+
+                // Implied totals for each stat
+                const impliedTotals = {
+                  strength: strVal / (ratios.strength / 100),
+                  defense: defVal / (ratios.defense / 100),
+                  speed: speVal / (ratios.speed / 100),
+                  dexterity: dexVal / (ratios.dexterity / 100),
+                };
+
+                // Find max implied total
+                let maxTotal = 0;
+                let boundingStatKey = 'strength';
+                for (const key of Object.keys(impliedTotals)) {
+                  if (impliedTotals[key] > maxTotal) {
+                    maxTotal = impliedTotals[key];
+                    boundingStatKey = key;
+                  }
+                }
+
+                // Calculate targets based on the max implied total
+                const targets = {};
+                targets.strength = Math.ceil(maxTotal * (ratios.strength / 100));
+                targets.defense = Math.ceil(maxTotal * (ratios.defense / 100));
+                targets.speed = Math.ceil(maxTotal * (ratios.speed / 100));
+                targets.dexterity = Math.ceil(maxTotal * (ratios.dexterity / 100));
+
+                // Helper to format stat differences
+                const formatDiff = (num) => {
+                  if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'b';
+                  if (num >= 1000000) return (num / 1000000).toFixed(2) + 'm';
+                  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+                  return num.toString();
+                };
+
+                const statMap = {
+                  strength: { current: strVal, target: targets.strength, dot: dots.str, perk: baldrStats.strength, el: strEl },
+                  defense: { current: defVal, target: targets.defense, dot: dots.def, perk: baldrStats.defense, el: defEl },
+                  speed: { current: speVal, target: targets.speed, dot: dots.spe, perk: baldrStats.speed, el: speEl },
+                  dexterity: { current: dexVal, target: targets.dexterity, dot: dots.dex, perk: baldrStats.dexterity, el: dexEl }
+                };
+
+                Object.keys(statMap).forEach(key => {
+                  const stat = statMap[key];
+                  const diff = stat.target - stat.current;
+
+                  // Injected badge ID
+                  const badgeId = 'tornagator-gym-trains-' + key;
+                  let badge = document.getElementById(badgeId);
+                  if (!badge) {
+                    badge = document.createElement('span');
+                    badge.id = badgeId;
+                    badge.style.display = 'inline-block';
+                    badge.style.marginLeft = '8px';
+                    badge.style.fontSize = '11px';
+                    badge.style.letterSpacing = '0.5px';
+                    badge.style.padding = '2px 5px';
+                    badge.style.borderRadius = '3px';
+                    badge.style.verticalAlign = 'middle';
+
+                    // Append right after the span value element
+                    stat.el.parentNode.appendChild(badge);
+                  }
+
+                  // Render badge
+                  if (diff > 0) {
+                    badge.textContent = '+' + formatDiff(diff);
+                    badge.style.display = 'inline-block';
+                    badge.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                    badge.style.color = '#888';
+                    badge.style.border = '1px solid #444';
+                  } else {
+                    badge.style.display = 'none';
+                  }
+
+                  // Color the stat elements
+                  let highlightColor = '';
+                  if (diff > 0) {
+                    const percentAway = diff / stat.target;
+                    if (percentAway < 0.1) {
+                      highlightColor = '#73B005'; // Green
+                    } else if (percentAway < 0.3) {
+                      highlightColor = '#e67e22'; // Yellow
+                    } else {
+                      highlightColor = '#e74c3c'; // Red
+                    }
+                  } else {
+                    highlightColor = ''; // Default
+                  }
+
+                  stat.el.style.color = highlightColor;
+                  const titleEl = stat.el.parentNode.querySelector('[class^="title-"]');
+                  if (titleEl) titleEl.style.color = highlightColor;
+
+                  // Add a star next to the stat title
+                  const starBadgeId = 'tornagator-primary-star-' + key;
+                  let starBadge = document.getElementById(starBadgeId);
+                  const isPrimary = (key === primaryKey);
+
+                  if (!starBadge) {
+                    starBadge = document.createElement('span');
+                    starBadge.id = starBadgeId;
+                    starBadge.style.fontSize = '12px';
+                    starBadge.style.marginRight = '4px';
+                    starBadge.style.verticalAlign = 'middle';
+                    starBadge.style.cursor = 'pointer';
+                    starBadge.title = isPrimary ? 'Primary Stat (Baldr Ratio)' : 'Click to set as Primary Stat';
+
+                    starBadge.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('TORNAGATOR_BRIDGE:' + JSON.stringify({
+                        tabId: '${tabId}',
+                        type: 'set_baldr_primary',
+                        stat: key
+                      }));
+                    });
+
+                    // Try to find the label element (the sibling of stat.el)
+                    let labelEl = Array.from(stat.el.parentNode.children).find(el => el !== stat.el && !el.id.includes('tornagator'));
+
+                    if (labelEl) {
+                      labelEl.prepend(starBadge);
+                    } else {
+                      // Fallback: prepend to the parent container
+                      stat.el.parentNode.prepend(starBadge);
+                    }
+                  }
+
+                  // Update star styling
+                  starBadge.textContent = '★ ';
+                  starBadge.style.color = isPrimary ? '#f39c12' : '#666'; // Gold or Gray
+                  starBadge.style.textShadow = isPrimary ? '0 0 2px rgba(243,156,18,0.5)' : 'none';
+                });
+              }
+            } catch (err) {
+              console.error('[TORNagator] Baldr Gym Optimizer injection error:', err);
             }
           }
 
@@ -1987,6 +2327,32 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const session = Date.now();
                 window._tornagator_scan_session = session;
 
+                const hostFetch = (url) => {
+                  return new Promise((resolve, reject) => {
+                    const id = Math.random().toString(36).substr(2, 9);
+                    window._tornagator_pending_fetches = window._tornagator_pending_fetches || [];
+                    console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                      type: "fetch",
+                      id: id,
+                      url: url,
+                      tabId: window._tornagator_tab_id
+                    }));
+
+                    const checkInterval = setInterval(() => {
+                      if (window._tornagator_fetch_responses && window._tornagator_fetch_responses[id]) {
+                        clearInterval(checkInterval);
+                        const res = window._tornagator_fetch_responses[id];
+                        delete window._tornagator_fetch_responses[id];
+                        if (res.error) {
+                          reject(new Error(res.error));
+                        } else {
+                          resolve(res.data);
+                        }
+                      }
+                    }, 50);
+                  });
+                };
+
                 // Clear any running queue processing and states
                 window._tornagator_scan_queue = [];
                 window._tornagator_scan_results = [];
@@ -2146,8 +2512,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const processSeller = async (seller, rowEl) => {
                   try {
-                    const response = await fetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
-                    const data = await response.json();
+                    const data = await hostFetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
 
                     if (data.error) {
                       throw new Error(data.error.error || 'API Error');
@@ -2383,7 +2748,13 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
 
+        console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
+
         if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+
+        if (isGym) {
+          window._tornagator_last_injected_script = script;
+        }
 
         window.AndroidTornBridge.executeInOverlay(tabId, script);
       }, 1000);
@@ -2422,7 +2793,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
       return () => clearInterval(profitInterval);
     }
-  }, [isActive, isNewTab, userData, tabUrl, tabId]);
+  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat]);
 
   const placeholderRef = useRef(null);
 
@@ -2453,6 +2824,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        window._tornagator_tab_id = ${JSON.stringify(tabId)};
       })()
     `;
 
@@ -2481,9 +2853,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       setCanGoBack(!!nativeCanGoBack);
       setCanGoForward(!!nativeCanGoForward);
 
-      if (tabId && url && url !== tabUrl) {
-        const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
-        onUpdate(tabId, { url, title: resolvedTitle });
+      if (tabId) {
+        const updates = {
+          canGoBack: !!nativeCanGoBack,
+          canGoForward: !!nativeCanGoForward
+        };
+        if (url && url !== tabUrl) {
+          const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
+          updates.url = url;
+          updates.title = resolvedTitle;
+        }
+        onUpdate(tabId, updates);
       }
 
       // Inject stats redirects and styles on Capacitor overlay
@@ -2927,7 +3307,7 @@ const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = fa
  */
 // MemberSidebarRow supports controlled open mode (isOpen + onToggle) so the
 // parent can persist expanded state across data syncs.
-const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle }) => {
+const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle, isPinned, onTogglePin }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -3047,9 +3427,40 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
               }}
             />
           )}
+          <span
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onTogglePin) onTogglePin(member.id);
+            }}
+            className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+            style={{
+              padding: '2px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
+              marginLeft: '4px',
+              verticalAlign: 'middle',
+            }}
+            title={isPinned ? "Unpin Target" : "Pin Target"}
+          >
+            <IconPin size={11} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+          </span>
 
           <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
-            Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
+            Lvl {member.level}
+            {member.suspectedRaw && (
+              <>
+                {' • '}
+                <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
+                </span>
+              </>
+            )}
+            {' • '}
+            <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
           </div>
         </div>
 
@@ -3098,23 +3509,14 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
 
       {isOpen && (
         <>
-          {/* Suspected XP info & Profile indicators */}
-          {(member.suspectedRaw || hasProfile) && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
+          {/* Profile indicators */}
+          {hasProfile && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
               <div>
-                {member.suspectedRaw && (
-                  <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                    <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
-                  </span>
-                )}
-              </div>
-              <div>
-                {hasProfile && (
-                  <span style={{ color: '#888' }}>
-                    {profile.age ? `${profile.age.toLocaleString()}d` : ''}
-                    {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
-                  </span>
-                )}
+                <span style={{ color: '#888' }}>
+                  {profile.age ? `${profile.age.toLocaleString()}d` : ''}
+                  {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
+                </span>
               </div>
             </div>
           )}
@@ -3257,7 +3659,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered TornView component.
  */
-const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive }) => {
+const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat, setBaldrHighestStat }) => {
   const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
@@ -3428,6 +3830,53 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
 
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tornagator_pinned_targets');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.error('[TORNagator] Failed to parse pinned targets from localStorage', e);
+      return {};
+    }
+  });
+
+  const handleTogglePin = useCallback((memberId) => {
+    setPinnedIds(prev => {
+      const updated = { ...prev, [memberId]: !prev[memberId] };
+      if (!updated[memberId]) {
+        delete updated[memberId];
+      }
+      try {
+        localStorage.setItem('tornagator_pinned_targets', JSON.stringify(updated));
+      } catch (e) {
+        console.error('[TORNagator] Failed to save pinned targets to localStorage', e);
+      }
+      return updated;
+    });
+  }, []);
+
+  // Sync pinned targets when switching to the TORN tab or storage changes
+  useEffect(() => {
+    if (isActive) {
+      try {
+        const stored = localStorage.getItem('tornagator_pinned_targets');
+        setPinnedIds(stored ? JSON.parse(stored) : {});
+      } catch (e) {}
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'tornagator_pinned_targets') {
+        try {
+          setPinnedIds(e.newValue ? JSON.parse(e.newValue) : {});
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Stable maps (useRef) that track open/closed state for sidebar sections and
   // individual member rows across data syncs.  We use refs (not state) so that
   // updating them never triggers a re-render — the open state is read directly
@@ -3438,6 +3887,48 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   // Force a re-render after toggling so the controlled children update.
   const [, forceRerender] = useState(0);
   const bumpRender = useCallback(() => forceRerender(n => n + 1), []);
+
+  // Handle android back button inside TORN tab
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleAndroidBack = (e) => {
+      console.log('[TornView] androidBack event captured');
+      if (isImportOpen) {
+        setIsImportOpen(false);
+        e.preventDefault();
+        return;
+      }
+      if (isAddingNew) {
+        setIsAddingNew(false);
+        e.preventDefault();
+        return;
+      }
+      if (isEditingQuick) {
+        setIsEditingQuick(false);
+        e.preventDefault();
+        return;
+      }
+
+      // Find the active tab
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab && activeTab.canGoBack) {
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
+            console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
+            window.AndroidTornBridge.goBack(activeTab.id);
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('androidBack', handleAndroidBack);
+    return () => {
+      document.removeEventListener('androidBack', handleAndroidBack);
+    };
+  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs]);
+
 
   // Memoize the mapping, filtering, and sorting of enemy faction members
   const sortedAndFilteredGroups = useMemo(() => {
@@ -3511,13 +4002,19 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       return true;
     });
 
-    const groups = {
-      okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
-      jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
-      other: { label: '✈️ Other', color: '#3498db', members: [] },
-    };
+    // Separate pinned and unpinned members
+    const pinnedMembers = filteredMembers.filter(m => pinnedIds[m.id]);
+    const unpinnedMembers = filteredMembers.filter(m => !pinnedIds[m.id]);
 
-    filteredMembers.forEach(m => {
+    const groups = {};
+    if (pinnedMembers.length > 0) {
+      groups.pinned = { label: '📌 Pinned Targets', color: '#f1c40f', members: pinnedMembers };
+    }
+    groups.okay = { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] };
+    groups.jail = { label: '🔒 In Jail', color: '#f39c12', members: [] };
+    groups.other = { label: '✈️ Other', color: '#3498db', members: [] };
+
+    unpinnedMembers.forEach(m => {
       const state = m.status?.state || '';
       if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
       else if (state === 'Jail') groups.jail.members.push(m);
@@ -3527,7 +4024,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     Object.values(groups).forEach(g => applySortOrder(g.members));
 
     return groups;
-  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter]);
+  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter, pinnedIds]);
 
   // Sync cache state when cacheKey changes
   useEffect(() => {
@@ -3676,24 +4173,32 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // Auto-fetch targets on tab switch to war sidebar if not cached
   useEffect(() => {
-    if (isActive && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+    if (isActive && !sidebarCollapsed && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
       doFetchTargets(false);
     }
-  }, [isActive, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
+  }, [isActive, sidebarCollapsed, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
 
   // Auto-sync timer effect
   useEffect(() => {
-    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
+    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war' || sidebarCollapsed) return;
 
     const intervalId = setInterval(() => {
-      if (!isLoadingTargets && !isSyncingTargets) {
+      if (document.visibilityState === 'visible' && !isLoadingTargets && !isSyncingTargets) {
         if (loadFactionData) loadFactionData();
         doFetchTargets(true);
       }
     }, syncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, sidebarCollapsed, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+
+  // Trigger target status refresh immediately when sidebar war tab becomes active and visible
+  useEffect(() => {
+    if (isActive && !sidebarCollapsed && sidebarTab === 'war' && enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+      doFetchTargets(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, sidebarCollapsed, sidebarTab]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
@@ -4042,6 +4547,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 showNavControls={showNavControls}
                 userData={userData}
                 factionData={factionData}
+                baldrHighestStat={baldrHighestStat}
+                setBaldrHighestStat={setBaldrHighestStat}
               />
             ))}
           </div>
@@ -5135,7 +5642,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               // Seed default section-open state on first render
                               Object.entries(sortedAndFilteredGroups).forEach(([key]) => {
                                 if (sectionOpenState.current[key] === undefined) {
-                                  sectionOpenState.current[key] = key === 'okay';
+                                  sectionOpenState.current[key] = key === 'okay' || key === 'pinned';
                                 }
                               });
 
@@ -5151,6 +5658,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                     memberOpenState.current[member.id] = !memberOpenState.current[member.id];
                                     bumpRender();
                                   }}
+                                  isPinned={!!pinnedIds[member.id]}
+                                  onTogglePin={handleTogglePin}
                                 />
                               ));
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
-import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash } from './Icons';
+import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin } from './Icons';
+import { isCapacitor } from './utils';
 
 /**
  * Renders a card displaying details for a specific Ranked War (upcoming or active).
@@ -33,12 +34,12 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
     <div style={{ ...cardStyle, border: `1px solid ${timer.isFuture ? '#f1c40f' : '#e74c3c'}`, background: timer.isFuture ? 'linear-gradient(145deg, #1e1e1e, #2c251a)' : 'linear-gradient(145deg, #1e1e1e, #2c1a1a)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h3 style={{ marginTop: 0, color: timer.isFuture ? '#f1c40f' : '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem' }}>
+          <h3 style={{ marginTop: 0, color: timer.isFuture ? '#f1c40f' : '#e74c3c', display: 'flex', alignItems: 'center', gap: '10px', fontSize: isCapacitor ? '1.2rem' : '1.5rem' }}>
             {timer.isFuture
               ? <><IconClock size={20} color="#f1c40f" /> Upcoming Ranked War</>
               : <><IconSword size={20} color="#e74c3c" /> Active Ranked War</>}
           </h3>
-          <p style={{ margin: '4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>
+          <p style={{ margin: '4px 0', fontSize: isCapacitor ? '1rem' : '1.2rem', fontWeight: 'bold' }}>
             vs <a 
               href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} 
               onClick={(e) => {
@@ -53,7 +54,7 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
               {enemyFactionName}
             </a>
           </p>
-          <div style={{ display: 'flex', gap: '15px', marginTop: '10px' }}>
+          <div style={{ display: 'flex', gap: '15px', marginTop: '10px', flexWrap: 'wrap' }}>
             <div style={{ ...labelStyle, color: '#888', fontSize: '0.75rem' }}>
               Scheduled: {new Date(startTime * 1000).toLocaleString()}
             </div>
@@ -62,9 +63,9 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '2rem', textAlign: 'center', flexWrap: 'wrap' }}>
+        <div className="ranked-war-card-scores" style={{ display: 'flex', gap: isCapacitor ? '1rem' : '2rem', textAlign: 'center', flexWrap: 'wrap', justifyContent: isCapacitor ? 'space-between' : 'flex-start', width: isCapacitor ? '100%' : 'auto', marginTop: isCapacitor ? '12px' : 0 }}>
           <div>
-            <div style={{ ...labelStyle, color: '#aaa' }}>
+            <div style={{ ...labelStyle, color: '#aaa', fontSize: isCapacitor ? '0.75rem' : '0.85rem' }}>
               <a 
                 href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} 
                 onClick={(e) => {
@@ -79,11 +80,11 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
                 {factionData.name}
               </a>
             </div>
-            <div style={{ ...valueStyle, fontSize: '2rem', color: '#3498db' }}>{ourFactionScore}</div>
+            <div style={{ ...valueStyle, fontSize: isCapacitor ? '1.5rem' : '2rem', color: '#3498db' }}>{ourFactionScore}</div>
           </div>
-          <div style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
+          <div className="ranked-war-card-divider" style={{ alignSelf: 'center', fontSize: '1.5rem', color: '#666', fontWeight: 'bold' }}>-</div>
           <div>
-            <div style={{ ...labelStyle, color: '#aaa' }}>
+            <div style={{ ...labelStyle, color: '#aaa', fontSize: isCapacitor ? '0.75rem' : '0.85rem' }}>
               <a 
                 href={`https://www.torn.com/factions.php?step=profile&ID=${enemyFactionId}`} 
                 onClick={(e) => {
@@ -98,12 +99,12 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
                 {enemyFactionName}
               </a>
             </div>
-            <div style={{ ...valueStyle, fontSize: '2rem', color: '#e74c3c' }}>{enemyFactionScore}</div>
+            <div style={{ ...valueStyle, fontSize: isCapacitor ? '1.5rem' : '2rem', color: '#e74c3c' }}>{enemyFactionScore}</div>
           </div>
-          <div style={{ alignSelf: 'center', borderLeft: '1px solid #444', height: '50px', margin: '0 10px' }}></div>
+          {!isCapacitor && <div className="ranked-war-card-divider" style={{ alignSelf: 'center', borderLeft: '1px solid #444', height: '50px', margin: '0 10px' }}></div>}
           <div>
-            <div style={{ ...labelStyle, color: '#aaa' }}>Target Score</div>
-            <div style={{ ...valueStyle, fontSize: '2rem', color: '#f1c40f' }}>{targetScore}</div>
+            <div style={{ ...labelStyle, color: '#aaa', fontSize: isCapacitor ? '0.75rem' : '0.85rem' }}>Target Score</div>
+            <div style={{ ...valueStyle, fontSize: isCapacitor ? '1.5rem' : '2rem', color: '#f1c40f' }}>{targetScore}</div>
           </div>
         </div>
       </div>
@@ -120,6 +121,7 @@ const RankedWarCard = ({ war, factionData, cardStyle, labelStyle, valueStyle, on
  * @param {Object} props.factionData - Basic faction data provided by parent.
  * @param {Object} props.userData - The current user's data.
  * @param {Function} props.onOpenInTorn - Callback to open links inside the Torn view.
+ * @param {number} [props.pollInterval=30] - Auto-sync interval in seconds (mirrors the global setting).
  * @returns {React.JSX.Element|null} The rendered FactionWar component, or null if user is not in a faction.
  */
 /**
@@ -293,7 +295,7 @@ const CollapsibleSection = ({ title, count, statusColor, defaultOpen = false, ch
 /**
  * Component for rendering an individual Faction Member Card with real-time countdown timer.
  */
-const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn }) => {
+const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, onOpenInTorn, isPinned, onTogglePin, isMinimal }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -358,6 +360,96 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
   const boostersUsed = ps.boostersused || 0;
   const hasProfile = Object.keys(profile).length > 0;
 
+  if (isMinimal) {
+    return (
+      <a
+        href={`https://www.torn.com/profiles.php?XID=${member.id}`}
+        onClick={(e) => {
+          if (onOpenInTorn) {
+            e.preventDefault();
+            onOpenInTorn(`https://www.torn.com/profiles.php?XID=${member.id}`);
+          }
+        }}
+        className="dashboard-card-link is-minimal"
+        style={{ borderRadius: '6px' }}
+      >
+        <div className="member-card-wrapper minimal" style={{ borderLeft: `4px solid ${statusColor}`, padding: '6px 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Line 1: Name, Online status, Suspected XP, and Pin */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
+                <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                  {member.name}
+                </span>
+                {member.last_action?.status && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                       member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                      boxShadow: member.last_action.status === 'Online' ? '0 0 4px #2ecc71' : 'none'
+                    }}
+                  />
+                )}
+                {member.suspectedRaw && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.72rem', color: '#e74c3c', fontWeight: 'bold' }}>
+                    <IconBarChart size={11} color="#e74c3c" /> {member.suspectedRaw}
+                  </span>
+                )}
+                <span
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onTogglePin) onTogglePin(member.id);
+                  }}
+                  className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+                  style={{
+                    padding: '2px',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '4px',
+                  }}
+                  title={isPinned ? "Unpin Target" : "Pin Target"}
+                >
+                  <IconPin size={13} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+                </span>
+              </div>
+
+              {/* Line 2: Status */}
+              <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
+                <span>{currentStatusState}</span>
+                {currentStatusState === 'Hospital' && currentDescription && (
+                  <span style={{ color: '#aaa', fontSize: '0.78rem' }}>
+                    ({currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Direct Attack Button on the right */}
+            <span
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onOpenInTorn) {
+                  onOpenInTorn(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`);
+                }
+              }}
+              className="member-card-attack-btn"
+            >
+              <IconSwords size={12} color="currentColor" /> Attack
+            </span>
+          </div>
+        </div>
+      </a>
+    );
+  }
+
   return (
     <a 
       href={`https://www.torn.com/profiles.php?XID=${member.id}`} 
@@ -370,102 +462,186 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
       className="dashboard-card-link"
       style={{ borderRadius: '8px' }}
     >
-      <div style={{ padding: '16px', backgroundColor: '#222', borderRadius: '8px', borderLeft: `6px solid ${statusColor}` }}>
-        {/* Main stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: hasImportedStats ? '2fr 1.2fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
-          {/* Name + Status */}
-          <div>
-            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>
-              {member.name}
-            </span>
-            <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
-            {member.last_action?.status && (
+      <div className="member-card-wrapper" style={{ borderLeft: `6px solid ${statusColor}` }}>
+        <div className={`member-card-grid${hasImportedStats ? ' has-stats' : ''}`}>
+          {/* Name & Status details */}
+          <div className="member-card-info">
+            <div>
+              <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                {member.name}
+              </span>
               <span
-                title={member.last_action.status}
-                style={{
-                  display: 'inline-block',
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
-                                   member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
-                  marginLeft: '8px',
-                  verticalAlign: 'middle',
-                  boxShadow: member.last_action.status === 'Online' ? '0 0 5px #2ecc71' :
-                             member.last_action.status === 'Idle' ? '0 0 5px #f39c12' : 'none'
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onTogglePin) onTogglePin(member.id);
                 }}
-              />
-            )}
-            <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
-              Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
-            </div>
-            <div style={{ marginTop: '4px' }}>
-              <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.9rem' }}>{currentStatusState}</span>
-              {currentDescription && currentDescription !== currentStatusState && (
-                <span style={{ color: '#666', fontSize: '0.8rem', marginLeft: '6px' }}>
-                  {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
-                </span>
+                className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  verticalAlign: 'middle',
+                  marginLeft: '8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s',
+                }}
+                title={isPinned ? "Unpin Target" : "Pin Target"}
+              >
+                <IconPin size={15} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+              </span>
+              <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '6px' }}>[{member.id}]</span>
+              {member.last_action?.status && (
+                <span
+                  title={member.last_action.status}
+                  style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: member.last_action.status === 'Online' ? '#2ecc71' :
+                                     member.last_action.status === 'Idle' ? '#f39c12' : '#e74c3c',
+                    marginLeft: '8px',
+                    verticalAlign: 'middle',
+                    boxShadow: member.last_action.status === 'Online' ? '0 0 5px #2ecc71' :
+                               member.last_action.status === 'Idle' ? '0 0 5px #f39c12' : 'none'
+                  }}
+                />
               )}
+              <div style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '4px' }}>
+                Lvl {member.level} • Last: {member.last_action?.relative || 'Unknown'}
+              </div>
+            </div>
+
+            <div className="member-card-status-col">
+              <div className="member-card-status-wrapper">
+                <span className="member-card-status-text" style={{ color: statusColor }}>{currentStatusState}</span>
+                {currentDescription && currentDescription !== currentStatusState && (
+                  <span className="member-card-status-desc">
+                    {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                  </span>
+                )}
+              </div>
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (onOpenInTorn) {
+                    onOpenInTorn(`https://www.torn.com/page.php?sid=attack&user2ID=${member.id}`);
+                  }
+                }}
+                className="member-card-attack-btn"
+              >
+                <IconSwords size={12} color="currentColor" /> Attack
+              </span>
             </div>
           </div>
 
-          {/* Suspected Stats / XP */}
-          {hasImportedStats && (
+          {/* Desktop Stats (hidden on mobile via CSS) */}
+          <div className="member-card-desktop-stats">
+            {hasImportedStats && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Suspected XP</div>
+                {member.suspectedRaw ? (
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    <IconBarChart size={14} color="#e74c3c" /> {member.suspectedRaw}
+                  </div>
+                ) : (
+                  <div style={{ color: '#444', fontSize: '0.85rem' }}>—</div>
+                )}
+              </div>
+            )}
+
             <div style={{ textAlign: 'center' }}>
-              <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Suspected XP</div>
-              {member.suspectedRaw ? (
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  <IconBarChart size={14} color="#e74c3c" /> {member.suspectedRaw}
+              <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Days Playing</div>
+              {hasProfile ? (
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f1c40f' }}>
+                  {daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
                 </div>
               ) : (
-                <div style={{ color: '#444', fontSize: '0.85rem' }}>—</div>
+                <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading...</div>
               )}
             </div>
-          )}
 
-          {/* Days Playing */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Days Playing</div>
-            {hasProfile ? (
-              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: '#f1c40f' }}>
-                {daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
-              </div>
-            ) : (
-              <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading...</div>
-            )}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Atk W/L</div>
+              {hasProfile ? (
+                <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+                  <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
+                  <span style={{ color: '#555', margin: '0 4px' }}>/</span>
+                  <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
+                </div>
+              ) : (
+                <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
+              )}
+              {hasProfile && (
+                <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>Def: <span style={{ color: '#2ecc71' }}>{defendsWon.toLocaleString()}</span>/<span style={{ color: '#e74c3c' }}>{defendsLost.toLocaleString()}</span></div>
+              )}
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Win Rate</div>
+              {hasProfile ? (
+                <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
+                  {winRate !== null ? `${winRate}%` : '—'}
+                </div>
+              ) : (
+                <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
+              )}
+            </div>
           </div>
-          {/* Attack / Defend record */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Atk W/L</div>
-            {hasProfile ? (
-              <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>
-                <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
-                <span style={{ color: '#555', margin: '0 4px' }}>/</span>
-                <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
+
+          {/* Mobile Stats Grid (shown only on mobile via CSS) */}
+          <div className={`member-card-mobile-stats${hasImportedStats ? ' has-stats' : ''}`}>
+            {hasImportedStats && (
+              <div className="member-card-mobile-stats-col">
+                <div className="member-card-mobile-stats-label">Suspected XP</div>
+                {member.suspectedRaw ? (
+                  <div className="member-card-mobile-stats-val" style={{ color: '#e74c3c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                    <IconBarChart size={12} color="#e74c3c" /> {member.suspectedRaw}
+                  </div>
+                ) : (
+                  <div className="member-card-mobile-stats-val" style={{ color: '#444' }}>—</div>
+                )}
               </div>
-            ) : (
-              <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
             )}
-            {hasProfile && (
-              <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '2px' }}>Def: <span style={{ color: '#2ecc71' }}>{defendsWon.toLocaleString()}</span>/<span style={{ color: '#e74c3c' }}>{defendsLost.toLocaleString()}</span></div>
-            )}
-          </div>
-          {/* Win Rate */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Win Rate</div>
-            {hasProfile ? (
-              <div style={{ fontSize: '1.3rem', fontWeight: 'bold', color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
-                {winRate !== null ? `${winRate}%` : '—'}
+
+            <div className="member-card-mobile-stats-col">
+              <div className="member-card-mobile-stats-label">Days</div>
+              <div className="member-card-mobile-stats-val" style={{ color: '#f1c40f' }}>
+                {hasProfile && daysPlaying !== null ? daysPlaying.toLocaleString() : '—'}
               </div>
-            ) : (
-              <div style={{ color: '#555', fontSize: '0.85rem' }}>—</div>
-            )}
+            </div>
+
+            <div className="member-card-mobile-stats-col">
+              <div className="member-card-mobile-stats-label">Atk W/L</div>
+              <div className="member-card-mobile-stats-val">
+                {hasProfile ? (
+                  <>
+                    <span style={{ color: '#2ecc71' }}>{attacksWon.toLocaleString()}</span>
+                    <span style={{ color: '#555', margin: '0 2px' }}>/</span>
+                    <span style={{ color: '#e74c3c' }}>{attacksLost.toLocaleString()}</span>
+                  </>
+                ) : '—'}
+              </div>
+            </div>
+
+            <div className="member-card-mobile-stats-col">
+              <div className="member-card-mobile-stats-label">Win Rate</div>
+              <div className="member-card-mobile-stats-val" style={{ color: winRate >= 70 ? '#e74c3c' : winRate >= 50 ? '#f1c40f' : '#2ecc71' }}>
+                {hasProfile && winRate !== null ? `${winRate}%` : '—'}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Activity strip */}
         {hasProfile && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
             {[
               { 
                 label: <><IconSwords size={12} color="#e67e22" /> Crimes</>, 
@@ -497,17 +673,7 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
               const diffColor = diff > 0 ? '#e74c3c' : diff < 0 ? '#2ecc71' : '#888';
 
               return (
-                <span key={color} style={{
-                  backgroundColor: '#1a1a1a',
-                  border: `1px solid ${color}44`,
-                  color: '#ccc',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}>
+                <span key={color} className="member-card-activity-badge" style={{ border: `1px solid ${color}44` }}>
                   {label}: <strong style={{ color }}>
                     {compareMode ? diffStr : value.toLocaleString()}
                   </strong>
@@ -526,7 +692,7 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
   );
 };
 
-const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
+const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval = 30, isActive }) => {
   // Derive war state from factionData (safe to do before the guard — factionData may be null)
   const rankedWars = factionData?.ranked_wars || factionData?.rankedwars || {};
   const activeWars = Object.values(rankedWars);
@@ -562,6 +728,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [enemyFactionData, setEnemyFactionData] = useState(() => cachedData?.factionData || null);
   const [memberProfiles, setMemberProfiles] = useState(() => cachedData?.profiles || {});
   const [isLoadingTargets, setIsLoadingTargets] = useState(false);
+  const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState({ done: 0, total: 0 });
   const [errorTargets, setErrorTargets] = useState(null);
   const [cachedAt, setCachedAt] = useState(() => cachedData?.fetchedAt || null);
@@ -576,8 +743,36 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   const [statusFilter, setStatusFilter] = useState(() => {
     return localStorage.getItem('tornagator_faction_status_filter') || 'all';
   });
+  const [layoutView, setLayoutView] = useState(() => {
+    return localStorage.getItem('tornagator_faction_layout_view') || 'detailed';
+  });
   const [importedStats, setImportedStats] = useState({});
   const [suspectedStatsFaction, setSuspectedStatsFaction] = useState('');
+
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tornagator_pinned_targets');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.error('Failed to parse pinned targets from localStorage', e);
+      return {};
+    }
+  });
+
+  const handleTogglePin = (memberId) => {
+    setPinnedIds(prev => {
+      const updated = { ...prev, [memberId]: !prev[memberId] };
+      if (!updated[memberId]) {
+        delete updated[memberId];
+      }
+      try {
+        localStorage.setItem('tornagator_pinned_targets', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save pinned targets to localStorage', e);
+      }
+      return updated;
+    });
+  };
 
   // Sync cache if key changes later
   useEffect(() => {
@@ -617,13 +812,113 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     localStorage.setItem('tornagator_faction_status_filter', statusFilter);
   }, [statusFilter]);
 
+  // Handle android native back button to close the import modal
+  useEffect(() => {
+    const handleAndroidBack = (e) => {
+      if (isImportOpen) {
+        setIsImportOpen(false);
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('androidBack', handleAndroidBack);
+    return () => {
+      document.removeEventListener('androidBack', handleAndroidBack);
+    };
+  }, [isImportOpen]);
+
+
+  // Ref to guard against concurrent background refreshes
+  const isRefreshingRef = useRef(false);
+
+  /**
+   * Lightweight background refresh — only fetches faction member status and last_action.
+   * Updates cards live without showing a loading screen or disrupting the user.
+   */
+  const doBackgroundStatusRefresh = useCallback(async () => {
+    if (!firstEnemyFactionId || !apiKey || isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
+    setIsBackgroundRefreshing(true);
+    try {
+      const data = await fetchFactionById(apiKey, firstEnemyFactionId);
+      if (data && data.members) {
+        // Merge only status and last_action fields into existing enemyFactionData
+        setEnemyFactionData(prev => {
+          if (!prev || !prev.members) return data;
+          const updatedMembers = { ...prev.members };
+          Object.entries(data.members).forEach(([id, freshMember]) => {
+            if (updatedMembers[id]) {
+              updatedMembers[id] = {
+                ...updatedMembers[id],
+                status: freshMember.status,
+                last_action: freshMember.last_action,
+              };
+            }
+          });
+          return { ...prev, members: updatedMembers };
+        });
+        const fetchedAt = Date.now();
+        setCachedAt(fetchedAt);
+        if (cacheKey) {
+          try {
+            const cachedRaw = sessionStorage.getItem(cacheKey);
+            if (cachedRaw) {
+              const cached = JSON.parse(cachedRaw);
+              const mergedFactionData = {
+                ...cached.factionData,
+                members: Object.fromEntries(
+                  Object.entries(cached.factionData?.members || {}).map(([id, m]) => [
+                    id,
+                    {
+                      ...m,
+                      status: data.members[id]?.status || m.status,
+                      last_action: data.members[id]?.last_action || m.last_action,
+                    }
+                  ])
+                )
+              };
+              sessionStorage.setItem(cacheKey, JSON.stringify({ ...cached, factionData: mergedFactionData, fetchedAt }));
+            }
+          } catch (e) {
+            console.warn('[TORNagator] Failed to update target status cache:', e);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[TORNagator] Background status refresh failed:', err);
+    } finally {
+      isRefreshingRef.current = false;
+      setIsBackgroundRefreshing(false);
+    }
+  }, [firstEnemyFactionId, apiKey, cacheKey]);
+
   // Load targets if starting on the targets tab and they aren't loaded yet
   useEffect(() => {
+    if (!isActive) return;
     if (activeSubTab === 'targets' && !enemyFactionData && !isLoadingTargets && firstEnemyFactionId && apiKey) {
       doFetchTargets();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
+  }, [isActive, activeSubTab, enemyFactionData, isLoadingTargets, firstEnemyFactionId, apiKey]);
+
+  // Auto-poll background status refresh while on the targets tab
+  useEffect(() => {
+    if (!isActive || activeSubTab !== 'targets' || !enemyFactionData || !firstEnemyFactionId || !apiKey || pollInterval <= 0) return;
+    const intervalMs = Math.max(10000, pollInterval * 1000);
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        doBackgroundStatusRefresh();
+      }
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [isActive, activeSubTab, enemyFactionData, firstEnemyFactionId, apiKey, pollInterval, doBackgroundStatusRefresh]);
+
+  // Trigger a single background status update on tab reactivation if targets are already loaded
+  useEffect(() => {
+    if (isActive && activeSubTab === 'targets' && enemyFactionData && !isLoadingTargets && !isBackgroundRefreshing && firstEnemyFactionId && apiKey) {
+      doBackgroundStatusRefresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, activeSubTab]);
 
   // Load suspected stats from localStorage when target faction ID changes
   useEffect(() => {
@@ -669,8 +964,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     if (!enemyFactionData) doFetchTargets();
   };
 
-  // Called by the Refresh button — always bypasses cache
+  // Called by the Refresh button on mobile — does a background status refresh (no loading screen)
   const handleForceRefresh = () => {
+    doBackgroundStatusRefresh();
+  };
+
+  // Called by the full Refresh button on desktop — bypasses cache and re-fetches everything including profiles
+  const handleFullRefresh = () => {
     if (cacheKey) sessionStorage.removeItem(cacheKey);
     doFetchTargets();
   };
@@ -729,15 +1029,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     }
   };
 
-
-
   const cardStyle = {
     backgroundColor: '#1e1e1e',
-    padding: '1.5rem',
+    padding: isCapacitor ? '10px' : '1.5rem',
     borderRadius: '12px',
     border: '1px solid #333',
     boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-    marginBottom: '2rem'
+    marginBottom: isCapacitor ? '1rem' : '2rem'
   };
 
   const labelStyle = {
@@ -755,7 +1053,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
   };
 
   const navItemStyle = (tab) => ({
-    padding: '10px 20px',
+    padding: isCapacitor ? '10px 12px' : '10px 20px',
     cursor: 'pointer',
     borderBottom: activeSubTab === tab ? '2px solid #e74c3c' : '2px solid transparent',
     color: activeSubTab === tab ? '#e74c3c' : '#888',
@@ -767,13 +1065,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
     borderLeft: 'none',
     borderRight: 'none',
     fontFamily: 'inherit',
-    fontSize: 'inherit'
+    fontSize: isCapacitor ? '0.9rem' : 'inherit'
   });
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', animation: 'fadeIn 0.5s ease-in' }}>
-      <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
+      <header className="faction-war-header" style={{ marginBottom: isCapacitor ? '1rem' : '2rem' }}>
+        <h1 className="faction-war-title" style={{ margin: 0, fontSize: isCapacitor ? '1.8rem' : '2.5rem', fontWeight: '800' }}>
           <a 
             href={`https://www.torn.com/factions.php?step=profile&ID=${factionData.ID}`} 
             onClick={(e) => {
@@ -786,9 +1084,9 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
             style={{ color: 'inherit' }}
           >
             {factionData.name}
-          </a> <span style={{ color: '#666', fontSize: '1.5rem' }}>[{factionData.tag}]</span>
+          </a> <span className="faction-war-tag" style={{ color: '#666', fontSize: isCapacitor ? '1.1rem' : '1.5rem' }}>[{factionData.tag}]</span>
         </h1>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap' }}>
           <span style={{ backgroundColor: '#333', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
             Respect: {factionData.respect?.toLocaleString() || 'N/A'}
           </span>
@@ -800,8 +1098,8 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
       {isInWar && (
         <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333' }}>
-          <button style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</button>
-          <button style={navItemStyle('targets')} onClick={() => {
+          <button className="faction-war-nav-item" style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</button>
+          <button className="faction-war-nav-item" style={navItemStyle('targets')} onClick={() => {
             setActiveSubTab('targets');
             handleLoadTargets();
           }}>Enemy Targets</button>
@@ -849,9 +1147,46 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
       {activeSubTab === 'targets' && isInWar && (
         <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: cachedAt ? '0.5rem' : '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <h3 style={{ margin: 0, color: '#e74c3c', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><IconTarget size={22} color="#e74c3c" /> Target Selection</h3>
+          <div className="targets-header-row" style={{
+            display: 'flex',
+            flexDirection: isCapacitor ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isCapacitor ? 'stretch' : 'center',
+            gap: isCapacitor ? '12px' : '0',
+            marginBottom: cachedAt ? '0.5rem' : '1.5rem'
+          }}>
+            <div className="targets-title-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
+              <h3 className="targets-title-text" style={{ margin: 0, color: '#e74c3c', fontSize: isCapacitor ? '1.3rem' : '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}><IconTarget size={22} color="#e74c3c" /> Target Selection</h3>
+
+              {isCapacitor && (
+                <button
+                  onClick={handleForceRefresh}
+                  disabled={isBackgroundRefreshing}
+                  className="targets-sync-btn"
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${isBackgroundRefreshing ? '#222' : '#444'}`,
+                    borderRadius: '20px',
+                    padding: '4px 10px',
+                    cursor: isBackgroundRefreshing ? 'not-allowed' : 'pointer',
+                    color: isBackgroundRefreshing ? '#666' : '#3498db',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: '600',
+                    fontSize: '0.75rem',
+                    letterSpacing: '0.5px',
+                    transition: 'all 0.3s ease',
+                    opacity: isBackgroundRefreshing ? 0.6 : 1
+                  }}
+                >
+                  <span style={{ marginTop: '1px' }}>{isBackgroundRefreshing ? 'SYNCING...' : 'SYNC'}</span>
+                  <span style={{ fontSize: '0.8rem' }}>🔄</span>
+                </button>
+              )}
+            </div>
+
+            <div className="targets-action-group" style={{ display: 'flex', justifyContent: isCapacitor ? 'flex-start' : 'flex-end', alignItems: 'center', gap: '10px' }}>
               <button
                 onClick={() => setCompareMode(!compareMode)}
                 aria-pressed={compareMode}
@@ -879,112 +1214,136 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                   COMPARE TO OWN
                 </span>
               </button>
+
+              {!isCapacitor && (
+                <button
+                  onClick={handleFullRefresh}
+                  disabled={isLoadingTargets || isBackgroundRefreshing}
+                  className="targets-sync-btn"
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${(isLoadingTargets || isBackgroundRefreshing) ? '#222' : '#444'}`,
+                    borderRadius: '20px',
+                    padding: '4px 12px',
+                    cursor: (isLoadingTargets || isBackgroundRefreshing) ? 'not-allowed' : 'pointer',
+                    color: (isLoadingTargets || isBackgroundRefreshing) ? '#666' : '#3498db',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: '600',
+                    fontSize: '0.75rem',
+                    letterSpacing: '1px',
+                    transition: 'all 0.3s ease',
+                    opacity: (isLoadingTargets || isBackgroundRefreshing) ? 0.6 : 1
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isLoadingTargets && !isBackgroundRefreshing) {
+                      e.currentTarget.style.borderColor = '#3498db';
+                      e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isLoadingTargets && !isBackgroundRefreshing) {
+                      e.currentTarget.style.borderColor = '#444';
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  <span style={{ marginTop: '1px' }}>{isLoadingTargets ? 'SYNCING...' : 'SYNC TARGETS'}</span>
+                  <span style={{ fontSize: '0.9rem' }}>🔄</span>
+                </button>
+              )}
             </div>
-            <button 
-              onClick={handleForceRefresh} 
-              disabled={isLoadingTargets} 
-              style={{ 
-                background: 'transparent',
-                border: `1px solid ${isLoadingTargets ? '#222' : '#444'}`,
-                borderRadius: '20px',
-                padding: '4px 12px',
-                cursor: isLoadingTargets ? 'not-allowed' : 'pointer',
-                color: isLoadingTargets ? '#666' : '#3498db',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontWeight: '600',
-                fontSize: '0.75rem',
-                letterSpacing: '1px',
-                transition: 'all 0.3s ease',
-                opacity: isLoadingTargets ? 0.6 : 1
-              }}
-              onMouseEnter={(e) => { 
-                if (!isLoadingTargets) {
-                  e.currentTarget.style.borderColor = '#3498db';
-                  e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
-                }
-              }}
-              onMouseLeave={(e) => { 
-                if (!isLoadingTargets) {
-                  e.currentTarget.style.borderColor = '#444';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <span style={{ marginTop: '1px' }}>{isLoadingTargets ? 'SYNCING...' : 'SYNC TARGETS'}</span>
-              <span style={{ fontSize: '0.9rem' }}>🔄</span>
-            </button>
           </div>
+
           {cachedAt && !isLoadingTargets && (
-            <div style={{ fontSize: '0.78rem', color: '#555', marginBottom: '1.5rem' }}>
-              ✅ Cached — last fetched {new Date(cachedAt).toLocaleTimeString()}. Click Refresh to update.
+            <div style={{ fontSize: '0.78rem', color: '#555', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✅ Last synced {new Date(cachedAt).toLocaleTimeString()}</span>
+              {isBackgroundRefreshing && (
+                <span style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#3498db',
+                  animation: 'pulse-dot 1s ease-in-out infinite'
+                }} title="Refreshing status..." />
+              )}
             </div>
           )}
 
           {/* Controls / Sorting Bar */}
           {!isLoadingTargets && enemyFactionData && enemyFactionData.members && (
-            <div style={{ 
+            <div className="targets-controls-bar" style={{
               display: 'flex', 
+              flexDirection: isCapacitor ? 'column' : 'row',
               justifyContent: 'space-between', 
-              alignItems: 'center', 
-              flexWrap: 'wrap', 
+              alignItems: isCapacitor ? 'stretch' : 'center',
               gap: '15px', 
               backgroundColor: '#161616', 
-              padding: '12px 16px', 
+              padding: isCapacitor ? '10px' : '12px 16px',
               borderRadius: '8px', 
               border: '1px solid #2d2d2d',
               marginBottom: '1.5rem'
             }}>
               {/* Sorting and Filter controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="targets-filters-group" style={{
+                display: 'flex',
+                flexDirection: isCapacitor ? 'column' : 'row',
+                alignItems: isCapacitor ? 'stretch' : 'center',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}>
+                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
                   <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Sort By:</span>
-                  <select 
-                    value={sortBy} 
-                    onChange={(e) => setSortBy(e.target.value)}
-                    style={{
-                      backgroundColor: '#222',
-                      border: '1px solid #444',
-                      borderRadius: '4px',
-                      color: '#fff',
-                      padding: '4px 8px',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="default">Status & Level (Default)</option>
-                    <option value="level">Level</option>
-                    {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP/Stats</option>}
-                    <option value="age">Days Playing</option>
-                    <option value="winrate">Win Rate</option>
-                  </select>
-                  
-                  <button
-                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    style={{
-                      backgroundColor: '#222',
-                      border: '1px solid #444',
-                      borderRadius: '4px',
-                      color: '#aaa',
-                      padding: '4.5px 10px',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      fontWeight: 'bold',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    {sortOrder === 'asc' ? '▲ ASC' : '▼ DESC'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px', flex: isCapacitor ? 1 : 'none', justifyContent: 'flex-end' }}>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      style={{
+                        backgroundColor: '#222',
+                        border: '1px solid #444',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        padding: '4px 8px',
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        flex: isCapacitor ? 1 : 'none'
+                      }}
+                    >
+                      <option value="default">Status & Level (Default)</option>
+                      <option value="level">Level</option>
+                      {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP/Stats</option>}
+                      <option value="age">Days Playing</option>
+                      <option value="winrate">Win Rate</option>
+                    </select>
+
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                      style={{
+                        backgroundColor: '#222',
+                        border: '1px solid #444',
+                        borderRadius: '4px',
+                        color: '#aaa',
+                        padding: '4.5px 10px',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {sortOrder === 'asc' ? '▲' : '▼'}
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
                   <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Show:</span>
                   <select 
-                    value={statusFilter} 
+                    value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     style={{
                       backgroundColor: '#222',
@@ -994,7 +1353,9 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                       padding: '4px 8px',
                       fontSize: '0.85rem',
                       cursor: 'pointer',
-                      outline: 'none'
+                      outline: 'none',
+                      flex: isCapacitor ? 1 : 'none',
+                      maxWidth: isCapacitor ? 'none' : 'auto'
                     }}
                   >
                     <option value="all">All Members</option>
@@ -1002,60 +1363,108 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     <option value="offline">Offline Only</option>
                   </select>
                 </div>
+
+                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>View:</span>
+                  <select 
+                    value={layoutView}
+                    onChange={(e) => {
+                      setLayoutView(e.target.value);
+                      localStorage.setItem('tornagator_faction_layout_view', e.target.value);
+                    }}
+                    style={{
+                      backgroundColor: '#222',
+                      border: '1px solid #444',
+                      borderRadius: '4px',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      flex: isCapacitor ? 1 : 'none',
+                      maxWidth: isCapacitor ? 'none' : 'auto'
+                    }}
+                  >
+                    <option value="detailed">Detailed</option>
+                    <option value="minimal">Minimal</option>
+                  </select>
+                </div>
               </div>
 
               {/* Import / Suspected stats info */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="targets-import-group" style={{
+                display: 'flex',
+                flexDirection: isCapacitor ? 'column' : 'row',
+                alignItems: isCapacitor ? 'stretch' : 'center',
+                gap: '10px',
+                borderTop: isCapacitor ? '1px solid #222' : 'none',
+                paddingTop: isCapacitor ? '10px' : '0'
+              }}>
                 {Object.keys(importedStats).length > 0 ? (
                   <>
-                    <span style={{ fontSize: '0.8rem', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="targets-import-status" style={{
+                      fontSize: '0.8rem',
+                      color: '#2ecc71',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      justifyContent: isCapacitor ? 'center' : 'flex-start',
+                      textAlign: 'center',
+                      lineHeight: '1.3'
+                    }}>
                       <span style={{ fontSize: '1rem' }}>📊</span> Suspected stats loaded {suspectedStatsFaction ? `(${suspectedStatsFaction})` : ''}
                     </span>
-                    <button
-                      onClick={() => setIsImportOpen(true)}
-                      style={{
-                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                        border: '1px solid #3498db',
-                        borderRadius: '4px',
-                        color: '#3498db',
-                        padding: '4px 10px',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      Update Stats
-                    </button>
-                    <button
-                      onClick={handleClearStats}
-                      style={{
-                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                        border: '1px solid #e74c3c',
-                        borderRadius: '4px',
-                        color: '#e74c3c',
-                        padding: '4px 10px',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <IconTrash size={12} color="#e74c3c" /> Clear
-                    </button>
+                    <div className="targets-import-actions" style={{ display: 'flex', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
+                      <button
+                        onClick={() => setIsImportOpen(true)}
+                        style={{
+                          flex: isCapacitor ? 1 : 'none',
+                          backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                          border: '1px solid #3498db',
+                          borderRadius: '4px',
+                          color: '#3498db',
+                          padding: '6px 10px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        Update Stats
+                      </button>
+                      <button
+                        onClick={handleClearStats}
+                        style={{
+                          flex: isCapacitor ? 1 : 'none',
+                          backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                          border: '1px solid #e74c3c',
+                          borderRadius: '4px',
+                          color: '#e74c3c',
+                          padding: '6px 10px',
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <IconTrash size={12} color="#e74c3c" /> Clear
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <button
                     onClick={() => setIsImportOpen(true)}
                     style={{
+                      width: isCapacitor ? '100%' : 'auto',
                       backgroundColor: '#e74c3c',
                       border: 'none',
                       borderRadius: '4px',
                       color: '#fff',
-                      padding: '6px 12px',
+                      padding: '8px 12px',
                       fontSize: '0.8rem',
                       cursor: 'pointer',
                       fontWeight: 'bold',
@@ -1224,14 +1633,18 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                   return true;
                 });
 
-                // Group by status
+                // Separate pinned and unpinned members
+                const pinnedMembers = filteredMembers.filter(m => pinnedIds[m.id]);
+                const unpinnedMembers = filteredMembers.filter(m => !pinnedIds[m.id]);
+
+                // Group by status for unpinned members
                 const groups = {
                   okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
                   jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
                   other: { label: '✈️ Other', color: '#3498db', members: [] },
                 };
 
-                filteredMembers.forEach(m => {
+                unpinnedMembers.forEach(m => {
                   const state = m.status?.state || '';
                   if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
                   else if (state === 'Jail') groups.jail.members.push(m);
@@ -1240,6 +1653,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
                 // Sort within each group
                 Object.values(groups).forEach(g => applySortOrder(g.members));
+                applySortOrder(pinnedMembers);
 
                 const renderCards = (members) => members.map((member) => (
                   <FactionMemberCard
@@ -1249,10 +1663,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                     compareMode={compareMode}
                     hasImportedStats={hasImportedStats}
                     onOpenInTorn={onOpenInTorn}
+                    isPinned={!!pinnedIds[member.id]}
+                    onTogglePin={handleTogglePin}
+                    isMinimal={layoutView === 'minimal'}
                   />
                 ));
 
-                return Object.entries(groups)
+                const renderedGroups = Object.entries(groups)
                   .filter(([, g]) => g.members.length > 0)
                   .map(([key, g]) => (
                     <CollapsibleSection
@@ -1265,6 +1682,22 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
                       {renderCards(g.members)}
                     </CollapsibleSection>
                   ));
+
+                if (pinnedMembers.length > 0) {
+                  renderedGroups.unshift(
+                    <CollapsibleSection
+                      key="pinned"
+                      title="📌 Pinned Targets"
+                      count={pinnedMembers.length}
+                      statusColor="#f1c40f"
+                      defaultOpen={true}
+                    >
+                      {renderCards(pinnedMembers)}
+                    </CollapsibleSection>
+                  );
+                }
+
+                return renderedGroups;
               })()}
             </div>
           ) : (
