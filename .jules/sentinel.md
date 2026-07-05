@@ -10,3 +10,7 @@
 **Vulnerability:** User-provided URLs in the "New Tab" page (for direct navigation and adding favorites) were not validated for unsafe URL schemes before being passed to `onNavigate`, which eventually sets the `src` attribute of the Electron `<webview>`.
 **Learning:** Even internal UI components like custom "New Tab" pages that accept URL inputs must validate the URL scheme when running in an environment where setting iframe/webview sources to `javascript:` or `data:` is dangerous (like Electron with nodeIntegration).
 **Prevention:** Apply the same strict URL scheme validation (rejecting `javascript:`, `data:`, `vbscript:`) to all user inputs that resolve to navigation targets, not just external or saved configurations like Custom Quick Actions.
+## 2026-07-05 - [HIGH] Prevent DOM-based XSS via React dangerouslySetInnerHTML
+**Vulnerability:** External or decoded HTML content (like `descHtml` in `UserDashboard.js`) was injected directly into the DOM using React's `dangerouslySetInnerHTML` without sanitization.
+**Learning:** React's `dangerouslySetInnerHTML` bypasses standard XSS protections. If the content being injected is derived from external sources or dynamically generated text containing HTML tags (even after entity decoding), it creates an XSS vulnerability.
+**Prevention:** Always use a dedicated sanitization library, such as `DOMPurify`, to wrap content before passing it to `dangerouslySetInnerHTML`. Ensure `DOMPurify` is installed and wrap the variable: `dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(dirtyHtml) }}`.
