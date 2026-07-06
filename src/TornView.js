@@ -2802,45 +2802,60 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               }
 
               if (plushieSection) {
-                const inputs = plushieSection.querySelectorAll('input');
-                let setsInput = null;
-                for (const inp of inputs) {
-                  const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
-                  const name = (inp.getAttribute('name') || '').toLowerCase();
-                  const type = (inp.getAttribute('type') || '').toLowerCase();
-                  if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
-                    setsInput = inp;
-                    break;
+                // Find the header container of the Plushie Set dropdown
+                let titleBar = null;
+                const titleCandidates = plushieSection.querySelectorAll('div, li, a');
+                for (const el of titleCandidates) {
+                  if (el.textContent && el.textContent.includes('Plushie Set') && el.textContent.includes('10 points') && !el.querySelector('input')) {
+                    titleBar = el;
                   }
                 }
 
-                if (setsInput) {
-                  const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                if (titleBar) {
+                  // Ensure titleBar is flex row
+                  const currentDisplay = window.getComputedStyle(titleBar).display;
+                  if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                    titleBar.style.display = 'flex';
+                    titleBar.style.alignItems = 'center';
+                  }
 
                   let badge = document.getElementById('tornagator-museum-plushie-profit');
+                  if (badge && badge.parentNode !== titleBar) {
+                    badge.parentNode.removeChild(badge);
+                    badge = null;
+                  }
+
                   if (!badge) {
                     badge = document.createElement('div');
                     badge.id = 'tornagator-museum-plushie-profit';
-                    badge.style.display = 'inline-flex';
-                    badge.style.alignItems = 'center';
-                    badge.style.marginRight = '16px';
                     badge.style.fontSize = '12px';
                     badge.style.fontWeight = 'bold';
                     badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
-                    badge.style.padding = '6px 12px';
-                    badge.style.borderRadius = '6px';
-                    badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                    badge.style.padding = '3px 8px';
+                    badge.style.borderRadius = '4px';
+                    badge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
                     badge.style.transition = 'all 0.2s ease';
+                    badge.style.marginLeft = 'auto';
+                    badge.style.marginRight = '12px';
 
-                    targetForInsertion.parentNode.insertBefore(badge, targetForInsertion);
+                    // Insert before the arrow icon if possible
+                    const arrow = titleBar.querySelector('i, span[class*="arrow"], svg, [class*="arrow"]');
+                    if (arrow && arrow.parentNode === titleBar) {
+                      titleBar.insertBefore(badge, arrow);
+                    } else {
+                      titleBar.appendChild(badge);
+                    }
+                  }
 
-                    const parent = targetForInsertion.parentNode;
-                    if (parent) {
-                      const currentDisplay = window.getComputedStyle(parent).display;
-                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
-                        parent.style.display = 'flex';
-                        parent.style.alignItems = 'center';
-                      }
+                  let setsInput = null;
+                  const inputs = plushieSection.querySelectorAll('input');
+                  for (const inp of inputs) {
+                    const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
+                    const name = (inp.getAttribute('name') || '').toLowerCase();
+                    const type = (inp.getAttribute('type') || '').toLowerCase();
+                    if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
+                      setsInput = inp;
+                      break;
                     }
                   }
 
@@ -2874,9 +2889,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   });
 
                   const updateProfitDisplay = () => {
-                    let numSets = parseInt(setsInput.value, 10);
-                    if (isNaN(numSets) || numSets <= 0) {
-                      numSets = 1;
+                    let numSets = 1;
+                    if (setsInput) {
+                      const parsed = parseInt(setsInput.value, 10);
+                      if (!isNaN(parsed) && parsed > 0) {
+                        numSets = parsed;
+                      }
                     }
 
                     if (missingPrice || !window._tornagator_points_price) {
@@ -2908,7 +2926,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   };
 
                   // Attach listener for instant updates when typing
-                  if (!setsInput._tornagator_listener_attached) {
+                  if (setsInput && !setsInput._tornagator_listener_attached) {
                     setsInput._tornagator_listener_attached = true;
                     setsInput.addEventListener('input', updateProfitDisplay);
                   }
