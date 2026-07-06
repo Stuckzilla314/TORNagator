@@ -899,7 +899,7 @@ const STATS_REDIR_SCRIPT = `
   })()
 `;
 
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -1208,12 +1208,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           }
         }
       }
+    } else if (payload.type === 'open_tab') {
+      const { url } = payload;
+      if (url && onNewTab) {
+        onNewTab(url);
+      }
     } else if (payload.type === 'set_baldr_primary') {
       if (setBaldrHighestStat) {
         setBaldrHighestStat(payload.stat);
       }
     }
-  }, [tabId, setBaldrHighestStat]);
+  }, [tabId, setBaldrHighestStat, onNewTab]);
 
   useEffect(() => {
     if (!isCapacitor) return;
@@ -2908,7 +2913,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                             
                             localStorage.setItem('tornagator_museum_visited_bazaars', JSON.stringify(visitedData));
                             localStorage.setItem('tornagator_bazaar_search_prefill', 'plushie');
-                            window.open('https://www.torn.com/bazaar.php?userId=' + selectedListing.player_id + '#/', '_blank');
+                            console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                              tabId: window._tornagator_tab_id,
+                              type: "open_tab",
+                              url: 'https://www.torn.com/bazaar.php?userId=' + selectedListing.player_id + '#/'
+                            }));
                           } else {
                             alert('Could not find seller ID in bazaar listings.');
                           }
@@ -5186,6 +5195,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 tab={tab}
                 isActive={isActive && activeTabId === tab.id}
                 onUpdate={handleTabUpdate}
+                onNewTab={handleNewTab}
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
