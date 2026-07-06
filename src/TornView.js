@@ -1512,8 +1512,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           const isItemMarket = window.location.href.includes('imarket.php') || window.location.href.includes('sid=ItemMarket') || window.location.href.includes('sid=itemmarket') || window.location.href.includes('sid=imarket');
           const isGym = window.location.href.includes('gym.php');
           const isMuseum = window.location.href.includes('museum.php');
+          const isBazaar = window.location.href.includes('bazaar.php');
 
-          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum) {
+          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) {
             return null;
           }
 
@@ -2906,6 +2907,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                             }
                             
                             localStorage.setItem('tornagator_museum_visited_bazaars', JSON.stringify(visitedData));
+                            localStorage.setItem('tornagator_bazaar_search_prefill', 'plushie');
                             window.open('https://www.torn.com/bazaar.php?userId=' + selectedListing.player_id + '#/', '_blank');
                           } else {
                             alert('Could not find seller ID in bazaar listings.');
@@ -3346,6 +3348,31 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             }
           }
 
+          if (isBazaar) {
+            try {
+              const prefill = localStorage.getItem('tornagator_bazaar_search_prefill');
+              if (prefill) {
+                const searchInput = document.querySelector('input[placeholder*="search" i]');
+                if (searchInput) {
+                  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                  if (valueSetter) {
+                    valueSetter.call(searchInput, prefill);
+                  } else {
+                    searchInput.value = prefill;
+                  }
+                  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+                  searchInput.focus();
+                  searchInput.blur();
+                  localStorage.removeItem('tornagator_bazaar_search_prefill');
+                  console.log('[TORNagator Bazaar] Prefilled search with:', prefill);
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator Bazaar] Search prefill error:', err);
+            }
+          }
+
           return null;
         } catch (e) {
           console.error("Profit/Crimes injection error:", e);
@@ -3364,10 +3391,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
         const isMuseum = currentUrl.includes('museum.php');
+        const isBazaar = currentUrl.includes('bazaar.php');
 
         console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
 
         if (isGym) {
           window._tornagator_last_injected_script = script;
@@ -3396,8 +3424,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
         const isMuseum = currentUrl.includes('museum.php');
+        const isBazaar = currentUrl.includes('bazaar.php');
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
 
         wv.executeJavaScript(script)
           .then(result => {
