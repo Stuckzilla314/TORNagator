@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import { useBarTimer } from './useBarTimer';
 import { useTravelTimer } from './useTravelTimer';
 import { IconPlane, IconHospital, IconScales, IconChevronRight, IconRaceway } from './Icons';
@@ -463,7 +464,7 @@ const UserDashboard = ({ userData, onLogout, onOpenInTorn }) => {
                   <h3 className="stat-label" style={{ marginTop: 0, color: titleColor, display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <IconRaceway size={18} color={iconColor} /> {titleText}
                   </h3>
-                  <p style={{ margin: '4px 0', fontSize: '1.1rem' }} dangerouslySetInnerHTML={{ __html: decodeHtml(descHtml) }} />
+                  <p style={{ margin: '4px 0', fontSize: '1.1rem' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(decodeHtml(descHtml)) }} />
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={labelStyle}>{rightLabel}</div>
