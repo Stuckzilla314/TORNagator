@@ -2779,17 +2779,15 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 }
               }
 
-              // Trigger points price fetch if needed
-              if (window._tornagator_api_key && (!window._tornagator_points_price || !window._tornagator_points_price_timestamp || (now - window._tornagator_points_price_timestamp > 5 * 60 * 1000))) {
-                if (!window._tornagator_fetching_points_price) {
-                  window._tornagator_fetching_points_price = true;
-                  console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
-                    type: "fetch",
-                    id: "points_price_fetch",
-                    url: "https://api.torn.com/market/?selections=pointsmarket&key=" + window._tornagator_api_key,
-                    tabId: window._tornagator_tab_id
-                  }));
-                }
+              // Trigger points price fetch if needed (only on first load / refresh)
+              if (window._tornagator_api_key && !window._tornagator_points_price && !window._tornagator_fetching_points_price) {
+                window._tornagator_fetching_points_price = true;
+                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                  type: "fetch",
+                  id: "points_price_fetch",
+                  url: "https://api.torn.com/market/?selections=pointsmarket&key=" + window._tornagator_api_key,
+                  tabId: window._tornagator_tab_id
+                }));
               }
 
               // Find Plushie Set section container
@@ -2896,15 +2894,16 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                       badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
                       badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
 
-                      const totalPlushiesCost = totalPlushieCost * numSets;
-                      const totalPointsValue = tenPointsValue * numSets;
+                      const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
+                      const totalPointsValue = Math.round(tenPointsValue * numSets);
                       badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(window._tornagator_points_price).toLocaleString() + '/ea avg)';
 
-                      const labelPrefix = profit >= 0 
+                      const roundedProfit = Math.round(profit);
+                      const labelPrefix = roundedProfit >= 0 
                         ? (numSets > 1 ? 'Profit (' + numSets + ' sets): ' : 'Profit: ')
                         : (numSets > 1 ? 'Loss (' + numSets + ' sets): ' : 'Loss: ');
 
-                      badge.textContent = labelPrefix + (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toLocaleString();
+                      badge.textContent = labelPrefix + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
                     }
                   };
 
