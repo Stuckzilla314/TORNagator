@@ -4316,7 +4316,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @returns {React.JSX.Element} The rendered TornView component.
  */
 const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat, setBaldrHighestStat }) => {
-  const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
+  const defaultTab = useMemo(() => ({ id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' }), []);
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
 
@@ -4544,6 +4544,25 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [, forceRerender] = useState(0);
   const bumpRender = useCallback(() => forceRerender(n => n + 1), []);
 
+  const handleTabUpdate = useCallback((id, updates) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, [setTabs]);
+
+  const handleCloseTab = useCallback((e, id) => {
+    if (e) e.stopPropagation();
+    setTabs(prev => {
+      const idx = prev.findIndex(t => t.id === id);
+      const newTabs = prev.filter(t => t.id !== id);
+      if (newTabs.length === 0) return [defaultTab];
+      if (activeTabId === id) {
+        // Switch to the adjacent tab
+        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
+        setActiveTabId(nextTab.id);
+      }
+      return newTabs;
+    });
+  }, [activeTabId, setActiveTabId, setTabs, defaultTab]);
+
   // Handle android back button inside TORN tab
   useEffect(() => {
     if (!isActive) return;
@@ -4568,13 +4587,21 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
       // Find the active tab
       const activeTab = tabs.find(t => t.id === activeTabId);
-      if (activeTab && activeTab.canGoBack) {
-        if (isCapacitor) {
-          if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
-            console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
-            window.AndroidTornBridge.goBack(activeTab.id);
-            e.preventDefault();
+      if (activeTab) {
+        if (activeTab.canGoBack) {
+          if (isCapacitor) {
+            if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
+              console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
+              window.AndroidTornBridge.goBack(activeTab.id);
+              e.preventDefault();
+              return;
+            }
           }
+        } else if (activeTab.id !== 'home') {
+          console.log('[TornView] Closing active webview tab on back button:', activeTab.id);
+          handleCloseTab(null, activeTab.id);
+          e.preventDefault();
+          return;
         }
       }
     };
@@ -4583,7 +4610,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     return () => {
       document.removeEventListener('androidBack', handleAndroidBack);
     };
-  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs]);
+  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs, handleCloseTab]);
 
 
   // Memoize the mapping, filtering, and sorting of enemy faction members
@@ -4970,24 +4997,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     }
   }, [requestedUrl, tabs, setTabs, setActiveTabId, setRequestedUrl]);
 
-  const handleTabUpdate = useCallback((id, updates) => {
-    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  }, [setTabs]);
 
-  const handleCloseTab = (e, id) => {
-    e.stopPropagation();
-    setTabs(prev => {
-      const idx = prev.findIndex(t => t.id === id);
-      const newTabs = prev.filter(t => t.id !== id);
-      if (newTabs.length === 0) return [defaultTab];
-      if (activeTabId === id) {
-        // Switch to the adjacent tab
-        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
-        setActiveTabId(nextTab.id);
-      }
-      return newTabs;
-    });
-  };
 
   const handleNewTab = (initialUrl) => {
     // Guard: when called from onClick, initialUrl is a SyntheticEvent — ignore it
