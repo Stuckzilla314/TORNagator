@@ -800,11 +800,11 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn }) => {
 
       {isInWar && (
         <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333' }}>
-          <button style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')}>War Overview</button>
+          <button style={navItemStyle('overview')} onClick={() => setActiveSubTab('overview')} aria-current={activeSubTab === 'overview' ? 'page' : undefined}>War Overview</button>
           <button style={navItemStyle('targets')} onClick={() => {
             setActiveSubTab('targets');
             handleLoadTargets();
-          }}>Enemy Targets</button>
+          }} aria-current={activeSubTab === 'targets' ? 'page' : undefined}>Enemy Targets</button>
         </nav>
       )}
 

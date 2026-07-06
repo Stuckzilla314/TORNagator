@@ -828,11 +828,11 @@ function App() {
               flexShrink: 0
             }}
           >
-            <button style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-            <button style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</button>
-            <button style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</button>
-            <button style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
-            <button style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
+            <button style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')} aria-current={activeTab === 'dashboard' ? 'page' : undefined}>Dashboard</button>
+            <button style={navItemStyle('faction')} onClick={() => setActiveTab('faction')} aria-current={activeTab === 'faction' ? 'page' : undefined}>Faction War</button>
+            <button style={navItemStyle('stock')} onClick={() => setActiveTab('stock')} aria-current={activeTab === 'stock' ? 'page' : undefined}>Overseas Stock</button>
+            <button style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')} aria-current={activeTab === 'torn' ? 'page' : undefined}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
+            <button style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')} aria-current={activeTab === 'apilogs' ? 'page' : undefined}>
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                 <line x1="8" y1="21" x2="16" y2="21" />
