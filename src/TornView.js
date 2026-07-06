@@ -1187,7 +1187,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
         } else {
           const wv = webviewRef.current;
           if (wv) {
-            wv.executeJavaScript(responseScript).catch(() => {});
+            wv.executeJavaScript(responseScript).catch(() => { });
           }
         }
       } catch (err) {
@@ -1204,7 +1204,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
         } else {
           const wv = webviewRef.current;
           if (wv) {
-            wv.executeJavaScript(responseScript).catch(() => {});
+            wv.executeJavaScript(responseScript).catch(() => { });
           }
         }
       }
@@ -3218,14 +3218,8 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                             bodySelector.style.alignItems = 'center';
                             bodySelector.style.fontSize = '12px';
                             bodySelector.style.fontFamily = "'Inter', -apple-system, sans-serif";
-                            bodySelector.style.marginRight = '12px';
+                            bodySelector.style.marginRight = 'auto';
                             bodySelector.style.color = '#fff';
-
-                            const label = document.createElement('span');
-                            label.textContent = 'Source: ';
-                            label.style.marginRight = '4px';
-                            label.style.color = '#aaa';
-                            bodySelector.appendChild(label);
 
                             const select = document.createElement('select');
                             select.id = 'tornagator-museum-price-source-mobile';
@@ -4517,7 +4511,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       try {
         const stored = localStorage.getItem('tornagator_pinned_targets');
         setPinnedIds(stored ? JSON.parse(stored) : {});
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [isActive]);
 
@@ -4526,7 +4520,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       if (e.key === 'tornagator_pinned_targets') {
         try {
           setPinnedIds(e.newValue ? JSON.parse(e.newValue) : {});
-        } catch (err) {}
+        } catch (err) { }
       }
     };
     window.addEventListener('storage', handleStorageChange);
