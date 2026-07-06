@@ -2817,6 +2817,108 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 }
               }
 
+              // Handle Weav3r marketplace fetch response
+              if (window._tornagator_fetch_responses && window._tornagator_fetch_responses['weav3r_marketplace_fetch']) {
+                const res = window._tornagator_fetch_responses['weav3r_marketplace_fetch'];
+                delete window._tornagator_fetch_responses['weav3r_marketplace_fetch'];
+                window._weav3r_fetching_marketplace = false;
+
+                if (res.error) {
+                  console.error('[TORNagator Museum] Weav3r marketplace fetch failed:', res.error);
+                } else if (res.data && res.data.items) {
+                  const map = {};
+                  res.data.items.forEach(it => {
+                    if (it.item_id) {
+                      const data = {
+                        item_id: it.item_id,
+                        name: it.item_name,
+                        market_price: it.market_price,
+                        bazaar_average: it.bazaar_average,
+                        lowest_price: it.lowest_price
+                      };
+                      map[it.item_id] = data;
+                      map[it.item_name.toLowerCase()] = data;
+                    }
+                  });
+                  window._weav3r_marketplace_prices = map;
+                  console.log('[TORNagator Museum] Processed Weav3r marketplace prices.');
+                  if (window._tornagator_update_profit_display) {
+                    window._tornagator_update_profit_display();
+                  }
+                }
+              }
+
+              // Handle Weav3r precise item bazaar details response
+              if (window._tornagator_fetch_responses) {
+                for (const key in window._tornagator_fetch_responses) {
+                  if (key.startsWith('precise_item_')) {
+                    const res = window._tornagator_fetch_responses[key];
+                    delete window._tornagator_fetch_responses[key];
+                    if (window._tornagator_bazaar_clicks) {
+                      const clickedBtn = window._tornagator_bazaar_clicks[key];
+                      delete window._tornagator_bazaar_clicks[key];
+                      if (clickedBtn) {
+                        clickedBtn.textContent = ' 🛒';
+                        if (res.error) {
+                          alert('Failed to fetch bazaar listings: ' + res.error);
+                        } else if (res.data && res.data.listings && res.data.listings.length > 0) {
+                          const itemId = key.replace('precise_item_', '');
+                          let visitedData = {};
+                          try {
+                            visitedData = JSON.parse(localStorage.getItem('tornagator_museum_visited_bazaars') || '{}');
+                          } catch (e) {
+                            visitedData = {};
+                          }
+                          const now = Date.now();
+
+                          // Filter out listings visited in the last 10 minutes
+                          const availableListings = res.data.listings.filter(listing => {
+                            if (!listing.player_id) return false;
+                            const visitTime = visitedData[itemId + '_' + listing.player_id];
+                            if (visitTime && (now - visitTime) < 10 * 60 * 1000) {
+                              console.log('[TORNagator Museum] Skipping recently visited bazaar for player_id:', listing.player_id);
+                              return false;
+                            }
+                            return true;
+                          });
+
+                          let selectedListing = null;
+                          if (availableListings.length > 0) {
+                            selectedListing = availableListings[0];
+                          } else {
+                            console.log('[TORNagator Museum] All available bazaars were recently visited. Resetting history for item:', itemId);
+                            res.data.listings.forEach(listing => {
+                              if (listing.player_id) {
+                                delete visitedData[itemId + '_' + listing.player_id];
+                              }
+                            });
+                            selectedListing = res.data.listings[0];
+                          }
+
+                          if (selectedListing && selectedListing.player_id) {
+                            visitedData[itemId + '_' + selectedListing.player_id] = now;
+                            
+                            // Clean up entries older than 10 minutes to save space
+                            for (const k in visitedData) {
+                              if (now - visitedData[k] > 10 * 60 * 1000) {
+                                delete visitedData[k];
+                              }
+                            }
+                            
+                            localStorage.setItem('tornagator_museum_visited_bazaars', JSON.stringify(visitedData));
+                            window.open('https://www.torn.com/bazaar.php?userId=' + selectedListing.player_id + '#/', '_blank');
+                          } else {
+                            alert('Could not find seller ID in bazaar listings.');
+                          }
+                        } else {
+                          alert('No bazaar listings found for this item.');
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
               // Trigger points price fetch if needed (only on first load / refresh)
               if (window._tornagator_api_key && !window._tornagator_points_price && !window._tornagator_fetching_points_price) {
                 window._tornagator_fetching_points_price = true;
@@ -2824,6 +2926,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   type: "fetch",
                   id: "points_price_fetch",
                   url: "https://api.torn.com/market/?selections=pointsmarket&key=" + window._tornagator_api_key,
+                  tabId: window._tornagator_tab_id
+                }));
+              }
+
+              // Trigger Weav3r marketplace fetch if needed
+              if (!window._weav3r_marketplace_prices && !window._weav3r_fetching_marketplace) {
+                window._weav3r_fetching_marketplace = true;
+                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                  type: "fetch",
+                  id: "weav3r_marketplace_fetch",
+                  url: "https://weav3r.dev/api/marketplace",
                   tabId: window._tornagator_tab_id
                 }));
               }
@@ -2934,32 +3047,69 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                   }
 
                   if (badge) {
-                    const plushies = [
-                      'sheep plushie',
-                      'teddy bear plushie',
-                      'kitten plushie',
-                      'jaguar plushie',
-                      'wolverine plushie',
-                      'nessie plushie',
-                      'red fox plushie',
-                      'monkey plushie',
-                      'chamois plushie',
-                      'panda plushie',
-                      'lion plushie',
-                      'camel plushie',
-                      'stingray plushie'
-                    ];
+                    const plushieIds = {
+                      'sheep plushie': 186,
+                      'teddy bear plushie': 187,
+                      'kitten plushie': 215,
+                      'jaguar plushie': 258,
+                      'wolverine plushie': 261,
+                      'nessie plushie': 264,
+                      'red fox plushie': 266,
+                      'monkey plushie': 268,
+                      'chamois plushie': 269,
+                      'panda plushie': 273,
+                      'lion plushie': 281,
+                      'camel plushie': 384,
+                      'stingray plushie': 618
+                    };
 
-                    let totalPlushieCost = 0;
-                    let missingPrice = false;
-                    const marketValues = window._tornagator_market_values || {};
+                    const plushies = Object.keys(plushieIds);
+
+                    // Inject bazaar buttons next to plushie names
+                    const findPlushieCard = (plushieName) => {
+                      const allChildren = plushieSection.querySelectorAll('*');
+                      for (const child of allChildren) {
+                        if (child.childNodes.length === 1 && child.textContent && child.textContent.trim().toLowerCase() === plushieName.toLowerCase()) {
+                          const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                          return { card, title: child };
+                        }
+                      }
+                      return null;
+                    };
 
                     plushies.forEach(name => {
-                      const price = marketValues[name];
-                      if (price !== undefined) {
-                        totalPlushieCost += price;
-                      } else {
-                        missingPrice = true;
+                      const result = findPlushieCard(name);
+                      if (result && result.title) {
+                        const pid = plushieIds[name];
+                        let btn = document.getElementById('tornagator-bazaar-btn-' + pid);
+                        if (!btn) {
+                          btn = document.createElement('span');
+                          btn.id = 'tornagator-bazaar-btn-' + pid;
+                          btn.className = 'tornagator-bazaar-btn';
+                          btn.textContent = ' 🛒';
+                          btn.style.cursor = 'pointer';
+                          btn.style.fontSize = '12px';
+                          btn.style.marginLeft = '6px';
+                          btn.style.display = 'inline-block';
+                          btn.style.transition = 'transform 0.1s ease';
+                          btn.title = 'Click to find cheapest bazaar listing';
+                          result.title.appendChild(btn);
+
+                          btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (btn.textContent === '⏳') return;
+                            btn.textContent = '⏳';
+                            window._tornagator_bazaar_clicks = window._tornagator_bazaar_clicks || {};
+                            window._tornagator_bazaar_clicks['precise_item_' + pid] = btn;
+                            console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                              type: "fetch",
+                              id: "precise_item_" + pid,
+                              url: "https://weav3r.dev/api/marketplace/" + pid,
+                              tabId: window._tornagator_tab_id
+                            }));
+                          });
+                        }
                       }
                     });
 
@@ -2972,8 +3122,39 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                         }
                       }
 
-                      if (missingPrice || !window._tornagator_points_price) {
-                        badge.textContent = 'Profit: Calculating...';
+                      // Read active price source
+                      const activeSource = localStorage.getItem('tornagator_museum_price_source') || 'market';
+
+                      // Compute total plushie cost based on selected source
+                      let totalPlushieCost = 0;
+                      let missingPrice = false;
+
+                      const marketValues = window._tornagator_market_values || {};
+                      const weav3rValues = window._weav3r_marketplace_prices || {};
+
+                      plushies.forEach(name => {
+                        const pid = plushieIds[name];
+                        let price = undefined;
+
+                        if (activeSource === 'market') {
+                          price = marketValues[name];
+                        } else if (activeSource === 'bazaar_avg') {
+                          price = weav3rValues[pid]?.bazaar_average || weav3rValues[pid]?.market_price || marketValues[name];
+                        } else if (activeSource === 'lowest_price') {
+                          price = weav3rValues[pid]?.lowest_price || weav3rValues[pid]?.market_price || marketValues[name];
+                        }
+
+                        if (price !== undefined) {
+                          totalPlushieCost += price;
+                        } else {
+                          missingPrice = true;
+                        }
+                      });
+
+                      const pointsPrice = window._tornagator_points_price;
+
+                      if (missingPrice || !pointsPrice) {
+                        badge.textContent = isMobile ? 'Calculating...' : 'Profit: Calculating...';
                         if (isMobile) {
                           badge.style.color = '#aaa';
                           badge.style.background = 'rgba(255, 255, 255, 0.03)';
@@ -2985,7 +3166,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                         }
                         badge.title = 'Fetching plushie market prices and current points market value...';
                       } else {
-                        const tenPointsValue = 10 * window._tornagator_points_price;
+                        const tenPointsValue = 10 * pointsPrice;
                         const singleSetProfit = tenPointsValue - totalPlushieCost;
                         const profit = singleSetProfit * numSets;
 
@@ -3001,16 +3182,153 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                         const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
                         const totalPointsValue = Math.round(tenPointsValue * numSets);
-                        badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(window._tornagator_points_price).toLocaleString() + '/ea avg)';
+                        badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(pointsPrice).toLocaleString() + '/ea avg)';
 
                         const roundedProfit = Math.round(profit);
-                        const labelPrefix = roundedProfit >= 0 
-                          ? (numSets > 1 ? 'Profit (' + numSets + ' sets): ' : 'Profit: ')
-                          : (numSets > 1 ? 'Loss (' + numSets + ' sets): ' : 'Loss: ');
 
-                        badge.textContent = labelPrefix + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
+                        if (isMobile) {
+                          // Mobile layout: titleBar badge is a clean, passive text element
+                          badge.textContent = (roundedProfit >= 0 ? '+' : '-') + '$' + Math.abs(roundedProfit).toLocaleString();
+
+                          // Create/manage mobile body selector dropdown next to the input
+                          const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                          const parent = targetForInsertion.parentNode;
+                          let bodySelector = document.getElementById('tornagator-museum-mobile-source-container');
+
+                          if (bodySelector && bodySelector.parentNode !== parent) {
+                            bodySelector.parentNode.removeChild(bodySelector);
+                            bodySelector = null;
+                          }
+
+                          if (!bodySelector) {
+                            bodySelector = document.createElement('div');
+                            bodySelector.id = 'tornagator-museum-mobile-source-container';
+                            bodySelector.style.display = 'flex';
+                            bodySelector.style.alignItems = 'center';
+                            bodySelector.style.fontSize = '12px';
+                            bodySelector.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                            bodySelector.style.marginRight = '12px';
+                            bodySelector.style.color = '#fff';
+
+                            const label = document.createElement('span');
+                            label.textContent = 'Source: ';
+                            label.style.marginRight = '4px';
+                            label.style.color = '#aaa';
+                            bodySelector.appendChild(label);
+
+                            const select = document.createElement('select');
+                            select.id = 'tornagator-museum-price-source-mobile';
+                            select.style.background = 'rgba(255,255,255,0.05)';
+                            select.style.color = '#fff';
+                            select.style.border = '1px solid rgba(255,255,255,0.15)';
+                            select.style.borderRadius = '4px';
+                            select.style.fontFamily = 'inherit';
+                            select.style.fontSize = 'inherit';
+                            select.style.fontWeight = 'bold';
+                            select.style.cursor = 'pointer';
+                            select.style.padding = '2px 4px';
+
+                            const options = [
+                              { value: 'market', text: 'Market' },
+                              { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                              { value: 'lowest_price', text: 'Bazaar Min' }
+                            ];
+
+                            options.forEach(optData => {
+                              const opt = document.createElement('option');
+                              opt.value = optData.value;
+                              opt.textContent = optData.text;
+                              opt.style.background = '#222';
+                              opt.style.color = '#fff';
+                              select.appendChild(opt);
+                            });
+
+                            select.value = activeSource;
+                            select.addEventListener('change', (e) => {
+                              localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                              updateProfitDisplay();
+                            });
+
+                            bodySelector.appendChild(select);
+                            parent.insertBefore(bodySelector, targetForInsertion);
+
+                            const currentDisplay = window.getComputedStyle(parent).display;
+                            if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                              parent.style.display = 'flex';
+                              parent.style.alignItems = 'center';
+                            }
+                          } else {
+                            const select = bodySelector.querySelector('select');
+                            if (select) {
+                              select.value = activeSource;
+                            }
+                          }
+                        } else {
+                          // Desktop layout: clean up mobile body selector if present
+                          const bodySelector = document.getElementById('tornagator-museum-mobile-source-container');
+                          if (bodySelector) {
+                            bodySelector.parentNode.removeChild(bodySelector);
+                          }
+
+                          // Desktop layout: Construct the content inside the badge, inserting the select dropdown
+                          badge.innerHTML = '';
+                          
+                          const prefixSpan = document.createElement('span');
+                          prefixSpan.textContent = roundedProfit >= 0 ? 'Profit (' : 'Loss (';
+                          badge.appendChild(prefixSpan);
+
+                          if (numSets > 1) {
+                            const setsSpan = document.createElement('span');
+                            setsSpan.textContent = numSets + ' sets, ';
+                            badge.appendChild(setsSpan);
+                          }
+
+                          // Create/get select element
+                          let sourceSelect = document.createElement('select');
+                          sourceSelect.id = 'tornagator-museum-price-source';
+                          sourceSelect.style.background = 'transparent';
+                          sourceSelect.style.color = 'inherit';
+                          sourceSelect.style.border = 'none';
+                          sourceSelect.style.fontFamily = 'inherit';
+                          sourceSelect.style.fontSize = 'inherit';
+                          sourceSelect.style.fontWeight = 'bold';
+                          sourceSelect.style.cursor = 'pointer';
+                          sourceSelect.style.outline = 'none';
+                          sourceSelect.style.padding = '0';
+                          sourceSelect.style.margin = '0 2px';
+                          sourceSelect.style.borderBottom = '1px dotted currentColor';
+
+                          const options = [
+                            { value: 'market', text: 'Market' },
+                            { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                            { value: 'lowest_price', text: 'Bazaar Min' }
+                          ];
+
+                          options.forEach(optData => {
+                            const opt = document.createElement('option');
+                            opt.value = optData.value;
+                            opt.textContent = optData.text;
+                            opt.style.background = '#222';
+                            opt.style.color = '#fff';
+                            sourceSelect.appendChild(opt);
+                          });
+
+                          sourceSelect.value = activeSource;
+                          sourceSelect.addEventListener('change', (e) => {
+                            localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                            updateProfitDisplay();
+                          });
+
+                          badge.appendChild(sourceSelect);
+
+                          const suffixSpan = document.createElement('span');
+                          suffixSpan.textContent = '): ' + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
+                          badge.appendChild(suffixSpan);
+                        }
                       }
                     };
+
+                    window._tornagator_update_profit_display = updateProfitDisplay;
 
                     // Attach listener for instant updates when typing
                     if (setsInput && !setsInput._tornagator_listener_attached) {
