@@ -2974,18 +2974,30 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                       if (missingPrice || !window._tornagator_points_price) {
                         badge.textContent = 'Profit: Calculating...';
-                        badge.style.color = '#aaa';
-                        badge.style.background = 'rgba(255, 255, 255, 0.03)';
-                        badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                        if (isMobile) {
+                          badge.style.color = '#aaa';
+                          badge.style.background = 'rgba(255, 255, 255, 0.03)';
+                          badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                        } else {
+                          badge.style.color = '#666';
+                          badge.style.background = 'rgba(0, 0, 0, 0.03)';
+                          badge.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                        }
                         badge.title = 'Fetching plushie market prices and current points market value...';
                       } else {
                         const tenPointsValue = 10 * window._tornagator_points_price;
                         const singleSetProfit = tenPointsValue - totalPlushieCost;
                         const profit = singleSetProfit * numSets;
 
-                        badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
-                        badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
-                        badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+                        if (isMobile) {
+                          badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
+                          badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
+                          badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+                        } else {
+                          badge.style.background = profit >= 0 ? 'rgba(39, 174, 96, 0.08)' : 'rgba(192, 41, 43, 0.08)';
+                          badge.style.border = profit >= 0 ? '1px solid rgba(39, 174, 96, 0.25)' : '1px solid rgba(192, 41, 43, 0.25)';
+                          badge.style.color = profit >= 0 ? '#1b5e20' : '#b71c1c';
+                        }
 
                         const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
                         const totalPointsValue = Math.round(tenPointsValue * numSets);
