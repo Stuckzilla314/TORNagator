@@ -1473,8 +1473,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           const isCrimes = window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes');
           const isItemMarket = window.location.href.includes('imarket.php') || window.location.href.includes('sid=ItemMarket') || window.location.href.includes('sid=itemmarket') || window.location.href.includes('sid=imarket');
           const isGym = window.location.href.includes('gym.php');
+          const isMuseum = window.location.href.includes('museum.php');
 
-          if (!isTravel && !isCrimes && !isItemMarket && !isGym) {
+          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum) {
             return null;
           }
 
@@ -1979,7 +1980,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             }
           }
 
-          if ((isTravel || isCrimes) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
+          if ((isTravel || isCrimes || isMuseum) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
             return null;
           }
 
@@ -2730,6 +2731,198 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             }
           }
 
+          if (isMuseum) {
+            try {
+              const now = Date.now();
+
+              // Handle points price fetch response
+              if (window._tornagator_fetch_responses && window._tornagator_fetch_responses['points_price_fetch']) {
+                const res = window._tornagator_fetch_responses['points_price_fetch'];
+                delete window._tornagator_fetch_responses['points_price_fetch'];
+                window._tornagator_fetching_points_price = false;
+
+                if (res.error) {
+                  console.error('[TORNagator Museum] Points price fetch failed:', res.error);
+                } else if (res.data && res.data.pointsmarket) {
+                  const listings = res.data.pointsmarket;
+                  // Convert listings object to array
+                  const listArr = [];
+                  for (const key in listings) {
+                    if (listings[key] && typeof listings[key].cost === 'number' && typeof listings[key].quantity === 'number') {
+                      listArr.push({
+                        cost: listings[key].cost,
+                        quantity: listings[key].quantity
+                      });
+                    }
+                  }
+                  // Sort ascending by cost
+                  listArr.sort((a, b) => a.cost - b.cost);
+
+                  // Average the cost of the cheapest (first) ~2000 points
+                  let totalCostFor2000 = 0;
+                  let accumulatedQty = 0;
+                  for (const item of listArr) {
+                    const takeQty = Math.min(2000 - accumulatedQty, item.quantity);
+                    if (takeQty > 0) {
+                      totalCostFor2000 += takeQty * item.cost;
+                      accumulatedQty += takeQty;
+                    }
+                    if (accumulatedQty >= 2000) break;
+                  }
+
+                  if (accumulatedQty > 0) {
+                    const avgPrice = totalCostFor2000 / accumulatedQty;
+                    window._tornagator_points_price = avgPrice;
+                    window._tornagator_points_price_timestamp = now;
+                    console.log('[TORNagator Museum] Calculated average points price:', avgPrice, 'over', accumulatedQty, 'points');
+                  }
+                }
+              }
+
+              // Trigger points price fetch if needed
+              if (window._tornagator_api_key && (!window._tornagator_points_price || !window._tornagator_points_price_timestamp || (now - window._tornagator_points_price_timestamp > 5 * 60 * 1000))) {
+                if (!window._tornagator_fetching_points_price) {
+                  window._tornagator_fetching_points_price = true;
+                  console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                    type: "fetch",
+                    id: "points_price_fetch",
+                    url: "https://api.torn.com/market/?selections=pointsmarket&key=" + window._tornagator_api_key,
+                    tabId: window._tornagator_tab_id
+                  }));
+                }
+              }
+
+              // Find Plushie Set section container
+              let plushieSection = null;
+              const divsAndLis = document.querySelectorAll('li, div');
+              for (const el of divsAndLis) {
+                const text = el.textContent || '';
+                if (text.includes('Plushie Set') && el.querySelector('input')) {
+                  plushieSection = el;
+                  break;
+                }
+              }
+
+              if (plushieSection) {
+                const inputs = plushieSection.querySelectorAll('input');
+                let setsInput = null;
+                for (const inp of inputs) {
+                  const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
+                  const name = (inp.getAttribute('name') || '').toLowerCase();
+                  const type = (inp.getAttribute('type') || '').toLowerCase();
+                  if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
+                    setsInput = inp;
+                    break;
+                  }
+                }
+
+                if (setsInput) {
+                  const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+
+                  let badge = document.getElementById('tornagator-museum-plushie-profit');
+                  if (!badge) {
+                    badge = document.createElement('div');
+                    badge.id = 'tornagator-museum-plushie-profit';
+                    badge.style.display = 'inline-flex';
+                    badge.style.alignItems = 'center';
+                    badge.style.marginRight = '16px';
+                    badge.style.fontSize = '12px';
+                    badge.style.fontWeight = 'bold';
+                    badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                    badge.style.padding = '6px 12px';
+                    badge.style.borderRadius = '6px';
+                    badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                    badge.style.transition = 'all 0.2s ease';
+
+                    targetForInsertion.parentNode.insertBefore(badge, targetForInsertion);
+
+                    const parent = targetForInsertion.parentNode;
+                    if (parent) {
+                      const currentDisplay = window.getComputedStyle(parent).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        parent.style.display = 'flex';
+                        parent.style.alignItems = 'center';
+                      }
+                    }
+                  }
+
+                  const plushies = [
+                    'sheep plushie',
+                    'teddy bear plushie',
+                    'kitten plushie',
+                    'jaguar plushie',
+                    'wolverine plushie',
+                    'nessie plushie',
+                    'red fox plushie',
+                    'monkey plushie',
+                    'chamois plushie',
+                    'panda plushie',
+                    'lion plushie',
+                    'camel plushie',
+                    'stingray plushie'
+                  ];
+
+                  let totalPlushieCost = 0;
+                  let missingPrice = false;
+                  const marketValues = window._tornagator_market_values || {};
+
+                  plushies.forEach(name => {
+                    const price = marketValues[name];
+                    if (price !== undefined) {
+                      totalPlushieCost += price;
+                    } else {
+                      missingPrice = true;
+                    }
+                  });
+
+                  const updateProfitDisplay = () => {
+                    let numSets = parseInt(setsInput.value, 10);
+                    if (isNaN(numSets) || numSets <= 0) {
+                      numSets = 1;
+                    }
+
+                    if (missingPrice || !window._tornagator_points_price) {
+                      badge.textContent = 'Profit: Calculating...';
+                      badge.style.color = '#aaa';
+                      badge.style.background = 'rgba(255, 255, 255, 0.03)';
+                      badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                      badge.title = 'Fetching plushie market prices and current points market value...';
+                    } else {
+                      const tenPointsValue = 10 * window._tornagator_points_price;
+                      const singleSetProfit = tenPointsValue - totalPlushieCost;
+                      const profit = singleSetProfit * numSets;
+
+                      badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
+                      badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
+                      badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+
+                      const totalPlushiesCost = totalPlushieCost * numSets;
+                      const totalPointsValue = tenPointsValue * numSets;
+                      badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(window._tornagator_points_price).toLocaleString() + '/ea avg)';
+
+                      const labelPrefix = profit >= 0 
+                        ? (numSets > 1 ? 'Profit (' + numSets + ' sets): ' : 'Profit: ')
+                        : (numSets > 1 ? 'Loss (' + numSets + ' sets): ' : 'Loss: ');
+
+                      badge.textContent = labelPrefix + (profit >= 0 ? '+$' : '-$') + Math.abs(profit).toLocaleString();
+                    }
+                  };
+
+                  // Attach listener for instant updates when typing
+                  if (!setsInput._tornagator_listener_attached) {
+                    setsInput._tornagator_listener_attached = true;
+                    setsInput.addEventListener('input', updateProfitDisplay);
+                  }
+
+                  // Perform initial calculation/tick update
+                  updateProfitDisplay();
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator Museum] Museum calculation error:', err);
+            }
+          }
+
           return null;
         } catch (e) {
           console.error("Profit/Crimes injection error:", e);
@@ -2747,10 +2940,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
+        const isMuseum = currentUrl.includes('museum.php');
 
         console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum) return;
 
         if (isGym) {
           window._tornagator_last_injected_script = script;
@@ -2778,8 +2972,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
+        const isMuseum = currentUrl.includes('museum.php');
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum) return;
 
         wv.executeJavaScript(script)
           .then(result => {
