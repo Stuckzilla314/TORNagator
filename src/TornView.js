@@ -3079,6 +3079,19 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                     // Inject bazaar buttons next to plushie names
                     const findPlushieCard = (plushieName) => {
                       const allChildren = plushieSection.querySelectorAll('*');
+                      
+                      if (window._tornagator_is_mobile) {
+                        // Original fast logic for mobile to prevent scroll latency
+                        for (const child of allChildren) {
+                          if (child.childNodes.length === 1 && child.textContent && child.textContent.trim().toLowerCase() === plushieName.toLowerCase()) {
+                            const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                            return { card, title: child };
+                          }
+                        }
+                        return null;
+                      }
+
+                      // Robust logic for desktop with truncation/ellipses
                       for (const child of allChildren) {
                         const rawText = child.textContent || '';
                         const text = rawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
@@ -3129,28 +3142,34 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                           btn.style.transition = 'transform 0.1s ease';
                           btn.title = 'Click to find cheapest bazaar listing';
 
-                          let wrapper = result.title.parentNode;
-                          if (wrapper && !wrapper.classList.contains('tornagator-title-wrapper')) {
-                            wrapper = document.createElement('div');
-                            wrapper.className = 'tornagator-title-wrapper';
-                            wrapper.style.display = 'flex';
-                            wrapper.style.alignItems = 'center';
-                            wrapper.style.justifyContent = 'space-between';
-                            wrapper.style.width = '100%';
-                            wrapper.style.overflow = 'hidden';
+                          if (window._tornagator_is_mobile) {
+                            // Original mobile append logic
+                            result.title.appendChild(btn);
+                          } else {
+                            // Desktop flex wrapper append logic
+                            let wrapper = result.title.parentNode;
+                            if (wrapper && !wrapper.classList.contains('tornagator-title-wrapper')) {
+                              wrapper = document.createElement('div');
+                              wrapper.className = 'tornagator-title-wrapper';
+                              wrapper.style.display = 'flex';
+                              wrapper.style.alignItems = 'center';
+                              wrapper.style.justifyContent = 'space-between';
+                              wrapper.style.width = '100%';
+                              wrapper.style.overflow = 'hidden';
 
-                            result.title.parentNode.insertBefore(wrapper, result.title);
-                            wrapper.appendChild(result.title);
-                          }
+                              result.title.parentNode.insertBefore(wrapper, result.title);
+                              wrapper.appendChild(result.title);
+                            }
 
-                          if (wrapper) {
-                            wrapper.appendChild(btn);
+                            if (wrapper) {
+                              wrapper.appendChild(btn);
 
-                            result.title.style.flex = '1';
-                            result.title.style.minWidth = '0';
-                            result.title.style.overflow = 'hidden';
-                            result.title.style.textOverflow = 'ellipsis';
-                            result.title.style.whiteSpace = 'nowrap';
+                              result.title.style.flex = '1';
+                              result.title.style.minWidth = '0';
+                              result.title.style.overflow = 'hidden';
+                              result.title.style.textOverflow = 'ellipsis';
+                              result.title.style.whiteSpace = 'nowrap';
+                            }
                           }
 
                           btn.addEventListener('click', (e) => {
