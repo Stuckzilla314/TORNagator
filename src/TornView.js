@@ -3080,9 +3080,32 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                     const findPlushieCard = (plushieName) => {
                       const allChildren = plushieSection.querySelectorAll('*');
                       for (const child of allChildren) {
-                        if (child.childNodes.length === 1 && child.textContent && child.textContent.trim().toLowerCase() === plushieName.toLowerCase()) {
-                          const card = child.closest('li, div[class*="item"]') || child.parentElement;
-                          return { card, title: child };
+                        const rawText = child.textContent || '';
+                        const text = rawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
+                        if (!text) continue;
+
+                        const cleanedText = text.replace(/[\s\.\u2026]+$/, '').trim();
+                        if (cleanedText && (
+                          plushieName.toLowerCase().startsWith(cleanedText) ||
+                          cleanedText.startsWith(plushieName.toLowerCase())
+                        ) && cleanedText.length >= 4) {
+                          let hasChildMatch = false;
+                          for (let i = 0; i < child.children.length; i++) {
+                            const cRawText = child.children[i].textContent || '';
+                            const cText = cRawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
+                            const cCleaned = cText.replace(/[\s\.\u2026]+$/, '').trim();
+                            if (cCleaned && (
+                              plushieName.toLowerCase().startsWith(cCleaned) ||
+                              cCleaned.startsWith(plushieName.toLowerCase())
+                            ) && cCleaned.length >= 4) {
+                              hasChildMatch = true;
+                              break;
+                            }
+                          }
+                          if (!hasChildMatch) {
+                            const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                            return { card, title: child };
+                          }
                         }
                       }
                       return null;
@@ -3100,11 +3123,35 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                           btn.textContent = ' 🛒';
                           btn.style.cursor = 'pointer';
                           btn.style.fontSize = '12px';
-                          btn.style.marginLeft = '6px';
+                          btn.style.marginLeft = '4px';
                           btn.style.display = 'inline-block';
+                          btn.style.flexShrink = '0';
                           btn.style.transition = 'transform 0.1s ease';
                           btn.title = 'Click to find cheapest bazaar listing';
-                          result.title.appendChild(btn);
+
+                          let wrapper = result.title.parentNode;
+                          if (wrapper && !wrapper.classList.contains('tornagator-title-wrapper')) {
+                            wrapper = document.createElement('div');
+                            wrapper.className = 'tornagator-title-wrapper';
+                            wrapper.style.display = 'flex';
+                            wrapper.style.alignItems = 'center';
+                            wrapper.style.justifyContent = 'space-between';
+                            wrapper.style.width = '100%';
+                            wrapper.style.overflow = 'hidden';
+
+                            result.title.parentNode.insertBefore(wrapper, result.title);
+                            wrapper.appendChild(result.title);
+                          }
+
+                          if (wrapper) {
+                            wrapper.appendChild(btn);
+
+                            result.title.style.flex = '1';
+                            result.title.style.minWidth = '0';
+                            result.title.style.overflow = 'hidden';
+                            result.title.style.textOverflow = 'ellipsis';
+                            result.title.style.whiteSpace = 'nowrap';
+                          }
 
                           btn.addEventListener('click', (e) => {
                             e.preventDefault();
@@ -3276,59 +3323,75 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                           }
 
                           // Desktop layout: Construct the content inside the badge, inserting the select dropdown
-                          badge.innerHTML = '';
-                          
-                          const prefixSpan = document.createElement('span');
-                          prefixSpan.textContent = roundedProfit >= 0 ? 'Profit (' : 'Loss (';
-                          badge.appendChild(prefixSpan);
+                          let prefixSpan = badge.querySelector('#tornagator-museum-prefix');
+                          let setsSpan = badge.querySelector('#tornagator-museum-sets');
+                          let sourceSelect = badge.querySelector('#tornagator-museum-price-source');
+                          let suffixSpan = badge.querySelector('#tornagator-museum-suffix');
 
-                          if (numSets > 1) {
-                            const setsSpan = document.createElement('span');
-                            setsSpan.textContent = numSets + ' sets, ';
+                          if (!sourceSelect) {
+                            badge.innerHTML = '';
+
+                            prefixSpan = document.createElement('span');
+                            prefixSpan.id = 'tornagator-museum-prefix';
+                            badge.appendChild(prefixSpan);
+
+                            setsSpan = document.createElement('span');
+                            setsSpan.id = 'tornagator-museum-sets';
                             badge.appendChild(setsSpan);
+
+                            // Create select element
+                            sourceSelect = document.createElement('select');
+                            sourceSelect.id = 'tornagator-museum-price-source';
+                            sourceSelect.style.background = 'transparent';
+                            sourceSelect.style.color = 'inherit';
+                            sourceSelect.style.border = 'none';
+                            sourceSelect.style.fontFamily = 'inherit';
+                            sourceSelect.style.fontSize = 'inherit';
+                            sourceSelect.style.fontWeight = 'bold';
+                            sourceSelect.style.cursor = 'pointer';
+                            sourceSelect.style.outline = 'none';
+                            sourceSelect.style.padding = '0';
+                            sourceSelect.style.margin = '0 2px';
+                            sourceSelect.style.borderBottom = '1px dotted currentColor';
+
+                            const options = [
+                              { value: 'market', text: 'Market' },
+                              { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                              { value: 'lowest_price', text: 'Bazaar Min' }
+                            ];
+
+                            options.forEach(optData => {
+                              const opt = document.createElement('option');
+                              opt.value = optData.value;
+                              opt.textContent = optData.text;
+                              opt.style.background = '#222';
+                              opt.style.color = '#fff';
+                              sourceSelect.appendChild(opt);
+                            });
+
+                            sourceSelect.addEventListener('change', (e) => {
+                              localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                              updateProfitDisplay();
+                            });
+
+                            badge.appendChild(sourceSelect);
+
+                            suffixSpan = document.createElement('span');
+                            suffixSpan.id = 'tornagator-museum-suffix';
+                            badge.appendChild(suffixSpan);
                           }
 
-                          // Create/get select element
-                          let sourceSelect = document.createElement('select');
-                          sourceSelect.id = 'tornagator-museum-price-source';
-                          sourceSelect.style.background = 'transparent';
-                          sourceSelect.style.color = 'inherit';
-                          sourceSelect.style.border = 'none';
-                          sourceSelect.style.fontFamily = 'inherit';
-                          sourceSelect.style.fontSize = 'inherit';
-                          sourceSelect.style.fontWeight = 'bold';
-                          sourceSelect.style.cursor = 'pointer';
-                          sourceSelect.style.outline = 'none';
-                          sourceSelect.style.padding = '0';
-                          sourceSelect.style.margin = '0 2px';
-                          sourceSelect.style.borderBottom = '1px dotted currentColor';
-
-                          const options = [
-                            { value: 'market', text: 'Market' },
-                            { value: 'bazaar_avg', text: 'Bazaar Avg' },
-                            { value: 'lowest_price', text: 'Bazaar Min' }
-                          ];
-
-                          options.forEach(optData => {
-                            const opt = document.createElement('option');
-                            opt.value = optData.value;
-                            opt.textContent = optData.text;
-                            opt.style.background = '#222';
-                            opt.style.color = '#fff';
-                            sourceSelect.appendChild(opt);
-                          });
+                          prefixSpan.textContent = roundedProfit >= 0 ? 'Profit (' : 'Loss (';
+                          if (numSets > 1) {
+                            setsSpan.textContent = numSets + ' sets, ';
+                            setsSpan.style.display = 'inline';
+                          } else {
+                            setsSpan.textContent = '';
+                            setsSpan.style.display = 'none';
+                          }
 
                           sourceSelect.value = activeSource;
-                          sourceSelect.addEventListener('change', (e) => {
-                            localStorage.setItem('tornagator_museum_price_source', e.target.value);
-                            updateProfitDisplay();
-                          });
-
-                          badge.appendChild(sourceSelect);
-
-                          const suffixSpan = document.createElement('span');
                           suffixSpan.textContent = '): ' + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
-                          badge.appendChild(suffixSpan);
                         }
                       }
                     };
