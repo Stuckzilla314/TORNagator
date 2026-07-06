@@ -1274,7 +1274,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
       if (e.message && e.message.startsWith("TORNAGATOR_BRIDGE:")) {
         try {
-          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length()));
+          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length));
           handleBridgeMessage(payload);
         } catch (err) {
           console.error("Failed to parse bridge message payload:", err);
@@ -1466,8 +1466,46 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   useEffect(() => {
     if (!isActive) return;
 
+    const itemsMarketValues = {};
+    const itemsMarketValuesById = {};
+    if (itemsData) {
+      Object.entries(itemsData).forEach(([id, item]) => {
+        if (item.name && item.market_value) {
+          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+        }
+        if (id && item.market_value) {
+          itemsMarketValuesById[id] = item.market_value;
+        }
+      });
+    }
+
     const script = `
       (() => {
+        if (!window._tornagator_market_values) {
+          window._tornagator_market_values = ${JSON.stringify(itemsMarketValues)};
+        }
+        if (!window._tornagator_market_values_by_id) {
+          window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+        }
+        if (window._tornagator_cargo_capacity === undefined) {
+          window._tornagator_cargo_capacity = ${cargoCapacity || 5};
+        }
+        if (!window._tornagator_api_key) {
+          window._tornagator_api_key = ${JSON.stringify(apiKey)};
+        }
+        if (!window._tornagator_user_data) {
+          window._tornagator_user_data = ${JSON.stringify(userData)};
+        }
+        if (!window._tornagator_faction_data) {
+          window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        }
+        if (!window._tornagator_tab_id) {
+          window._tornagator_tab_id = ${JSON.stringify(tabId)};
+        }
+        if (window._tornagator_is_mobile === undefined) {
+          window._tornagator_is_mobile = ${isCapacitor};
+        }
+
         try {
           const isTravel = window.location.href.includes('travelagency.php') || window.location.href.includes('sid=travel') || window.location.href.includes('index.php');
           const isCrimes = window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes');
@@ -2802,137 +2840,175 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
               }
 
               if (plushieSection) {
-                // Find the header container of the Plushie Set dropdown
-                let titleBar = null;
-                const titleCandidates = plushieSection.querySelectorAll('div, li, a');
-                for (const el of titleCandidates) {
-                  if (el.textContent && el.textContent.includes('Plushie Set') && el.textContent.includes('10 points') && !el.querySelector('input')) {
-                    titleBar = el;
+                let setsInput = null;
+                const inputs = plushieSection.querySelectorAll('input');
+                for (const inp of inputs) {
+                  const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
+                  const name = (inp.getAttribute('name') || '').toLowerCase();
+                  const type = (inp.getAttribute('type') || '').toLowerCase();
+                  if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
+                    setsInput = inp;
+                    break;
                   }
                 }
 
-                if (titleBar) {
-                  // Ensure titleBar is flex row
-                  const currentDisplay = window.getComputedStyle(titleBar).display;
-                  if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
-                    titleBar.style.display = 'flex';
-                    titleBar.style.alignItems = 'center';
-                  }
-
+                if (setsInput) {
+                  const isMobile = window._tornagator_is_mobile || (window.innerWidth < 768);
                   let badge = document.getElementById('tornagator-museum-plushie-profit');
-                  if (badge && badge.parentNode !== titleBar) {
-                    badge.parentNode.removeChild(badge);
-                    badge = null;
-                  }
 
-                  if (!badge) {
-                    badge = document.createElement('div');
-                    badge.id = 'tornagator-museum-plushie-profit';
-                    badge.style.fontSize = '12px';
-                    badge.style.fontWeight = 'bold';
-                    badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
-                    badge.style.padding = '3px 8px';
-                    badge.style.borderRadius = '4px';
-                    badge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-                    badge.style.transition = 'all 0.2s ease';
-                    badge.style.marginLeft = 'auto';
-                    badge.style.marginRight = '12px';
-
-                    // Insert before the arrow icon if possible
-                    const arrow = titleBar.querySelector('i, span[class*="arrow"], svg, [class*="arrow"]');
-                    if (arrow && arrow.parentNode === titleBar) {
-                      titleBar.insertBefore(badge, arrow);
-                    } else {
-                      titleBar.appendChild(badge);
-                    }
-                  }
-
-                  let setsInput = null;
-                  const inputs = plushieSection.querySelectorAll('input');
-                  for (const inp of inputs) {
-                    const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
-                    const name = (inp.getAttribute('name') || '').toLowerCase();
-                    const type = (inp.getAttribute('type') || '').toLowerCase();
-                    if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
-                      setsInput = inp;
-                      break;
-                    }
-                  }
-
-                  const plushies = [
-                    'sheep plushie',
-                    'teddy bear plushie',
-                    'kitten plushie',
-                    'jaguar plushie',
-                    'wolverine plushie',
-                    'nessie plushie',
-                    'red fox plushie',
-                    'monkey plushie',
-                    'chamois plushie',
-                    'panda plushie',
-                    'lion plushie',
-                    'camel plushie',
-                    'stingray plushie'
-                  ];
-
-                  let totalPlushieCost = 0;
-                  let missingPrice = false;
-                  const marketValues = window._tornagator_market_values || {};
-
-                  plushies.forEach(name => {
-                    const price = marketValues[name];
-                    if (price !== undefined) {
-                      totalPlushieCost += price;
-                    } else {
-                      missingPrice = true;
-                    }
-                  });
-
-                  const updateProfitDisplay = () => {
-                    let numSets = 1;
-                    if (setsInput) {
-                      const parsed = parseInt(setsInput.value, 10);
-                      if (!isNaN(parsed) && parsed > 0) {
-                        numSets = parsed;
+                  if (isMobile) {
+                    // Mobile: inside titleBar (before arrow)
+                    let titleBar = null;
+                    const titleCandidates = plushieSection.querySelectorAll('div, li, a');
+                    for (const el of titleCandidates) {
+                      if (el.textContent && el.textContent.includes('Plushie Set') && el.textContent.includes('10 points') && !el.querySelector('input')) {
+                        titleBar = el;
                       }
                     }
 
-                    if (missingPrice || !window._tornagator_points_price) {
-                      badge.textContent = 'Profit: Calculating...';
-                      badge.style.color = '#aaa';
-                      badge.style.background = 'rgba(255, 255, 255, 0.03)';
-                      badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-                      badge.title = 'Fetching plushie market prices and current points market value...';
-                    } else {
-                      const tenPointsValue = 10 * window._tornagator_points_price;
-                      const singleSetProfit = tenPointsValue - totalPlushieCost;
-                      const profit = singleSetProfit * numSets;
+                    if (titleBar) {
+                      const currentDisplay = window.getComputedStyle(titleBar).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        titleBar.style.display = 'flex';
+                        titleBar.style.alignItems = 'center';
+                      }
 
-                      badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
-                      badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
-                      badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+                      if (badge && badge.parentNode !== titleBar) {
+                        badge.parentNode.removeChild(badge);
+                        badge = null;
+                      }
 
-                      const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
-                      const totalPointsValue = Math.round(tenPointsValue * numSets);
-                      badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(window._tornagator_points_price).toLocaleString() + '/ea avg)';
+                      if (!badge) {
+                        badge = document.createElement('div');
+                        badge.id = 'tornagator-museum-plushie-profit';
+                        badge.style.fontSize = '12px';
+                        badge.style.fontWeight = 'bold';
+                        badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                        badge.style.padding = '3px 8px';
+                        badge.style.borderRadius = '4px';
+                        badge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+                        badge.style.transition = 'all 0.2s ease';
+                        badge.style.marginLeft = 'auto';
+                        badge.style.marginRight = '12px';
 
-                      const roundedProfit = Math.round(profit);
-                      const labelPrefix = roundedProfit >= 0 
-                        ? (numSets > 1 ? 'Profit (' + numSets + ' sets): ' : 'Profit: ')
-                        : (numSets > 1 ? 'Loss (' + numSets + ' sets): ' : 'Loss: ');
-
-                      badge.textContent = labelPrefix + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
+                        const arrow = titleBar.querySelector('i, span[class*="arrow"], svg, [class*="arrow"]');
+                        if (arrow && arrow.parentNode === titleBar) {
+                          titleBar.insertBefore(badge, arrow);
+                        } else {
+                          titleBar.appendChild(badge);
+                        }
+                      }
                     }
-                  };
+                  } else {
+                    // Desktop: inline before the setsInput container
+                    const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                    const parent = targetForInsertion.parentNode;
 
-                  // Attach listener for instant updates when typing
-                  if (setsInput && !setsInput._tornagator_listener_attached) {
-                    setsInput._tornagator_listener_attached = true;
-                    setsInput.addEventListener('input', updateProfitDisplay);
+                    if (badge && badge.parentNode !== parent) {
+                      badge.parentNode.removeChild(badge);
+                      badge = null;
+                    }
+
+                    if (!badge) {
+                      badge = document.createElement('div');
+                      badge.id = 'tornagator-museum-plushie-profit';
+                      badge.style.display = 'inline-flex';
+                      badge.style.alignItems = 'center';
+                      badge.style.fontSize = '12px';
+                      badge.style.fontWeight = 'bold';
+                      badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                      badge.style.padding = '6px 12px';
+                      badge.style.borderRadius = '6px';
+                      badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                      badge.style.transition = 'all 0.2s ease';
+                      badge.style.marginRight = '16px';
+
+                      parent.insertBefore(badge, targetForInsertion);
+
+                      const currentDisplay = window.getComputedStyle(parent).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        parent.style.display = 'flex';
+                        parent.style.alignItems = 'center';
+                      }
+                    }
                   }
 
-                  // Perform initial calculation/tick update
-                  updateProfitDisplay();
+                  if (badge) {
+                    const plushies = [
+                      'sheep plushie',
+                      'teddy bear plushie',
+                      'kitten plushie',
+                      'jaguar plushie',
+                      'wolverine plushie',
+                      'nessie plushie',
+                      'red fox plushie',
+                      'monkey plushie',
+                      'chamois plushie',
+                      'panda plushie',
+                      'lion plushie',
+                      'camel plushie',
+                      'stingray plushie'
+                    ];
+
+                    let totalPlushieCost = 0;
+                    let missingPrice = false;
+                    const marketValues = window._tornagator_market_values || {};
+
+                    plushies.forEach(name => {
+                      const price = marketValues[name];
+                      if (price !== undefined) {
+                        totalPlushieCost += price;
+                      } else {
+                        missingPrice = true;
+                      }
+                    });
+
+                    const updateProfitDisplay = () => {
+                      let numSets = 1;
+                      if (setsInput) {
+                        const parsed = parseInt(setsInput.value, 10);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          numSets = parsed;
+                        }
+                      }
+
+                      if (missingPrice || !window._tornagator_points_price) {
+                        badge.textContent = 'Profit: Calculating...';
+                        badge.style.color = '#aaa';
+                        badge.style.background = 'rgba(255, 255, 255, 0.03)';
+                        badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                        badge.title = 'Fetching plushie market prices and current points market value...';
+                      } else {
+                        const tenPointsValue = 10 * window._tornagator_points_price;
+                        const singleSetProfit = tenPointsValue - totalPlushieCost;
+                        const profit = singleSetProfit * numSets;
+
+                        badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
+                        badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
+                        badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+
+                        const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
+                        const totalPointsValue = Math.round(tenPointsValue * numSets);
+                        badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(window._tornagator_points_price).toLocaleString() + '/ea avg)';
+
+                        const roundedProfit = Math.round(profit);
+                        const labelPrefix = roundedProfit >= 0 
+                          ? (numSets > 1 ? 'Profit (' + numSets + ' sets): ' : 'Profit: ')
+                          : (numSets > 1 ? 'Loss (' + numSets + ' sets): ' : 'Loss: ');
+
+                        badge.textContent = labelPrefix + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
+                      }
+                    };
+
+                    // Attach listener for instant updates when typing
+                    if (setsInput && !setsInput._tornagator_listener_attached) {
+                      setsInput._tornagator_listener_attached = true;
+                      setsInput.addEventListener('input', updateProfitDisplay);
+                    }
+
+                    // Perform initial calculation/tick update
+                    updateProfitDisplay();
+                  }
                 }
               }
             } catch (err) {
@@ -3005,7 +3081,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
       return () => clearInterval(profitInterval);
     }
-  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat]);
+  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat, itemsData, cargoCapacity, apiKey, factionData]);
 
   const placeholderRef = useRef(null);
 
