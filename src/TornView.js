@@ -899,7 +899,7 @@ const STATS_REDIR_SCRIPT = `
   })()
 `;
 
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -1191,7 +1191,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         } else {
           const wv = webviewRef.current;
           if (wv) {
-            wv.executeJavaScript(responseScript).catch(() => {});
+            wv.executeJavaScript(responseScript).catch(() => { });
           }
         }
       } catch (err) {
@@ -1208,16 +1208,21 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         } else {
           const wv = webviewRef.current;
           if (wv) {
-            wv.executeJavaScript(responseScript).catch(() => {});
+            wv.executeJavaScript(responseScript).catch(() => { });
           }
         }
+      }
+    } else if (payload.type === 'open_tab') {
+      const { url } = payload;
+      if (url && onNewTab) {
+        onNewTab(url);
       }
     } else if (payload.type === 'set_baldr_primary') {
       if (setBaldrHighestStat) {
         setBaldrHighestStat(payload.stat);
       }
     }
-  }, [tabId, setBaldrHighestStat]);
+  }, [tabId, setBaldrHighestStat, onNewTab]);
 
   useEffect(() => {
     if (!isCapacitor) return;
@@ -1278,7 +1283,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
       if (e.message && e.message.startsWith("TORNAGATOR_BRIDGE:")) {
         try {
-          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length()));
+          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length));
           handleBridgeMessage(payload);
         } catch (err) {
           console.error("Failed to parse bridge message payload:", err);
@@ -1470,15 +1475,55 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   useEffect(() => {
     if (!isActive) return;
 
+    const itemsMarketValues = {};
+    const itemsMarketValuesById = {};
+    if (itemsData) {
+      Object.entries(itemsData).forEach(([id, item]) => {
+        if (item.name && item.market_value) {
+          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+        }
+        if (id && item.market_value) {
+          itemsMarketValuesById[id] = item.market_value;
+        }
+      });
+    }
+
     const script = `
       (() => {
+        if (!window._tornagator_market_values) {
+          window._tornagator_market_values = ${JSON.stringify(itemsMarketValues)};
+        }
+        if (!window._tornagator_market_values_by_id) {
+          window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+        }
+        if (window._tornagator_cargo_capacity === undefined) {
+          window._tornagator_cargo_capacity = ${cargoCapacity || 5};
+        }
+        if (!window._tornagator_api_key) {
+          window._tornagator_api_key = ${JSON.stringify(apiKey)};
+        }
+        if (!window._tornagator_user_data) {
+          window._tornagator_user_data = ${JSON.stringify(userData)};
+        }
+        if (!window._tornagator_faction_data) {
+          window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        }
+        if (!window._tornagator_tab_id) {
+          window._tornagator_tab_id = ${JSON.stringify(tabId)};
+        }
+        if (window._tornagator_is_mobile === undefined) {
+          window._tornagator_is_mobile = ${isCapacitor};
+        }
+
         try {
           const isTravel = window.location.href.includes('travelagency.php') || window.location.href.includes('sid=travel') || window.location.href.includes('index.php');
           const isCrimes = window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes');
           const isItemMarket = window.location.href.includes('imarket.php') || window.location.href.includes('sid=ItemMarket') || window.location.href.includes('sid=itemmarket') || window.location.href.includes('sid=imarket');
           const isGym = window.location.href.includes('gym.php');
+          const isMuseum = window.location.href.includes('museum.php');
+          const isBazaar = window.location.href.includes('bazaar.php');
 
-          if (!isTravel && !isCrimes && !isItemMarket && !isGym) {
+          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) {
             return null;
           }
 
@@ -1983,7 +2028,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             }
           }
 
-          if ((isTravel || isCrimes) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
+          if ((isTravel || isCrimes || isMuseum) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
             return null;
           }
 
@@ -2734,6 +2779,689 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             }
           }
 
+          if (isMuseum) {
+            try {
+              const now = Date.now();
+
+              // Handle points price fetch response
+              if (window._tornagator_fetch_responses && window._tornagator_fetch_responses['points_price_fetch']) {
+                const res = window._tornagator_fetch_responses['points_price_fetch'];
+                delete window._tornagator_fetch_responses['points_price_fetch'];
+                window._tornagator_fetching_points_price = false;
+
+                if (res.error) {
+                  console.error('[TORNagator Museum] Points price fetch failed:', res.error);
+                } else if (res.data && res.data.pointsmarket) {
+                  const listings = res.data.pointsmarket;
+                  // Convert listings object to array
+                  const listArr = [];
+                  for (const key in listings) {
+                    if (listings[key] && typeof listings[key].cost === 'number' && typeof listings[key].quantity === 'number') {
+                      listArr.push({
+                        cost: listings[key].cost,
+                        quantity: listings[key].quantity
+                      });
+                    }
+                  }
+                  // Sort ascending by cost
+                  listArr.sort((a, b) => a.cost - b.cost);
+
+                  // Average the cost of the cheapest (first) ~2000 points
+                  let totalCostFor2000 = 0;
+                  let accumulatedQty = 0;
+                  for (const item of listArr) {
+                    const takeQty = Math.min(2000 - accumulatedQty, item.quantity);
+                    if (takeQty > 0) {
+                      totalCostFor2000 += takeQty * item.cost;
+                      accumulatedQty += takeQty;
+                    }
+                    if (accumulatedQty >= 2000) break;
+                  }
+
+                  if (accumulatedQty > 0) {
+                    const avgPrice = totalCostFor2000 / accumulatedQty;
+                    window._tornagator_points_price = avgPrice;
+                    window._tornagator_points_price_timestamp = now;
+                    console.log('[TORNagator Museum] Calculated average points price:', avgPrice, 'over', accumulatedQty, 'points');
+                  }
+                }
+              }
+
+              // Handle Weav3r marketplace fetch response
+              if (window._tornagator_fetch_responses && window._tornagator_fetch_responses['weav3r_marketplace_fetch']) {
+                const res = window._tornagator_fetch_responses['weav3r_marketplace_fetch'];
+                delete window._tornagator_fetch_responses['weav3r_marketplace_fetch'];
+                window._weav3r_fetching_marketplace = false;
+
+                if (res.error) {
+                  console.error('[TORNagator Museum] Weav3r marketplace fetch failed:', res.error);
+                } else if (res.data && res.data.items) {
+                  const map = {};
+                  res.data.items.forEach(it => {
+                    if (it.item_id) {
+                      const data = {
+                        item_id: it.item_id,
+                        name: it.item_name,
+                        market_price: it.market_price,
+                        bazaar_average: it.bazaar_average,
+                        lowest_price: it.lowest_price
+                      };
+                      map[it.item_id] = data;
+                      map[it.item_name.toLowerCase()] = data;
+                    }
+                  });
+                  window._weav3r_marketplace_prices = map;
+                  console.log('[TORNagator Museum] Processed Weav3r marketplace prices.');
+                  if (window._tornagator_update_profit_display) {
+                    window._tornagator_update_profit_display();
+                  }
+                }
+              }
+
+              // Handle Weav3r precise item bazaar details response
+              if (window._tornagator_fetch_responses) {
+                for (const key in window._tornagator_fetch_responses) {
+                  if (key.startsWith('precise_item_')) {
+                    const res = window._tornagator_fetch_responses[key];
+                    delete window._tornagator_fetch_responses[key];
+                    if (window._tornagator_bazaar_clicks) {
+                      const clickedBtn = window._tornagator_bazaar_clicks[key];
+                      delete window._tornagator_bazaar_clicks[key];
+                      if (clickedBtn) {
+                        clickedBtn.textContent = ' 🛒';
+                        if (res.error) {
+                          alert('Failed to fetch bazaar listings: ' + res.error);
+                        } else if (res.data && res.data.listings && res.data.listings.length > 0) {
+                          const itemId = key.replace('precise_item_', '');
+                          let visitedData = {};
+                          try {
+                            visitedData = JSON.parse(localStorage.getItem('tornagator_museum_visited_bazaars') || '{}');
+                          } catch (e) {
+                            visitedData = {};
+                          }
+                          const now = Date.now();
+
+                          // Filter out listings visited in the last 10 minutes
+                          const availableListings = res.data.listings.filter(listing => {
+                            if (!listing.player_id) return false;
+                            const visitTime = visitedData[itemId + '_' + listing.player_id];
+                            if (visitTime && (now - visitTime) < 10 * 60 * 1000) {
+                              console.log('[TORNagator Museum] Skipping recently visited bazaar for player_id:', listing.player_id);
+                              return false;
+                            }
+                            return true;
+                          });
+
+                          let selectedListing = null;
+                          if (availableListings.length > 0) {
+                            selectedListing = availableListings[0];
+                          } else {
+                            console.log('[TORNagator Museum] All available bazaars were recently visited. Resetting history for item:', itemId);
+                            res.data.listings.forEach(listing => {
+                              if (listing.player_id) {
+                                delete visitedData[itemId + '_' + listing.player_id];
+                              }
+                            });
+                            selectedListing = res.data.listings[0];
+                          }
+
+                          if (selectedListing && selectedListing.player_id) {
+                            visitedData[itemId + '_' + selectedListing.player_id] = now;
+                            
+                            // Clean up entries older than 10 minutes to save space
+                            for (const k in visitedData) {
+                              if (now - visitedData[k] > 10 * 60 * 1000) {
+                                delete visitedData[k];
+                              }
+                            }
+                            
+                            localStorage.setItem('tornagator_museum_visited_bazaars', JSON.stringify(visitedData));
+                            localStorage.setItem('tornagator_bazaar_search_prefill', 'plushie');
+                            console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                              tabId: window._tornagator_tab_id,
+                              type: "open_tab",
+                              url: 'https://www.torn.com/bazaar.php?userId=' + selectedListing.player_id + '#/'
+                            }));
+                          } else {
+                            alert('Could not find seller ID in bazaar listings.');
+                          }
+                        } else {
+                          alert('No bazaar listings found for this item.');
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Trigger points price fetch if needed (only on first load / refresh)
+              if (window._tornagator_api_key && !window._tornagator_points_price && !window._tornagator_fetching_points_price) {
+                window._tornagator_fetching_points_price = true;
+                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                  type: "fetch",
+                  id: "points_price_fetch",
+                  url: "https://api.torn.com/market/?selections=pointsmarket&key=" + window._tornagator_api_key,
+                  tabId: window._tornagator_tab_id
+                }));
+              }
+
+              // Trigger Weav3r marketplace fetch if needed
+              if (!window._weav3r_marketplace_prices && !window._weav3r_fetching_marketplace) {
+                window._weav3r_fetching_marketplace = true;
+                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                  type: "fetch",
+                  id: "weav3r_marketplace_fetch",
+                  url: "https://weav3r.dev/api/marketplace",
+                  tabId: window._tornagator_tab_id
+                }));
+              }
+
+              // Find Plushie Set section container
+              let plushieSection = null;
+              const divsAndLis = document.querySelectorAll('li, div');
+              for (const el of divsAndLis) {
+                const text = el.textContent || '';
+                if (text.includes('Plushie Set') && el.querySelector('input')) {
+                  plushieSection = el;
+                  break;
+                }
+              }
+
+              if (plushieSection) {
+                let setsInput = null;
+                const inputs = plushieSection.querySelectorAll('input');
+                for (const inp of inputs) {
+                  const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
+                  const name = (inp.getAttribute('name') || '').toLowerCase();
+                  const type = (inp.getAttribute('type') || '').toLowerCase();
+                  if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
+                    setsInput = inp;
+                    break;
+                  }
+                }
+
+                if (setsInput) {
+                  const isMobile = window._tornagator_is_mobile || (window.innerWidth < 768);
+                  let badge = document.getElementById('tornagator-museum-plushie-profit');
+
+                  if (isMobile) {
+                    // Mobile: inside titleBar (before arrow)
+                    let titleBar = null;
+                    const titleCandidates = plushieSection.querySelectorAll('div, li, a');
+                    for (const el of titleCandidates) {
+                      if (el.textContent && el.textContent.includes('Plushie Set') && el.textContent.includes('10 points') && !el.querySelector('input')) {
+                        titleBar = el;
+                      }
+                    }
+
+                    if (titleBar) {
+                      const currentDisplay = window.getComputedStyle(titleBar).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        titleBar.style.display = 'flex';
+                        titleBar.style.alignItems = 'center';
+                      }
+
+                      if (badge && badge.parentNode !== titleBar) {
+                        badge.parentNode.removeChild(badge);
+                        badge = null;
+                      }
+
+                      if (!badge) {
+                        badge = document.createElement('div');
+                        badge.id = 'tornagator-museum-plushie-profit';
+                        badge.style.fontSize = '12px';
+                        badge.style.fontWeight = 'bold';
+                        badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                        badge.style.padding = '3px 8px';
+                        badge.style.borderRadius = '4px';
+                        badge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+                        badge.style.transition = 'all 0.2s ease';
+                        badge.style.marginLeft = 'auto';
+                        badge.style.marginRight = '12px';
+
+                        const arrow = titleBar.querySelector('i, span[class*="arrow"], svg, [class*="arrow"]');
+                        if (arrow && arrow.parentNode === titleBar) {
+                          titleBar.insertBefore(badge, arrow);
+                        } else {
+                          titleBar.appendChild(badge);
+                        }
+                      }
+                    }
+                  } else {
+                    // Desktop: inline before the setsInput container
+                    const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                    const parent = targetForInsertion.parentNode;
+
+                    if (badge && badge.parentNode !== parent) {
+                      badge.parentNode.removeChild(badge);
+                      badge = null;
+                    }
+
+                    if (!badge) {
+                      badge = document.createElement('div');
+                      badge.id = 'tornagator-museum-plushie-profit';
+                      badge.style.display = 'inline-flex';
+                      badge.style.alignItems = 'center';
+                      badge.style.fontSize = '12px';
+                      badge.style.fontWeight = 'bold';
+                      badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                      badge.style.padding = '6px 12px';
+                      badge.style.borderRadius = '6px';
+                      badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                      badge.style.transition = 'all 0.2s ease';
+                      badge.style.marginRight = '16px';
+
+                      parent.insertBefore(badge, targetForInsertion);
+
+                      const currentDisplay = window.getComputedStyle(parent).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        parent.style.display = 'flex';
+                        parent.style.alignItems = 'center';
+                      }
+                    }
+                  }
+
+                  if (badge) {
+                    const plushieIds = {
+                      'sheep plushie': 186,
+                      'teddy bear plushie': 187,
+                      'kitten plushie': 215,
+                      'jaguar plushie': 258,
+                      'wolverine plushie': 261,
+                      'nessie plushie': 264,
+                      'red fox plushie': 266,
+                      'monkey plushie': 268,
+                      'chamois plushie': 269,
+                      'panda plushie': 273,
+                      'lion plushie': 281,
+                      'camel plushie': 384,
+                      'stingray plushie': 618
+                    };
+
+                    const plushies = Object.keys(plushieIds);
+
+                    // Inject bazaar buttons next to plushie names
+                    const findPlushieCard = (plushieName) => {
+                      const allChildren = plushieSection.querySelectorAll('*');
+                      
+                      if (window._tornagator_is_mobile) {
+                        // Original fast logic for mobile to prevent scroll latency
+                        for (const child of allChildren) {
+                          if (child.childNodes.length === 1 && child.textContent && child.textContent.trim().toLowerCase() === plushieName.toLowerCase()) {
+                            const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                            return { card, title: child };
+                          }
+                        }
+                        return null;
+                      }
+
+                      // Robust logic for desktop with truncation/ellipses
+                      for (const child of allChildren) {
+                        const rawText = child.textContent || '';
+                        const text = rawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
+                        if (!text) continue;
+
+                        const cleanedText = text.replace(/[\s\.\u2026]+$/, '').trim();
+                        if (cleanedText && (
+                          plushieName.toLowerCase().startsWith(cleanedText) ||
+                          cleanedText.startsWith(plushieName.toLowerCase())
+                        ) && cleanedText.length >= 4) {
+                          let hasChildMatch = false;
+                          for (let i = 0; i < child.children.length; i++) {
+                            const cRawText = child.children[i].textContent || '';
+                            const cText = cRawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
+                            const cCleaned = cText.replace(/[\s\.\u2026]+$/, '').trim();
+                            if (cCleaned && (
+                              plushieName.toLowerCase().startsWith(cCleaned) ||
+                              cCleaned.startsWith(plushieName.toLowerCase())
+                            ) && cCleaned.length >= 4) {
+                              hasChildMatch = true;
+                              break;
+                            }
+                          }
+                          if (!hasChildMatch) {
+                            const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                            return { card, title: child };
+                          }
+                        }
+                      }
+                      return null;
+                    };
+
+                    plushies.forEach(name => {
+                      const result = findPlushieCard(name);
+                      if (result && result.title) {
+                        const pid = plushieIds[name];
+                        let btn = document.getElementById('tornagator-bazaar-btn-' + pid);
+                        if (!btn) {
+                          btn = document.createElement('span');
+                          btn.id = 'tornagator-bazaar-btn-' + pid;
+                          btn.className = 'tornagator-bazaar-btn';
+                          btn.textContent = ' 🛒';
+                          btn.style.cursor = 'pointer';
+                          btn.style.fontSize = '12px';
+                          btn.style.marginLeft = '4px';
+                          btn.style.display = 'inline-block';
+                          btn.style.flexShrink = '0';
+                          btn.style.transition = 'transform 0.1s ease';
+                          btn.title = 'Click to find cheapest bazaar listing';
+
+                          if (window._tornagator_is_mobile) {
+                            // Original mobile append logic
+                            result.title.appendChild(btn);
+                          } else {
+                            // Desktop flex wrapper append logic
+                            let wrapper = result.title.parentNode;
+                            if (wrapper && !wrapper.classList.contains('tornagator-title-wrapper')) {
+                              wrapper = document.createElement('div');
+                              wrapper.className = 'tornagator-title-wrapper';
+                              wrapper.style.display = 'flex';
+                              wrapper.style.alignItems = 'center';
+                              wrapper.style.justifyContent = 'space-between';
+                              wrapper.style.width = '100%';
+                              wrapper.style.overflow = 'hidden';
+
+                              result.title.parentNode.insertBefore(wrapper, result.title);
+                              wrapper.appendChild(result.title);
+                            }
+
+                            if (wrapper) {
+                              wrapper.appendChild(btn);
+
+                              result.title.style.flex = '1';
+                              result.title.style.minWidth = '0';
+                              result.title.style.overflow = 'hidden';
+                              result.title.style.textOverflow = 'ellipsis';
+                              result.title.style.whiteSpace = 'nowrap';
+                            }
+                          }
+
+                          btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (btn.textContent === '⏳') return;
+                            btn.textContent = '⏳';
+                            window._tornagator_bazaar_clicks = window._tornagator_bazaar_clicks || {};
+                            window._tornagator_bazaar_clicks['precise_item_' + pid] = btn;
+                            console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                              type: "fetch",
+                              id: "precise_item_" + pid,
+                              url: "https://weav3r.dev/api/marketplace/" + pid,
+                              tabId: window._tornagator_tab_id
+                            }));
+                          });
+                        }
+                      }
+                    });
+
+                    const updateProfitDisplay = () => {
+                      let numSets = 1;
+                      if (setsInput) {
+                        const parsed = parseInt(setsInput.value, 10);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          numSets = parsed;
+                        }
+                      }
+
+                      // Read active price source
+                      const activeSource = localStorage.getItem('tornagator_museum_price_source') || 'market';
+
+                      // Compute total plushie cost based on selected source
+                      let totalPlushieCost = 0;
+                      let missingPrice = false;
+
+                      const marketValues = window._tornagator_market_values || {};
+                      const weav3rValues = window._weav3r_marketplace_prices || {};
+
+                      plushies.forEach(name => {
+                        const pid = plushieIds[name];
+                        let price = undefined;
+
+                        if (activeSource === 'market') {
+                          price = marketValues[name];
+                        } else if (activeSource === 'bazaar_avg') {
+                          price = weav3rValues[pid]?.bazaar_average || weav3rValues[pid]?.market_price || marketValues[name];
+                        } else if (activeSource === 'lowest_price') {
+                          price = weav3rValues[pid]?.lowest_price || weav3rValues[pid]?.market_price || marketValues[name];
+                        }
+
+                        if (price !== undefined) {
+                          totalPlushieCost += price;
+                        } else {
+                          missingPrice = true;
+                        }
+                      });
+
+                      const pointsPrice = window._tornagator_points_price;
+
+                      if (missingPrice || !pointsPrice) {
+                        badge.textContent = isMobile ? 'Calculating...' : 'Profit: Calculating...';
+                        if (isMobile) {
+                          badge.style.color = '#aaa';
+                          badge.style.background = 'rgba(255, 255, 255, 0.03)';
+                          badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                        } else {
+                          badge.style.color = '#666';
+                          badge.style.background = 'rgba(0, 0, 0, 0.03)';
+                          badge.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                        }
+                        badge.title = 'Fetching plushie market prices and current points market value...';
+                      } else {
+                        const tenPointsValue = 10 * pointsPrice;
+                        const singleSetProfit = tenPointsValue - totalPlushieCost;
+                        const profit = singleSetProfit * numSets;
+
+                        if (isMobile) {
+                          badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
+                          badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
+                          badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+                        } else {
+                          badge.style.background = profit >= 0 ? 'rgba(39, 174, 96, 0.08)' : 'rgba(192, 41, 43, 0.08)';
+                          badge.style.border = profit >= 0 ? '1px solid rgba(39, 174, 96, 0.25)' : '1px solid rgba(192, 41, 43, 0.25)';
+                          badge.style.color = profit >= 0 ? '#1b5e20' : '#b71c1c';
+                        }
+
+                        const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
+                        const totalPointsValue = Math.round(tenPointsValue * numSets);
+                        badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(pointsPrice).toLocaleString() + '/ea avg)';
+
+                        const roundedProfit = Math.round(profit);
+
+                        if (isMobile) {
+                          // Mobile layout: titleBar badge is a clean, passive text element
+                          badge.textContent = (roundedProfit >= 0 ? '+' : '-') + '$' + Math.abs(roundedProfit).toLocaleString();
+
+                          // Create/manage mobile body selector dropdown next to the input
+                          const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                          const parent = targetForInsertion.parentNode;
+                          let bodySelector = document.getElementById('tornagator-museum-mobile-source-container');
+
+                          if (bodySelector && bodySelector.parentNode !== parent) {
+                            bodySelector.parentNode.removeChild(bodySelector);
+                            bodySelector = null;
+                          }
+
+                          if (!bodySelector) {
+                            bodySelector = document.createElement('div');
+                            bodySelector.id = 'tornagator-museum-mobile-source-container';
+                            bodySelector.style.display = 'flex';
+                            bodySelector.style.alignItems = 'center';
+                            bodySelector.style.fontSize = '12px';
+                            bodySelector.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                            bodySelector.style.marginRight = 'auto';
+                            bodySelector.style.color = '#fff';
+
+                            const select = document.createElement('select');
+                            select.id = 'tornagator-museum-price-source-mobile';
+                            select.style.background = 'rgba(255,255,255,0.05)';
+                            select.style.color = '#fff';
+                            select.style.border = '1px solid rgba(255,255,255,0.15)';
+                            select.style.borderRadius = '4px';
+                            select.style.fontFamily = 'inherit';
+                            select.style.fontSize = 'inherit';
+                            select.style.fontWeight = 'bold';
+                            select.style.cursor = 'pointer';
+                            select.style.padding = '2px 4px';
+
+                            const options = [
+                              { value: 'market', text: 'Market' },
+                              { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                              { value: 'lowest_price', text: 'Bazaar Min' }
+                            ];
+
+                            options.forEach(optData => {
+                              const opt = document.createElement('option');
+                              opt.value = optData.value;
+                              opt.textContent = optData.text;
+                              opt.style.background = '#222';
+                              opt.style.color = '#fff';
+                              select.appendChild(opt);
+                            });
+
+                            select.value = activeSource;
+                            select.addEventListener('change', (e) => {
+                              localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                              updateProfitDisplay();
+                            });
+
+                            bodySelector.appendChild(select);
+                            parent.insertBefore(bodySelector, targetForInsertion);
+
+                            const currentDisplay = window.getComputedStyle(parent).display;
+                            if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                              parent.style.display = 'flex';
+                              parent.style.alignItems = 'center';
+                            }
+                          } else {
+                            const select = bodySelector.querySelector('select');
+                            if (select) {
+                              select.value = activeSource;
+                            }
+                          }
+                        } else {
+                          // Desktop layout: clean up mobile body selector if present
+                          const bodySelector = document.getElementById('tornagator-museum-mobile-source-container');
+                          if (bodySelector) {
+                            bodySelector.parentNode.removeChild(bodySelector);
+                          }
+
+                          // Desktop layout: Construct the content inside the badge, inserting the select dropdown
+                          let prefixSpan = badge.querySelector('#tornagator-museum-prefix');
+                          let setsSpan = badge.querySelector('#tornagator-museum-sets');
+                          let sourceSelect = badge.querySelector('#tornagator-museum-price-source');
+                          let suffixSpan = badge.querySelector('#tornagator-museum-suffix');
+
+                          if (!sourceSelect) {
+                            badge.innerHTML = '';
+
+                            prefixSpan = document.createElement('span');
+                            prefixSpan.id = 'tornagator-museum-prefix';
+                            badge.appendChild(prefixSpan);
+
+                            setsSpan = document.createElement('span');
+                            setsSpan.id = 'tornagator-museum-sets';
+                            badge.appendChild(setsSpan);
+
+                            // Create select element
+                            sourceSelect = document.createElement('select');
+                            sourceSelect.id = 'tornagator-museum-price-source';
+                            sourceSelect.style.background = 'transparent';
+                            sourceSelect.style.color = 'inherit';
+                            sourceSelect.style.border = 'none';
+                            sourceSelect.style.fontFamily = 'inherit';
+                            sourceSelect.style.fontSize = 'inherit';
+                            sourceSelect.style.fontWeight = 'bold';
+                            sourceSelect.style.cursor = 'pointer';
+                            sourceSelect.style.outline = 'none';
+                            sourceSelect.style.padding = '0';
+                            sourceSelect.style.margin = '0 2px';
+                            sourceSelect.style.borderBottom = '1px dotted currentColor';
+
+                            const options = [
+                              { value: 'market', text: 'Market' },
+                              { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                              { value: 'lowest_price', text: 'Bazaar Min' }
+                            ];
+
+                            options.forEach(optData => {
+                              const opt = document.createElement('option');
+                              opt.value = optData.value;
+                              opt.textContent = optData.text;
+                              opt.style.background = '#222';
+                              opt.style.color = '#fff';
+                              sourceSelect.appendChild(opt);
+                            });
+
+                            sourceSelect.addEventListener('change', (e) => {
+                              localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                              updateProfitDisplay();
+                            });
+
+                            badge.appendChild(sourceSelect);
+
+                            suffixSpan = document.createElement('span');
+                            suffixSpan.id = 'tornagator-museum-suffix';
+                            badge.appendChild(suffixSpan);
+                          }
+
+                          prefixSpan.textContent = roundedProfit >= 0 ? 'Profit (' : 'Loss (';
+                          if (numSets > 1) {
+                            setsSpan.textContent = numSets + ' sets, ';
+                            setsSpan.style.display = 'inline';
+                          } else {
+                            setsSpan.textContent = '';
+                            setsSpan.style.display = 'none';
+                          }
+
+                          sourceSelect.value = activeSource;
+                          suffixSpan.textContent = '): ' + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
+                        }
+                      }
+                    };
+
+                    window._tornagator_update_profit_display = updateProfitDisplay;
+
+                    // Attach listener for instant updates when typing
+                    if (setsInput && !setsInput._tornagator_listener_attached) {
+                      setsInput._tornagator_listener_attached = true;
+                      setsInput.addEventListener('input', updateProfitDisplay);
+                    }
+
+                    // Perform initial calculation/tick update
+                    updateProfitDisplay();
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator Museum] Museum calculation error:', err);
+            }
+          }
+
+          if (isBazaar) {
+            try {
+              const prefill = localStorage.getItem('tornagator_bazaar_search_prefill');
+              if (prefill) {
+                const searchInput = document.querySelector('input[placeholder*="search" i]');
+                if (searchInput) {
+                  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                  if (valueSetter) {
+                    valueSetter.call(searchInput, prefill);
+                  } else {
+                    searchInput.value = prefill;
+                  }
+                  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+                  searchInput.focus();
+                  searchInput.blur();
+                  localStorage.removeItem('tornagator_bazaar_search_prefill');
+                  console.log('[TORNagator Bazaar] Prefilled search with:', prefill);
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator Bazaar] Search prefill error:', err);
+            }
+          }
+
           return null;
         } catch (e) {
           console.error("Profit/Crimes injection error:", e);
@@ -2751,10 +3479,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
+        const isMuseum = currentUrl.includes('museum.php');
+        const isBazaar = currentUrl.includes('bazaar.php');
 
         console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
 
         if (isGym) {
           window._tornagator_last_injected_script = script;
@@ -2782,8 +3512,10 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
+        const isMuseum = currentUrl.includes('museum.php');
+        const isBazaar = currentUrl.includes('bazaar.php');
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
 
         wv.executeJavaScript(script)
           .then(result => {
@@ -2797,7 +3529,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
       return () => clearInterval(profitInterval);
     }
-  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat]);
+  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat, itemsData, cargoCapacity, apiKey, factionData]);
 
   const placeholderRef = useRef(null);
 
@@ -3664,7 +4396,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @returns {React.JSX.Element} The rendered TornView component.
  */
 const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat, setBaldrHighestStat }) => {
-  const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
+  const defaultTab = useMemo(() => ({ id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' }), []);
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
 
@@ -3865,7 +4597,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       try {
         const stored = localStorage.getItem('tornagator_pinned_targets');
         setPinnedIds(stored ? JSON.parse(stored) : {});
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [isActive]);
 
@@ -3874,7 +4606,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       if (e.key === 'tornagator_pinned_targets') {
         try {
           setPinnedIds(e.newValue ? JSON.parse(e.newValue) : {});
-        } catch (err) {}
+        } catch (err) { }
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -3891,6 +4623,25 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   // Force a re-render after toggling so the controlled children update.
   const [, forceRerender] = useState(0);
   const bumpRender = useCallback(() => forceRerender(n => n + 1), []);
+
+  const handleTabUpdate = useCallback((id, updates) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, [setTabs]);
+
+  const handleCloseTab = useCallback((e, id) => {
+    if (e) e.stopPropagation();
+    setTabs(prev => {
+      const idx = prev.findIndex(t => t.id === id);
+      const newTabs = prev.filter(t => t.id !== id);
+      if (newTabs.length === 0) return [defaultTab];
+      if (activeTabId === id) {
+        // Switch to the adjacent tab
+        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
+        setActiveTabId(nextTab.id);
+      }
+      return newTabs;
+    });
+  }, [activeTabId, setActiveTabId, setTabs, defaultTab]);
 
   // Handle android back button inside TORN tab
   useEffect(() => {
@@ -3916,13 +4667,21 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
       // Find the active tab
       const activeTab = tabs.find(t => t.id === activeTabId);
-      if (activeTab && activeTab.canGoBack) {
-        if (isCapacitor) {
-          if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
-            console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
-            window.AndroidTornBridge.goBack(activeTab.id);
-            e.preventDefault();
+      if (activeTab) {
+        if (activeTab.canGoBack) {
+          if (isCapacitor) {
+            if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
+              console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
+              window.AndroidTornBridge.goBack(activeTab.id);
+              e.preventDefault();
+              return;
+            }
           }
+        } else if (activeTab.id !== 'home') {
+          console.log('[TornView] Closing active webview tab on back button:', activeTab.id);
+          handleCloseTab(null, activeTab.id);
+          e.preventDefault();
+          return;
         }
       }
     };
@@ -3931,7 +4690,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     return () => {
       document.removeEventListener('androidBack', handleAndroidBack);
     };
-  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs]);
+  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs, handleCloseTab]);
 
 
   // Memoize the mapping, filtering, and sorting of enemy faction members
@@ -4318,24 +5077,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     }
   }, [requestedUrl, tabs, setTabs, setActiveTabId, setRequestedUrl]);
 
-  const handleTabUpdate = useCallback((id, updates) => {
-    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  }, [setTabs]);
 
-  const handleCloseTab = (e, id) => {
-    e.stopPropagation();
-    setTabs(prev => {
-      const idx = prev.findIndex(t => t.id === id);
-      const newTabs = prev.filter(t => t.id !== id);
-      if (newTabs.length === 0) return [defaultTab];
-      if (activeTabId === id) {
-        // Switch to the adjacent tab
-        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
-        setActiveTabId(nextTab.id);
-      }
-      return newTabs;
-    });
-  };
 
   const handleNewTab = (initialUrl) => {
     // Guard: when called from onClick, initialUrl is a SyntheticEvent — ignore it
@@ -4543,6 +5285,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 tab={tab}
                 isActive={isActive && activeTabId === tab.id}
                 onUpdate={handleTabUpdate}
+                onNewTab={handleNewTab}
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
