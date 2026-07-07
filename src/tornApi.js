@@ -216,3 +216,26 @@ export const fetchUserInventoryV2 = async (apiKey, requestedCategories = []) => 
     return [];
   }
 };
+
+/**
+ * Fetches the user's targets list using the TORN V2 API.
+ *
+ * @param {string} apiKey - The user's private API key.
+ * @returns {Promise<Array>} A promise resolving to the targets list.
+ */
+export const fetchUserTargets = async (apiKey) => {
+  try {
+    const response = await fetch(`${BASE_URL}/v2/user/list?cat=Targets&striptags=true&limit=100&sort=ASC&key=${apiKey}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(data.error.error || 'Unknown API Error');
+    }
+    return data.list || [];
+  } catch (error) {
+    console.error("fetchUserTargets Error:", error);
+    throw error;
+  }
+};

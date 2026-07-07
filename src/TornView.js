@@ -7,7 +7,7 @@ import {
   IconCoin, IconWarning, IconChevronRight,
   IconChevronLeft, IconRefresh,
   IconTarget, IconPeace, IconSwords,
-  IconBarChart, IconClock, IconPill, IconMuscle, IconLink,
+  IconBarChart, IconClock, IconPill, IconMuscle, IconLink, IconPin,
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
@@ -899,7 +899,7 @@ const STATS_REDIR_SCRIPT = `
   })()
 `;
 
-const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData }) => {
+const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTargetCountry, itemsData, cargoCapacity, apiKey, showNavControls, userData, factionData, baldrHighestStat, setBaldrHighestStat }) => {
   const tabId = tab?.id;
   const tabUrl = tab?.url || '';
   const tabTitle = tab?.title || '';
@@ -954,10 +954,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        window._tornagator_tab_id = ${JSON.stringify(tabId)};
       })()
     `;
     wvInstance.executeJavaScript(injectScript).catch(() => { });
-  }, [itemsData, cargoCapacity, apiKey, userData, factionData]);
+  }, [itemsData, cargoCapacity, apiKey, userData, factionData, tabId]);
 
   const trySelectCountry = useCallback((attempt = 1) => {
     if (!targetCountry) return;
@@ -1167,6 +1168,82 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
     }
   }, [targetCountry, setTargetCountry, tabUrl, tabId]);
 
+  const handleBridgeMessage = useCallback(async (payload) => {
+    if (payload.type === 'fetch') {
+      const { id, url } = payload;
+      try {
+        // Prevent SSRF by validating the requested URL is an authorized TORN API endpoint
+        if (!url.startsWith('https://api.torn.com/')) {
+          throw new Error('Invalid or unauthorized URL for proxy fetch');
+        }
+        const response = await fetch(url);
+        const data = await response.json();
+        const responseScript = `
+          (() => {
+            window._tornagator_fetch_responses = window._tornagator_fetch_responses || {};
+            window._tornagator_fetch_responses['${id}'] = ${JSON.stringify({ data })};
+          })()
+        `;
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+            window.AndroidTornBridge.executeInOverlay(tabId, responseScript);
+          }
+        } else {
+          const wv = webviewRef.current;
+          if (wv) {
+            wv.executeJavaScript(responseScript).catch(() => { });
+          }
+        }
+      } catch (err) {
+        const responseScript = `
+          (() => {
+            window._tornagator_fetch_responses = window._tornagator_fetch_responses || {};
+            window._tornagator_fetch_responses['${id}'] = ${JSON.stringify({ error: err.message })};
+          })()
+        `;
+        if (isCapacitor) {
+          if (window.AndroidTornBridge && window.AndroidTornBridge.executeInOverlay) {
+            window.AndroidTornBridge.executeInOverlay(tabId, responseScript);
+          }
+        } else {
+          const wv = webviewRef.current;
+          if (wv) {
+            wv.executeJavaScript(responseScript).catch(() => { });
+          }
+        }
+      }
+    } else if (payload.type === 'open_tab') {
+      const { url } = payload;
+      if (url && onNewTab) {
+        onNewTab(url);
+      }
+    } else if (payload.type === 'set_baldr_primary') {
+      if (setBaldrHighestStat) {
+        setBaldrHighestStat(payload.stat);
+      }
+    }
+  }, [tabId, setBaldrHighestStat, onNewTab]);
+
+  useEffect(() => {
+    if (!isCapacitor) return;
+
+    const handleBridgeEvent = (e) => {
+      try {
+        const payload = JSON.parse(e.detail);
+        if (payload.tabId === tabId) {
+          handleBridgeMessage(payload);
+        }
+      } catch (err) {
+        console.error("Failed to parse bridge event payload:", err);
+      }
+    };
+
+    window.addEventListener('tornagatorBridge', handleBridgeEvent);
+    return () => {
+      window.removeEventListener('tornagatorBridge', handleBridgeEvent);
+    };
+  }, [tabId, handleBridgeMessage]);
+
   useEffect(() => {
     const wv = webviewRef.current;
     if (!wv || !isElectron) return;
@@ -1200,10 +1277,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       }
     };
     const handleConsole = (e) => {
+      // Filter out Electron Security Warnings originating from webview pages (e.g. Torn.com)
+      if (e.message && (
+        e.message.includes('Electron Security Warning') || 
+        e.message.includes('Insecure Content-Security-Policy')
+      )) {
+        return;
+      }
       if (window.process && window.process.stdout) {
         window.process.stdout.write(`[Webview-${tabId || 'unknown'}] ${e.message}\n`);
       }
       console.log(`[Webview-${tabId || 'unknown'}]`, e.message);
+      if (e.message && e.message.startsWith("TORNAGATOR_BRIDGE:")) {
+        try {
+          const payload = JSON.parse(e.message.substring("TORNAGATOR_BRIDGE:".length));
+          handleBridgeMessage(payload);
+        } catch (err) {
+          console.error("Failed to parse bridge message payload:", err);
+        }
+      }
     };
 
     wv.addEventListener('did-navigate', handleNavigate);
@@ -1219,7 +1311,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       wv.removeEventListener('page-title-updated', handleTitle);
       wv.removeEventListener('console-message', handleConsole);
     };
-  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues]);
+  }, [tabId, onUpdate, updateNavigationState, isNewTab, injectMarketValues, handleBridgeMessage]);
 
   useEffect(() => {
     if (isActive && targetCountry) {
@@ -1390,19 +1482,60 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
   useEffect(() => {
     if (!isActive) return;
 
+    const itemsMarketValues = {};
+    const itemsMarketValuesById = {};
+    if (itemsData) {
+      Object.entries(itemsData).forEach(([id, item]) => {
+        if (item.name && item.market_value) {
+          itemsMarketValues[item.name.toLowerCase()] = item.market_value;
+        }
+        if (id && item.market_value) {
+          itemsMarketValuesById[id] = item.market_value;
+        }
+      });
+    }
+
     const script = `
       (() => {
+        if (!window._tornagator_market_values) {
+          window._tornagator_market_values = ${JSON.stringify(itemsMarketValues)};
+        }
+        if (!window._tornagator_market_values_by_id) {
+          window._tornagator_market_values_by_id = ${JSON.stringify(itemsMarketValuesById)};
+        }
+        if (window._tornagator_cargo_capacity === undefined) {
+          window._tornagator_cargo_capacity = ${cargoCapacity || 5};
+        }
+        if (!window._tornagator_api_key) {
+          window._tornagator_api_key = ${JSON.stringify(apiKey)};
+        }
+        if (!window._tornagator_user_data) {
+          window._tornagator_user_data = ${JSON.stringify(userData)};
+        }
+        if (!window._tornagator_faction_data) {
+          window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        }
+        if (!window._tornagator_tab_id) {
+          window._tornagator_tab_id = ${JSON.stringify(tabId)};
+        }
+        if (window._tornagator_is_mobile === undefined) {
+          window._tornagator_is_mobile = ${isCapacitor};
+        }
+
         try {
           const isTravel = window.location.href.includes('travelagency.php') || window.location.href.includes('sid=travel') || window.location.href.includes('index.php');
           const isCrimes = window.location.href.includes('crimes.php') || window.location.href.includes('sid=crimes');
           const isItemMarket = window.location.href.includes('imarket.php') || window.location.href.includes('sid=ItemMarket') || window.location.href.includes('sid=itemmarket') || window.location.href.includes('sid=imarket');
           const isGym = window.location.href.includes('gym.php');
+          const isMuseum = window.location.href.includes('museum.php');
+          const isBazaar = window.location.href.includes('bazaar.php');
 
-          if (!isTravel && !isCrimes && !isItemMarket && !isGym) {
+          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) {
             return null;
           }
 
           if (isGym) {
+            console.log('[TORNagator] Overlay script isGym block executing, url:', window.location.href);
             try {
               const header = document.querySelector('.content-title');
               if (header) {
@@ -1454,14 +1587,12 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const hasData = (userData && userData.faction_perks !== undefined) || (factionData && factionData.upgrades !== undefined);
                 const dataStr = JSON.stringify(stats) + '_' + hasData;
                 const existing = document.getElementById('tornagator-gym-steadfast');
-                if (existing) {
-                  if (existing.dataset.stats === dataStr) {
-                    return null;
-                  }
-                  existing.remove();
-                }
+                const shouldRecreate = !existing || existing.dataset.stats !== dataStr;
 
-                if (userData || factionData) {
+                if (shouldRecreate && (userData || factionData)) {
+                  if (existing) {
+                    existing.remove();
+                  }
                   const container = document.createElement('div');
                   container.id = 'tornagator-gym-steadfast';
                   container.dataset.stats = dataStr;
@@ -1637,9 +1768,274 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             } catch (err) {
               console.error('[TORNagator] Stacking warning injection error:', err);
             }
+
+            // 3. Baldr's Gym Optimizer - Injects "trains needed" next to stat values
+            try {
+              // Re-read userData/factionData from window globals (different scope from steadfast block)
+              const baldrUserData = window._tornagator_user_data;
+              const baldrFactionData = window._tornagator_faction_data;
+
+              // Read faction steadfast perks for accurate gain multiplier
+              const baldrStats = { strength: 0, defense: 0, speed: 0, dexterity: 0 };
+              if (baldrUserData && Array.isArray(baldrUserData.faction_perks)) {
+                baldrUserData.faction_perks.forEach(function(perk) {
+                  var p = perk.toLowerCase();
+                  if (p.includes('gym gains')) {
+                    var m = p.match(/\\+\\s*([\\d.]+)\\s*%/);
+                    if (m) {
+                      var val = parseFloat(m[1]);
+                      if (p.includes('strength')) baldrStats.strength = val;
+                      else if (p.includes('defense') || p.includes('defence')) baldrStats.defense = val;
+                      else if (p.includes('speed')) baldrStats.speed = val;
+                      else if (p.includes('dexterity')) baldrStats.dexterity = val;
+                    }
+                  }
+                });
+              }
+
+              // Get current stats from DOM
+              const strEl = document.querySelector('li[class*="strength___"] span[class*="propertyValue___"]');
+              const defEl = document.querySelector('li[class*="defense___"] span[class*="propertyValue___"]');
+              const speEl = document.querySelector('li[class*="speed___"] span[class*="propertyValue___"]');
+              const dexEl = document.querySelector('li[class*="dexterity___"] span[class*="propertyValue___"]');
+
+              if (strEl && defEl && speEl && dexEl) {
+                const strVal = parseInt(strEl.textContent.replace(/,/g, ''), 10) || 0;
+                const defVal = parseInt(defEl.textContent.replace(/,/g, ''), 10) || 0;
+                const speVal = parseInt(speEl.textContent.replace(/,/g, ''), 10) || 0;
+                const dexVal = parseInt(dexEl.textContent.replace(/,/g, ''), 10) || 0;
+
+                // Detect active gym
+                const activeBtn = document.querySelector('button[class*="gymButton___"][class*="active___"]') || 
+                                  document.querySelector('[class*="gymButton___"][class*="active___"]');
+                
+                let gymName = 'Unknown';
+                let energyPerTrain = 10;
+                if (activeBtn) {
+                  const label = activeBtn.getAttribute('aria-label') || '';
+                  gymName = label.split('.')[0].trim();
+                  
+                  const energyMatch = label.match(/Energy usage\s*-\s*(\d+)/i);
+                  if (energyMatch) {
+                    energyPerTrain = parseInt(energyMatch[1], 10);
+                  }
+                }
+
+                // Gym dots table
+                const gymDotsTable = {
+                  "Premier Fitness": { str: 2.0, spe: 2.0, def: 2.0, dex: 2.0, energy: 5 },
+                  "Average Joes": { str: 2.4, spe: 2.4, def: 2.8, dex: 2.4, energy: 5 },
+                  "Woody's Workout Club": { str: 2.8, spe: 3.2, def: 3.0, dex: 2.8, energy: 5 },
+                  "Beach Bods": { str: 3.2, spe: 3.2, def: 3.2, dex: 0.0, energy: 5 },
+                  "Silver Gym": { str: 3.4, spe: 3.6, def: 3.4, dex: 3.4, energy: 5 },
+                  "Pour Femme": { str: 3.4, spe: 3.6, def: 3.6, dex: 3.8, energy: 5 },
+                  "Davies Den": { str: 3.7, spe: 0.0, def: 3.7, dex: 3.7, energy: 5 },
+                  "Global Gym": { str: 4.0, spe: 4.0, def: 4.0, dex: 4.0, energy: 5 },
+
+                  "Knuckle Heads": { str: 4.8, spe: 4.4, def: 4.0, dex: 4.2, energy: 10 },
+                  "Pioneer Fitness": { str: 4.4, spe: 4.6, def: 4.8, dex: 4.4, energy: 10 },
+                  "Anabolic Anomalies": { str: 5.0, spe: 4.6, def: 5.2, dex: 4.6, energy: 10 },
+                  "Core": { str: 5.0, spe: 5.2, def: 5.0, dex: 5.0, energy: 10 },
+                  "Racing Fitness": { str: 5.0, spe: 5.4, def: 4.8, dex: 5.2, energy: 10 },
+                  "Complete Cardio": { str: 5.5, spe: 5.8, def: 5.5, dex: 5.2, energy: 10 },
+                  "Legs, Bums and Tums": { str: 0.0, spe: 5.6, def: 5.6, dex: 5.8, energy: 10 },
+                  "Deep Burn": { str: 6.0, spe: 6.0, def: 6.0, dex: 6.0, energy: 10 },
+
+                  "Apollo Gym": { str: 6.0, spe: 6.2, def: 6.4, dex: 6.2, energy: 10 },
+                  "Gun Shop": { str: 6.6, spe: 6.4, def: 6.2, dex: 6.2, energy: 10 },
+                  "Force Training": { str: 6.4, spe: 6.6, def: 6.4, dex: 6.8, energy: 10 },
+                  "Cha Cha's": { str: 6.4, spe: 6.4, def: 6.8, dex: 7.0, energy: 10 },
+                  "Atlas": { str: 7.0, spe: 6.4, def: 6.4, dex: 6.6, energy: 10 },
+                  "Last Round": { str: 6.8, spe: 6.6, def: 7.0, dex: 6.6, energy: 10 },
+                  "The Edge": { str: 6.8, spe: 7.0, def: 7.0, dex: 6.8, energy: 10 },
+                  "George's": { str: 7.3, spe: 7.3, def: 7.3, dex: 7.3, energy: 10 },
+                  "George's Gym": { str: 7.3, spe: 7.3, def: 7.3, dex: 7.3, energy: 10 },
+
+                  "Balboa's Gym": { str: 0.0, spe: 0.0, def: 7.5, dex: 7.5, energy: 25 },
+                  "Frontline Fitness": { str: 7.5, spe: 7.5, def: 0.0, dex: 0.0, energy: 25 },
+                  "Gym 3000": { str: 8.0, spe: 0.0, def: 0.0, dex: 0.0, energy: 50 },
+                  "Mr. Isoyamas": { str: 0.0, spe: 0.0, def: 8.0, dex: 0.0, energy: 50 },
+                  "Mr. Isoyama's": { str: 0.0, spe: 0.0, def: 8.0, dex: 0.0, energy: 50 },
+                  "Total Rebound": { str: 0.0, spe: 8.0, def: 0.0, dex: 0.0, energy: 50 },
+                  "Elites": { str: 0.0, spe: 0.0, def: 0.0, dex: 8.0, energy: 50 },
+                  "The Sports Science Lab": { str: 9.0, spe: 9.0, def: 9.0, dex: 9.0, energy: 50 }
+                };
+
+                const dots = gymDotsTable[gymName] || { str: 5.5, spe: 5.8, def: 5.5, dex: 5.2, energy: energyPerTrain };
+
+                // Get current happy
+                const currentHappy = (baldrUserData && baldrUserData.happy && baldrUserData.happy.current) || 4000;
+
+                // Setup relation keys - primaryKey interpolated from React state at build time
+                const primaryKey = "${(baldrHighestStat || 'strength').toLowerCase() === 'defence' ? 'defense' : (baldrHighestStat || 'strength').toLowerCase()}";
+                
+                let secondaryKey = 'speed';
+                let low1Key = 'defense';
+                let low2Key = 'dexterity';
+
+                if (primaryKey === 'strength') {
+                  secondaryKey = 'speed';
+                  low1Key = 'defense';
+                  low2Key = 'dexterity';
+                } else if (primaryKey === 'defense') {
+                  secondaryKey = 'dexterity';
+                  low1Key = 'strength';
+                  low2Key = 'speed';
+                } else if (primaryKey === 'speed') {
+                  secondaryKey = 'strength';
+                  low1Key = 'defense';
+                  low2Key = 'dexterity';
+                } else if (primaryKey === 'dexterity') {
+                  secondaryKey = 'defense';
+                  low1Key = 'strength';
+                  low2Key = 'speed';
+                }
+
+                const ratios = {};
+                ratios[primaryKey] = 30.86;
+                ratios[secondaryKey] = 24.69;
+                ratios[low1Key] = 22.22;
+                ratios[low2Key] = 22.22;
+
+                // Implied totals for each stat
+                const impliedTotals = {
+                  strength: strVal / (ratios.strength / 100),
+                  defense: defVal / (ratios.defense / 100),
+                  speed: speVal / (ratios.speed / 100),
+                  dexterity: dexVal / (ratios.dexterity / 100),
+                };
+
+                // Find max implied total
+                let maxTotal = 0;
+                let boundingStatKey = 'strength';
+                for (const key of Object.keys(impliedTotals)) {
+                  if (impliedTotals[key] > maxTotal) {
+                    maxTotal = impliedTotals[key];
+                    boundingStatKey = key;
+                  }
+                }
+
+                // Calculate targets based on the max implied total
+                const targets = {};
+                targets.strength = Math.ceil(maxTotal * (ratios.strength / 100));
+                targets.defense = Math.ceil(maxTotal * (ratios.defense / 100));
+                targets.speed = Math.ceil(maxTotal * (ratios.speed / 100));
+                targets.dexterity = Math.ceil(maxTotal * (ratios.dexterity / 100));
+
+                // Helper to format stat differences
+                const formatDiff = (num) => {
+                  if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'b';
+                  if (num >= 1000000) return (num / 1000000).toFixed(2) + 'm';
+                  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+                  return num.toString();
+                };
+
+                const statMap = {
+                  strength: { current: strVal, target: targets.strength, dot: dots.str, perk: baldrStats.strength, el: strEl },
+                  defense: { current: defVal, target: targets.defense, dot: dots.def, perk: baldrStats.defense, el: defEl },
+                  speed: { current: speVal, target: targets.speed, dot: dots.spe, perk: baldrStats.speed, el: speEl },
+                  dexterity: { current: dexVal, target: targets.dexterity, dot: dots.dex, perk: baldrStats.dexterity, el: dexEl }
+                };
+
+                Object.keys(statMap).forEach(key => {
+                  const stat = statMap[key];
+                  const diff = stat.target - stat.current;
+                  
+                  // Injected badge ID
+                  const badgeId = 'tornagator-gym-trains-' + key;
+                  let badge = document.getElementById(badgeId);
+                  if (!badge) {
+                    badge = document.createElement('span');
+                    badge.id = badgeId;
+                    badge.style.display = 'inline-block';
+                    badge.style.marginLeft = '8px';
+                    badge.style.fontSize = '11px';
+                    badge.style.letterSpacing = '0.5px';
+                    badge.style.padding = '2px 5px';
+                    badge.style.borderRadius = '3px';
+                    badge.style.verticalAlign = 'middle';
+                    
+                    // Append right after the span value element
+                    stat.el.parentNode.appendChild(badge);
+                  }
+                  
+                  // Render badge
+                  if (diff > 0) {
+                    badge.textContent = '+' + formatDiff(diff);
+                    badge.style.display = 'inline-block';
+                    badge.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                    badge.style.color = '#888';
+                    badge.style.border = '1px solid #444';
+                  } else {
+                    badge.style.display = 'none';
+                  }
+                  
+                  // Color the stat elements
+                  let highlightColor = '';
+                  if (diff > 0) {
+                    const percentAway = diff / stat.target;
+                    if (percentAway < 0.1) {
+                      highlightColor = '#73B005'; // Green
+                    } else if (percentAway < 0.3) {
+                      highlightColor = '#e67e22'; // Yellow
+                    } else {
+                      highlightColor = '#e74c3c'; // Red
+                    }
+                  } else {
+                    highlightColor = ''; // Default
+                  }
+                  
+                  stat.el.style.color = highlightColor;
+                  const titleEl = stat.el.parentNode.querySelector('[class^="title-"]');
+                  if (titleEl) titleEl.style.color = highlightColor;
+                  
+                  // Add a star next to the stat title
+                  const starBadgeId = 'tornagator-primary-star-' + key;
+                  let starBadge = document.getElementById(starBadgeId);
+                  const isPrimary = (key === primaryKey);
+                  
+                  if (!starBadge) {
+                    starBadge = document.createElement('span');
+                    starBadge.id = starBadgeId;
+                    starBadge.style.fontSize = '12px';
+                    starBadge.style.marginRight = '4px';
+                    starBadge.style.verticalAlign = 'middle';
+                    starBadge.style.cursor = 'pointer';
+                    starBadge.title = isPrimary ? 'Primary Stat (Baldr Ratio)' : 'Click to set as Primary Stat';
+                    
+                    starBadge.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('TORNAGATOR_BRIDGE:' + JSON.stringify({
+                        tabId: '${tabId}',
+                        type: 'set_baldr_primary',
+                        stat: key
+                      }));
+                    });
+                    
+                    // Try to find the label element (the sibling of stat.el)
+                    let labelEl = Array.from(stat.el.parentNode.children).find(el => el !== stat.el && !el.id.includes('tornagator'));
+                    
+                    if (labelEl) {
+                      labelEl.prepend(starBadge);
+                    } else {
+                      // Fallback: prepend to the parent container
+                      stat.el.parentNode.prepend(starBadge);
+                    }
+                  }
+                  
+                  // Update star styling
+                  starBadge.textContent = '★ ';
+                  starBadge.style.color = isPrimary ? '#f39c12' : '#666'; // Gold or Gray
+                  starBadge.style.textShadow = isPrimary ? '0 0 2px rgba(243,156,18,0.5)' : 'none';
+                });
+              }
+            } catch (err) {
+              console.error('[TORNagator] Baldr Gym Optimizer injection error:', err);
+            }
           }
 
-          if ((isTravel || isCrimes) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
+          if ((isTravel || isCrimes || isMuseum) && (!window._tornagator_market_values || !window._tornagator_market_values_by_id)) {
             return null;
           }
 
@@ -1987,6 +2383,32 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
                 const session = Date.now();
                 window._tornagator_scan_session = session;
 
+                const hostFetch = (url) => {
+                  return new Promise((resolve, reject) => {
+                    const id = Math.random().toString(36).substr(2, 9);
+                    window._tornagator_pending_fetches = window._tornagator_pending_fetches || [];
+                    console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                      type: "fetch",
+                      id: id,
+                      url: url,
+                      tabId: window._tornagator_tab_id
+                    }));
+
+                    const checkInterval = setInterval(() => {
+                      if (window._tornagator_fetch_responses && window._tornagator_fetch_responses[id]) {
+                        clearInterval(checkInterval);
+                        const res = window._tornagator_fetch_responses[id];
+                        delete window._tornagator_fetch_responses[id];
+                        if (res.error) {
+                          reject(new Error(res.error));
+                        } else {
+                          resolve(res.data);
+                        }
+                      }
+                    }, 50);
+                  });
+                };
+
                 // Clear any running queue processing and states
                 window._tornagator_scan_queue = [];
                 window._tornagator_scan_results = [];
@@ -2146,8 +2568,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
                 const processSeller = async (seller, rowEl) => {
                   try {
-                    const response = await fetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
-                    const data = await response.json();
+                    const data = await hostFetch('https://api.torn.com/user/' + seller.id + '?selections=profile,personalstats&key=' + apiKey);
 
                     if (data.error) {
                       throw new Error(data.error.error || 'API Error');
@@ -2365,6 +2786,689 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
             }
           }
 
+          if (isMuseum) {
+            try {
+              const now = Date.now();
+
+              // Handle points price fetch response
+              if (window._tornagator_fetch_responses && window._tornagator_fetch_responses['points_price_fetch']) {
+                const res = window._tornagator_fetch_responses['points_price_fetch'];
+                delete window._tornagator_fetch_responses['points_price_fetch'];
+                window._tornagator_fetching_points_price = false;
+
+                if (res.error) {
+                  console.error('[TORNagator Museum] Points price fetch failed:', res.error);
+                } else if (res.data && res.data.pointsmarket) {
+                  const listings = res.data.pointsmarket;
+                  // Convert listings object to array
+                  const listArr = [];
+                  for (const key in listings) {
+                    if (listings[key] && typeof listings[key].cost === 'number' && typeof listings[key].quantity === 'number') {
+                      listArr.push({
+                        cost: listings[key].cost,
+                        quantity: listings[key].quantity
+                      });
+                    }
+                  }
+                  // Sort ascending by cost
+                  listArr.sort((a, b) => a.cost - b.cost);
+
+                  // Average the cost of the cheapest (first) ~2000 points
+                  let totalCostFor2000 = 0;
+                  let accumulatedQty = 0;
+                  for (const item of listArr) {
+                    const takeQty = Math.min(2000 - accumulatedQty, item.quantity);
+                    if (takeQty > 0) {
+                      totalCostFor2000 += takeQty * item.cost;
+                      accumulatedQty += takeQty;
+                    }
+                    if (accumulatedQty >= 2000) break;
+                  }
+
+                  if (accumulatedQty > 0) {
+                    const avgPrice = totalCostFor2000 / accumulatedQty;
+                    window._tornagator_points_price = avgPrice;
+                    window._tornagator_points_price_timestamp = now;
+                    console.log('[TORNagator Museum] Calculated average points price:', avgPrice, 'over', accumulatedQty, 'points');
+                  }
+                }
+              }
+
+              // Handle Weav3r marketplace fetch response
+              if (window._tornagator_fetch_responses && window._tornagator_fetch_responses['weav3r_marketplace_fetch']) {
+                const res = window._tornagator_fetch_responses['weav3r_marketplace_fetch'];
+                delete window._tornagator_fetch_responses['weav3r_marketplace_fetch'];
+                window._weav3r_fetching_marketplace = false;
+
+                if (res.error) {
+                  console.error('[TORNagator Museum] Weav3r marketplace fetch failed:', res.error);
+                } else if (res.data && res.data.items) {
+                  const map = {};
+                  res.data.items.forEach(it => {
+                    if (it.item_id) {
+                      const data = {
+                        item_id: it.item_id,
+                        name: it.item_name,
+                        market_price: it.market_price,
+                        bazaar_average: it.bazaar_average,
+                        lowest_price: it.lowest_price
+                      };
+                      map[it.item_id] = data;
+                      map[it.item_name.toLowerCase()] = data;
+                    }
+                  });
+                  window._weav3r_marketplace_prices = map;
+                  console.log('[TORNagator Museum] Processed Weav3r marketplace prices.');
+                  if (window._tornagator_update_profit_display) {
+                    window._tornagator_update_profit_display();
+                  }
+                }
+              }
+
+              // Handle Weav3r precise item bazaar details response
+              if (window._tornagator_fetch_responses) {
+                for (const key in window._tornagator_fetch_responses) {
+                  if (key.startsWith('precise_item_')) {
+                    const res = window._tornagator_fetch_responses[key];
+                    delete window._tornagator_fetch_responses[key];
+                    if (window._tornagator_bazaar_clicks) {
+                      const clickedBtn = window._tornagator_bazaar_clicks[key];
+                      delete window._tornagator_bazaar_clicks[key];
+                      if (clickedBtn) {
+                        clickedBtn.textContent = ' 🛒';
+                        if (res.error) {
+                          alert('Failed to fetch bazaar listings: ' + res.error);
+                        } else if (res.data && res.data.listings && res.data.listings.length > 0) {
+                          const itemId = key.replace('precise_item_', '');
+                          let visitedData = {};
+                          try {
+                            visitedData = JSON.parse(localStorage.getItem('tornagator_museum_visited_bazaars') || '{}');
+                          } catch (e) {
+                            visitedData = {};
+                          }
+                          const now = Date.now();
+
+                          // Filter out listings visited in the last 10 minutes
+                          const availableListings = res.data.listings.filter(listing => {
+                            if (!listing.player_id) return false;
+                            const visitTime = visitedData[itemId + '_' + listing.player_id];
+                            if (visitTime && (now - visitTime) < 10 * 60 * 1000) {
+                              console.log('[TORNagator Museum] Skipping recently visited bazaar for player_id:', listing.player_id);
+                              return false;
+                            }
+                            return true;
+                          });
+
+                          let selectedListing = null;
+                          if (availableListings.length > 0) {
+                            selectedListing = availableListings[0];
+                          } else {
+                            console.log('[TORNagator Museum] All available bazaars were recently visited. Resetting history for item:', itemId);
+                            res.data.listings.forEach(listing => {
+                              if (listing.player_id) {
+                                delete visitedData[itemId + '_' + listing.player_id];
+                              }
+                            });
+                            selectedListing = res.data.listings[0];
+                          }
+
+                          if (selectedListing && selectedListing.player_id) {
+                            visitedData[itemId + '_' + selectedListing.player_id] = now;
+                            
+                            // Clean up entries older than 10 minutes to save space
+                            for (const k in visitedData) {
+                              if (now - visitedData[k] > 10 * 60 * 1000) {
+                                delete visitedData[k];
+                              }
+                            }
+                            
+                            localStorage.setItem('tornagator_museum_visited_bazaars', JSON.stringify(visitedData));
+                            localStorage.setItem('tornagator_bazaar_search_prefill', 'plushie');
+                            console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                              tabId: window._tornagator_tab_id,
+                              type: "open_tab",
+                              url: 'https://www.torn.com/bazaar.php?userId=' + selectedListing.player_id + '#/'
+                            }));
+                          } else {
+                            alert('Could not find seller ID in bazaar listings.');
+                          }
+                        } else {
+                          alert('No bazaar listings found for this item.');
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+
+              // Trigger points price fetch if needed (only on first load / refresh)
+              if (window._tornagator_api_key && !window._tornagator_points_price && !window._tornagator_fetching_points_price) {
+                window._tornagator_fetching_points_price = true;
+                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                  type: "fetch",
+                  id: "points_price_fetch",
+                  url: "https://api.torn.com/market/?selections=pointsmarket&key=" + window._tornagator_api_key,
+                  tabId: window._tornagator_tab_id
+                }));
+              }
+
+              // Trigger Weav3r marketplace fetch if needed
+              if (!window._weav3r_marketplace_prices && !window._weav3r_fetching_marketplace) {
+                window._weav3r_fetching_marketplace = true;
+                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                  type: "fetch",
+                  id: "weav3r_marketplace_fetch",
+                  url: "https://weav3r.dev/api/marketplace",
+                  tabId: window._tornagator_tab_id
+                }));
+              }
+
+              // Find Plushie Set section container
+              let plushieSection = null;
+              const divsAndLis = document.querySelectorAll('li, div');
+              for (const el of divsAndLis) {
+                const text = el.textContent || '';
+                if (text.includes('Plushie Set') && el.querySelector('input')) {
+                  plushieSection = el;
+                  break;
+                }
+              }
+
+              if (plushieSection) {
+                let setsInput = null;
+                const inputs = plushieSection.querySelectorAll('input');
+                for (const inp of inputs) {
+                  const placeholder = (inp.getAttribute('placeholder') || '').toLowerCase();
+                  const name = (inp.getAttribute('name') || '').toLowerCase();
+                  const type = (inp.getAttribute('type') || '').toLowerCase();
+                  if (placeholder.includes('sets') || name.includes('amount') || type === 'number' || type === 'text') {
+                    setsInput = inp;
+                    break;
+                  }
+                }
+
+                if (setsInput) {
+                  const isMobile = window._tornagator_is_mobile || (window.innerWidth < 768);
+                  let badge = document.getElementById('tornagator-museum-plushie-profit');
+
+                  if (isMobile) {
+                    // Mobile: inside titleBar (before arrow)
+                    let titleBar = null;
+                    const titleCandidates = plushieSection.querySelectorAll('div, li, a');
+                    for (const el of titleCandidates) {
+                      if (el.textContent && el.textContent.includes('Plushie Set') && el.textContent.includes('10 points') && !el.querySelector('input')) {
+                        titleBar = el;
+                      }
+                    }
+
+                    if (titleBar) {
+                      const currentDisplay = window.getComputedStyle(titleBar).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        titleBar.style.display = 'flex';
+                        titleBar.style.alignItems = 'center';
+                      }
+
+                      if (badge && badge.parentNode !== titleBar) {
+                        badge.parentNode.removeChild(badge);
+                        badge = null;
+                      }
+
+                      if (!badge) {
+                        badge = document.createElement('div');
+                        badge.id = 'tornagator-museum-plushie-profit';
+                        badge.style.fontSize = '12px';
+                        badge.style.fontWeight = 'bold';
+                        badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                        badge.style.padding = '3px 8px';
+                        badge.style.borderRadius = '4px';
+                        badge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+                        badge.style.transition = 'all 0.2s ease';
+                        badge.style.marginLeft = 'auto';
+                        badge.style.marginRight = '12px';
+
+                        const arrow = titleBar.querySelector('i, span[class*="arrow"], svg, [class*="arrow"]');
+                        if (arrow && arrow.parentNode === titleBar) {
+                          titleBar.insertBefore(badge, arrow);
+                        } else {
+                          titleBar.appendChild(badge);
+                        }
+                      }
+                    }
+                  } else {
+                    // Desktop: inline before the setsInput container
+                    const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                    const parent = targetForInsertion.parentNode;
+
+                    if (badge && badge.parentNode !== parent) {
+                      badge.parentNode.removeChild(badge);
+                      badge = null;
+                    }
+
+                    if (!badge) {
+                      badge = document.createElement('div');
+                      badge.id = 'tornagator-museum-plushie-profit';
+                      badge.style.display = 'inline-flex';
+                      badge.style.alignItems = 'center';
+                      badge.style.fontSize = '12px';
+                      badge.style.fontWeight = 'bold';
+                      badge.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                      badge.style.padding = '6px 12px';
+                      badge.style.borderRadius = '6px';
+                      badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                      badge.style.transition = 'all 0.2s ease';
+                      badge.style.marginRight = '16px';
+
+                      parent.insertBefore(badge, targetForInsertion);
+
+                      const currentDisplay = window.getComputedStyle(parent).display;
+                      if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                        parent.style.display = 'flex';
+                        parent.style.alignItems = 'center';
+                      }
+                    }
+                  }
+
+                  if (badge) {
+                    const plushieIds = {
+                      'sheep plushie': 186,
+                      'teddy bear plushie': 187,
+                      'kitten plushie': 215,
+                      'jaguar plushie': 258,
+                      'wolverine plushie': 261,
+                      'nessie plushie': 264,
+                      'red fox plushie': 266,
+                      'monkey plushie': 268,
+                      'chamois plushie': 269,
+                      'panda plushie': 273,
+                      'lion plushie': 281,
+                      'camel plushie': 384,
+                      'stingray plushie': 618
+                    };
+
+                    const plushies = Object.keys(plushieIds);
+
+                    // Inject bazaar buttons next to plushie names
+                    const findPlushieCard = (plushieName) => {
+                      const allChildren = plushieSection.querySelectorAll('*');
+                      
+                      if (window._tornagator_is_mobile) {
+                        // Original fast logic for mobile to prevent scroll latency
+                        for (const child of allChildren) {
+                          if (child.childNodes.length === 1 && child.textContent && child.textContent.trim().toLowerCase() === plushieName.toLowerCase()) {
+                            const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                            return { card, title: child };
+                          }
+                        }
+                        return null;
+                      }
+
+                      // Robust logic for desktop with truncation/ellipses
+                      for (const child of allChildren) {
+                        const rawText = child.textContent || '';
+                        const text = rawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
+                        if (!text) continue;
+
+                        const cleanedText = text.replace(/[\s\.\u2026]+$/, '').trim();
+                        if (cleanedText && (
+                          plushieName.toLowerCase().startsWith(cleanedText) ||
+                          cleanedText.startsWith(plushieName.toLowerCase())
+                        ) && cleanedText.length >= 4) {
+                          let hasChildMatch = false;
+                          for (let i = 0; i < child.children.length; i++) {
+                            const cRawText = child.children[i].textContent || '';
+                            const cText = cRawText.replace(/[🛒⏳]/g, '').trim().toLowerCase();
+                            const cCleaned = cText.replace(/[\s\.\u2026]+$/, '').trim();
+                            if (cCleaned && (
+                              plushieName.toLowerCase().startsWith(cCleaned) ||
+                              cCleaned.startsWith(plushieName.toLowerCase())
+                            ) && cCleaned.length >= 4) {
+                              hasChildMatch = true;
+                              break;
+                            }
+                          }
+                          if (!hasChildMatch) {
+                            const card = child.closest('li, div[class*="item"]') || child.parentElement;
+                            return { card, title: child };
+                          }
+                        }
+                      }
+                      return null;
+                    };
+
+                    plushies.forEach(name => {
+                      const result = findPlushieCard(name);
+                      if (result && result.title) {
+                        const pid = plushieIds[name];
+                        let btn = document.getElementById('tornagator-bazaar-btn-' + pid);
+                        if (!btn) {
+                          btn = document.createElement('span');
+                          btn.id = 'tornagator-bazaar-btn-' + pid;
+                          btn.className = 'tornagator-bazaar-btn';
+                          btn.textContent = ' 🛒';
+                          btn.style.cursor = 'pointer';
+                          btn.style.fontSize = '12px';
+                          btn.style.marginLeft = '4px';
+                          btn.style.display = 'inline-block';
+                          btn.style.flexShrink = '0';
+                          btn.style.transition = 'transform 0.1s ease';
+                          btn.title = 'Click to find cheapest bazaar listing';
+
+                          if (window._tornagator_is_mobile) {
+                            // Original mobile append logic
+                            result.title.appendChild(btn);
+                          } else {
+                            // Desktop flex wrapper append logic
+                            let wrapper = result.title.parentNode;
+                            if (wrapper && !wrapper.classList.contains('tornagator-title-wrapper')) {
+                              wrapper = document.createElement('div');
+                              wrapper.className = 'tornagator-title-wrapper';
+                              wrapper.style.display = 'flex';
+                              wrapper.style.alignItems = 'center';
+                              wrapper.style.justifyContent = 'space-between';
+                              wrapper.style.width = '100%';
+                              wrapper.style.overflow = 'hidden';
+
+                              result.title.parentNode.insertBefore(wrapper, result.title);
+                              wrapper.appendChild(result.title);
+                            }
+
+                            if (wrapper) {
+                              wrapper.appendChild(btn);
+
+                              result.title.style.flex = '1';
+                              result.title.style.minWidth = '0';
+                              result.title.style.overflow = 'hidden';
+                              result.title.style.textOverflow = 'ellipsis';
+                              result.title.style.whiteSpace = 'nowrap';
+                            }
+                          }
+
+                          btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (btn.textContent === '⏳') return;
+                            btn.textContent = '⏳';
+                            window._tornagator_bazaar_clicks = window._tornagator_bazaar_clicks || {};
+                            window._tornagator_bazaar_clicks['precise_item_' + pid] = btn;
+                            console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                              type: "fetch",
+                              id: "precise_item_" + pid,
+                              url: "https://weav3r.dev/api/marketplace/" + pid,
+                              tabId: window._tornagator_tab_id
+                            }));
+                          });
+                        }
+                      }
+                    });
+
+                    const updateProfitDisplay = () => {
+                      let numSets = 1;
+                      if (setsInput) {
+                        const parsed = parseInt(setsInput.value, 10);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          numSets = parsed;
+                        }
+                      }
+
+                      // Read active price source
+                      const activeSource = localStorage.getItem('tornagator_museum_price_source') || 'market';
+
+                      // Compute total plushie cost based on selected source
+                      let totalPlushieCost = 0;
+                      let missingPrice = false;
+
+                      const marketValues = window._tornagator_market_values || {};
+                      const weav3rValues = window._weav3r_marketplace_prices || {};
+
+                      plushies.forEach(name => {
+                        const pid = plushieIds[name];
+                        let price = undefined;
+
+                        if (activeSource === 'market') {
+                          price = marketValues[name];
+                        } else if (activeSource === 'bazaar_avg') {
+                          price = weav3rValues[pid]?.bazaar_average || weav3rValues[pid]?.market_price || marketValues[name];
+                        } else if (activeSource === 'lowest_price') {
+                          price = weav3rValues[pid]?.lowest_price || weav3rValues[pid]?.market_price || marketValues[name];
+                        }
+
+                        if (price !== undefined) {
+                          totalPlushieCost += price;
+                        } else {
+                          missingPrice = true;
+                        }
+                      });
+
+                      const pointsPrice = window._tornagator_points_price;
+
+                      if (missingPrice || !pointsPrice) {
+                        badge.textContent = isMobile ? 'Calculating...' : 'Profit: Calculating...';
+                        if (isMobile) {
+                          badge.style.color = '#aaa';
+                          badge.style.background = 'rgba(255, 255, 255, 0.03)';
+                          badge.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+                        } else {
+                          badge.style.color = '#666';
+                          badge.style.background = 'rgba(0, 0, 0, 0.03)';
+                          badge.style.border = '1px solid rgba(0, 0, 0, 0.08)';
+                        }
+                        badge.title = 'Fetching plushie market prices and current points market value...';
+                      } else {
+                        const tenPointsValue = 10 * pointsPrice;
+                        const singleSetProfit = tenPointsValue - totalPlushieCost;
+                        const profit = singleSetProfit * numSets;
+
+                        if (isMobile) {
+                          badge.style.background = profit >= 0 ? 'rgba(46, 204, 113, 0.08)' : 'rgba(231, 76, 60, 0.08)';
+                          badge.style.border = profit >= 0 ? '1px solid rgba(46, 204, 113, 0.2)' : '1px solid rgba(231, 76, 60, 0.2)';
+                          badge.style.color = profit >= 0 ? '#2ecc71' : '#e74c3c';
+                        } else {
+                          badge.style.background = profit >= 0 ? 'rgba(39, 174, 96, 0.08)' : 'rgba(192, 41, 43, 0.08)';
+                          badge.style.border = profit >= 0 ? '1px solid rgba(39, 174, 96, 0.25)' : '1px solid rgba(192, 41, 43, 0.25)';
+                          badge.style.color = profit >= 0 ? '#1b5e20' : '#b71c1c';
+                        }
+
+                        const totalPlushiesCost = Math.round(totalPlushieCost * numSets);
+                        const totalPointsValue = Math.round(tenPointsValue * numSets);
+                        badge.title = (13 * numSets) + ' Plushies Cost: $' + totalPlushiesCost.toLocaleString() + ' | ' + (10 * numSets) + ' Points Value: $' + totalPointsValue.toLocaleString() + ' ($' + Math.round(pointsPrice).toLocaleString() + '/ea avg)';
+
+                        const roundedProfit = Math.round(profit);
+
+                        if (isMobile) {
+                          // Mobile layout: titleBar badge is a clean, passive text element
+                          badge.textContent = (roundedProfit >= 0 ? '+' : '-') + '$' + Math.abs(roundedProfit).toLocaleString();
+
+                          // Create/manage mobile body selector dropdown next to the input
+                          const targetForInsertion = setsInput.closest('[class*="input"]') || setsInput;
+                          const parent = targetForInsertion.parentNode;
+                          let bodySelector = document.getElementById('tornagator-museum-mobile-source-container');
+
+                          if (bodySelector && bodySelector.parentNode !== parent) {
+                            bodySelector.parentNode.removeChild(bodySelector);
+                            bodySelector = null;
+                          }
+
+                          if (!bodySelector) {
+                            bodySelector = document.createElement('div');
+                            bodySelector.id = 'tornagator-museum-mobile-source-container';
+                            bodySelector.style.display = 'flex';
+                            bodySelector.style.alignItems = 'center';
+                            bodySelector.style.fontSize = '12px';
+                            bodySelector.style.fontFamily = "'Inter', -apple-system, sans-serif";
+                            bodySelector.style.marginRight = 'auto';
+                            bodySelector.style.color = '#fff';
+
+                            const select = document.createElement('select');
+                            select.id = 'tornagator-museum-price-source-mobile';
+                            select.style.background = 'rgba(255,255,255,0.05)';
+                            select.style.color = '#fff';
+                            select.style.border = '1px solid rgba(255,255,255,0.15)';
+                            select.style.borderRadius = '4px';
+                            select.style.fontFamily = 'inherit';
+                            select.style.fontSize = 'inherit';
+                            select.style.fontWeight = 'bold';
+                            select.style.cursor = 'pointer';
+                            select.style.padding = '2px 4px';
+
+                            const options = [
+                              { value: 'market', text: 'Market' },
+                              { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                              { value: 'lowest_price', text: 'Bazaar Min' }
+                            ];
+
+                            options.forEach(optData => {
+                              const opt = document.createElement('option');
+                              opt.value = optData.value;
+                              opt.textContent = optData.text;
+                              opt.style.background = '#222';
+                              opt.style.color = '#fff';
+                              select.appendChild(opt);
+                            });
+
+                            select.value = activeSource;
+                            select.addEventListener('change', (e) => {
+                              localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                              updateProfitDisplay();
+                            });
+
+                            bodySelector.appendChild(select);
+                            parent.insertBefore(bodySelector, targetForInsertion);
+
+                            const currentDisplay = window.getComputedStyle(parent).display;
+                            if (currentDisplay !== 'flex' && currentDisplay !== 'inline-flex') {
+                              parent.style.display = 'flex';
+                              parent.style.alignItems = 'center';
+                            }
+                          } else {
+                            const select = bodySelector.querySelector('select');
+                            if (select) {
+                              select.value = activeSource;
+                            }
+                          }
+                        } else {
+                          // Desktop layout: clean up mobile body selector if present
+                          const bodySelector = document.getElementById('tornagator-museum-mobile-source-container');
+                          if (bodySelector) {
+                            bodySelector.parentNode.removeChild(bodySelector);
+                          }
+
+                          // Desktop layout: Construct the content inside the badge, inserting the select dropdown
+                          let prefixSpan = badge.querySelector('#tornagator-museum-prefix');
+                          let setsSpan = badge.querySelector('#tornagator-museum-sets');
+                          let sourceSelect = badge.querySelector('#tornagator-museum-price-source');
+                          let suffixSpan = badge.querySelector('#tornagator-museum-suffix');
+
+                          if (!sourceSelect) {
+                            badge.innerHTML = '';
+
+                            prefixSpan = document.createElement('span');
+                            prefixSpan.id = 'tornagator-museum-prefix';
+                            badge.appendChild(prefixSpan);
+
+                            setsSpan = document.createElement('span');
+                            setsSpan.id = 'tornagator-museum-sets';
+                            badge.appendChild(setsSpan);
+
+                            // Create select element
+                            sourceSelect = document.createElement('select');
+                            sourceSelect.id = 'tornagator-museum-price-source';
+                            sourceSelect.style.background = 'transparent';
+                            sourceSelect.style.color = 'inherit';
+                            sourceSelect.style.border = 'none';
+                            sourceSelect.style.fontFamily = 'inherit';
+                            sourceSelect.style.fontSize = 'inherit';
+                            sourceSelect.style.fontWeight = 'bold';
+                            sourceSelect.style.cursor = 'pointer';
+                            sourceSelect.style.outline = 'none';
+                            sourceSelect.style.padding = '0';
+                            sourceSelect.style.margin = '0 2px';
+                            sourceSelect.style.borderBottom = '1px dotted currentColor';
+
+                            const options = [
+                              { value: 'market', text: 'Market' },
+                              { value: 'bazaar_avg', text: 'Bazaar Avg' },
+                              { value: 'lowest_price', text: 'Bazaar Min' }
+                            ];
+
+                            options.forEach(optData => {
+                              const opt = document.createElement('option');
+                              opt.value = optData.value;
+                              opt.textContent = optData.text;
+                              opt.style.background = '#222';
+                              opt.style.color = '#fff';
+                              sourceSelect.appendChild(opt);
+                            });
+
+                            sourceSelect.addEventListener('change', (e) => {
+                              localStorage.setItem('tornagator_museum_price_source', e.target.value);
+                              updateProfitDisplay();
+                            });
+
+                            badge.appendChild(sourceSelect);
+
+                            suffixSpan = document.createElement('span');
+                            suffixSpan.id = 'tornagator-museum-suffix';
+                            badge.appendChild(suffixSpan);
+                          }
+
+                          prefixSpan.textContent = roundedProfit >= 0 ? 'Profit (' : 'Loss (';
+                          if (numSets > 1) {
+                            setsSpan.textContent = numSets + ' sets, ';
+                            setsSpan.style.display = 'inline';
+                          } else {
+                            setsSpan.textContent = '';
+                            setsSpan.style.display = 'none';
+                          }
+
+                          sourceSelect.value = activeSource;
+                          suffixSpan.textContent = '): ' + (roundedProfit >= 0 ? '+$' : '-$') + Math.abs(roundedProfit).toLocaleString();
+                        }
+                      }
+                    };
+
+                    window._tornagator_update_profit_display = updateProfitDisplay;
+
+                    // Attach listener for instant updates when typing
+                    if (setsInput && !setsInput._tornagator_listener_attached) {
+                      setsInput._tornagator_listener_attached = true;
+                      setsInput.addEventListener('input', updateProfitDisplay);
+                    }
+
+                    // Perform initial calculation/tick update
+                    updateProfitDisplay();
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator Museum] Museum calculation error:', err);
+            }
+          }
+
+          if (isBazaar) {
+            try {
+              const prefill = localStorage.getItem('tornagator_bazaar_search_prefill');
+              if (prefill) {
+                const searchInput = document.querySelector('input[placeholder*="search" i]');
+                if (searchInput) {
+                  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                  if (valueSetter) {
+                    valueSetter.call(searchInput, prefill);
+                  } else {
+                    searchInput.value = prefill;
+                  }
+                  searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                  searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+                  searchInput.focus();
+                  searchInput.blur();
+                  localStorage.removeItem('tornagator_bazaar_search_prefill');
+                  console.log('[TORNagator Bazaar] Prefilled search with:', prefill);
+                }
+              }
+            } catch (err) {
+              console.error('[TORNagator Bazaar] Search prefill error:', err);
+            }
+          }
+
           return null;
         } catch (e) {
           console.error("Profit/Crimes injection error:", e);
@@ -2382,8 +3486,16 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
+        const isMuseum = currentUrl.includes('museum.php');
+        const isBazaar = currentUrl.includes('bazaar.php');
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
+
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
+
+        if (isGym) {
+          window._tornagator_last_injected_script = script;
+        }
 
         window.AndroidTornBridge.executeInOverlay(tabId, script);
       }, 1000);
@@ -2407,8 +3519,10 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         const isCrimes = currentUrl.includes('crimes.php') || currentUrl.includes('sid=crimes');
         const isItemMarket = currentUrl.includes('imarket.php') || currentUrl.includes('sid=ItemMarket') || currentUrl.includes('sid=itemmarket') || currentUrl.includes('sid=imarket');
         const isGym = currentUrl.includes('gym.php');
+        const isMuseum = currentUrl.includes('museum.php');
+        const isBazaar = currentUrl.includes('bazaar.php');
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
 
         wv.executeJavaScript(script)
           .then(result => {
@@ -2422,7 +3536,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
 
       return () => clearInterval(profitInterval);
     }
-  }, [isActive, isNewTab, userData, tabUrl, tabId]);
+  }, [isActive, isNewTab, userData, tabUrl, tabId, baldrHighestStat, itemsData, cargoCapacity, apiKey, factionData]);
 
   const placeholderRef = useRef(null);
 
@@ -2453,6 +3567,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
         window._tornagator_api_key = ${JSON.stringify(apiKey)};
         window._tornagator_user_data = ${JSON.stringify(userData)};
         window._tornagator_faction_data = ${JSON.stringify(factionData)};
+        window._tornagator_tab_id = ${JSON.stringify(tabId)};
       })()
     `;
 
@@ -2481,9 +3596,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
       setCanGoBack(!!nativeCanGoBack);
       setCanGoForward(!!nativeCanGoForward);
 
-      if (tabId && url && url !== tabUrl) {
-        const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
-        onUpdate(tabId, { url, title: resolvedTitle });
+      if (tabId) {
+        const updates = {
+          canGoBack: !!nativeCanGoBack,
+          canGoForward: !!nativeCanGoForward
+        };
+        if (url && url !== tabUrl) {
+          const resolvedTitle = (title && title !== 'about:blank' && !title.startsWith('http://') && !title.startsWith('https://')) ? title : 'Loading...';
+          updates.url = url;
+          updates.title = resolvedTitle;
+        }
+        onUpdate(tabId, updates);
       }
 
       // Inject stats redirects and styles on Capacitor overlay
@@ -2710,6 +3833,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, targetCountry, setTargetCountry, 
           <webview
             ref={webviewRef}
             src={initialUrlRef.current}
+            partition="persist:torn"
             useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             title={tabTitle}
             className="torn-iframe"
@@ -2927,7 +4051,7 @@ const CollapsibleSidebarSection = ({ title, count, statusColor, defaultOpen = fa
  */
 // MemberSidebarRow supports controlled open mode (isOpen + onToggle) so the
 // parent can persist expanded state across data syncs.
-const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle }) => {
+const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo, isOpen: controlledIsOpen, onToggle, isPinned, onTogglePin }) => {
   const [currentStatusState, setCurrentStatusState] = useState(member.status?.state);
   const [currentDescription, setCurrentDescription] = useState(member.status?.description);
 
@@ -3047,9 +4171,40 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
               }}
             />
           )}
+          <span
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onTogglePin) onTogglePin(member.id);
+            }}
+            className={`member-card-pin-btn ${isPinned ? 'is-pinned' : ''}`}
+            style={{
+              padding: '2px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
+              marginLeft: '4px',
+              verticalAlign: 'middle',
+            }}
+            title={isPinned ? "Unpin Target" : "Pin Target"}
+          >
+            <IconPin size={11} color={isPinned ? '#f1c40f' : '#555'} fill={isPinned ? '#f1c40f' : 'none'} />
+          </span>
 
           <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px' }}>
-            Lvl {member.level} • <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
+            Lvl {member.level}
+            {member.suspectedRaw && (
+              <>
+                {' • '}
+                <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
+                </span>
+              </>
+            )}
+            {' • '}
+            <IconClock size={10} color="#888" /> {member.last_action?.relative || 'Unknown'}
           </div>
         </div>
 
@@ -3098,23 +4253,14 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
 
       {isOpen && (
         <>
-          {/* Suspected XP info & Profile indicators */}
-          {(member.suspectedRaw || hasProfile) && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
+          {/* Profile indicators */}
+          {hasProfile && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px', marginTop: '2px', fontSize: '0.7rem' }}>
               <div>
-                {member.suspectedRaw && (
-                  <span style={{ color: '#e74c3c', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                    <IconBarChart size={10} color="#e74c3c" /> {member.suspectedRaw}
-                  </span>
-                )}
-              </div>
-              <div>
-                {hasProfile && (
-                  <span style={{ color: '#888' }}>
-                    {profile.age ? `${profile.age.toLocaleString()}d` : ''}
-                    {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
-                  </span>
-                )}
+                <span style={{ color: '#888' }}>
+                  {profile.age ? `${profile.age.toLocaleString()}d` : ''}
+                  {member.winRate ? ` • ${Math.round(member.winRate)}% WR` : ''}
+                </span>
               </div>
             </div>
           )}
@@ -3257,8 +4403,8 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
  * @param {boolean} props.showNavControls - Whether to show the navigation toolbar.
  * @returns {React.JSX.Element} The rendered TornView component.
  */
-const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive }) => {
-  const defaultTab = { id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' };
+const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl, setRequestedUrl, targetCountry, setTargetCountry, itemsData, cargoCapacity, showNavControls, isActive, baldrHighestStat, setBaldrHighestStat }) => {
+  const defaultTab = useMemo(() => ({ id: 'home', url: 'https://www.torn.com/index.php', title: 'Torn' }), []);
   const [tabs, setTabs] = useLocalStorage('torn_browser_tabs', [defaultTab]);
   const [activeTabId, setActiveTabId] = useLocalStorage('torn_browser_active_tab', 'home');
 
@@ -3428,6 +4574,53 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
 
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem('tornagator_pinned_targets');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      console.error('[TORNagator] Failed to parse pinned targets from localStorage', e);
+      return {};
+    }
+  });
+
+  const handleTogglePin = useCallback((memberId) => {
+    setPinnedIds(prev => {
+      const updated = { ...prev, [memberId]: !prev[memberId] };
+      if (!updated[memberId]) {
+        delete updated[memberId];
+      }
+      try {
+        localStorage.setItem('tornagator_pinned_targets', JSON.stringify(updated));
+      } catch (e) {
+        console.error('[TORNagator] Failed to save pinned targets to localStorage', e);
+      }
+      return updated;
+    });
+  }, []);
+
+  // Sync pinned targets when switching to the TORN tab or storage changes
+  useEffect(() => {
+    if (isActive) {
+      try {
+        const stored = localStorage.getItem('tornagator_pinned_targets');
+        setPinnedIds(stored ? JSON.parse(stored) : {});
+      } catch (e) { }
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'tornagator_pinned_targets') {
+        try {
+          setPinnedIds(e.newValue ? JSON.parse(e.newValue) : {});
+        } catch (err) { }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Stable maps (useRef) that track open/closed state for sidebar sections and
   // individual member rows across data syncs.  We use refs (not state) so that
   // updating them never triggers a re-render — the open state is read directly
@@ -3438,6 +4631,75 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
   // Force a re-render after toggling so the controlled children update.
   const [, forceRerender] = useState(0);
   const bumpRender = useCallback(() => forceRerender(n => n + 1), []);
+
+  const handleTabUpdate = useCallback((id, updates) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, [setTabs]);
+
+  const handleCloseTab = useCallback((e, id) => {
+    if (e) e.stopPropagation();
+    setTabs(prev => {
+      const idx = prev.findIndex(t => t.id === id);
+      const newTabs = prev.filter(t => t.id !== id);
+      if (newTabs.length === 0) return [defaultTab];
+      if (activeTabId === id) {
+        // Switch to the adjacent tab
+        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
+        setActiveTabId(nextTab.id);
+      }
+      return newTabs;
+    });
+  }, [activeTabId, setActiveTabId, setTabs, defaultTab]);
+
+  // Handle android back button inside TORN tab
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleAndroidBack = (e) => {
+      console.log('[TornView] androidBack event captured');
+      if (isImportOpen) {
+        setIsImportOpen(false);
+        e.preventDefault();
+        return;
+      }
+      if (isAddingNew) {
+        setIsAddingNew(false);
+        e.preventDefault();
+        return;
+      }
+      if (isEditingQuick) {
+        setIsEditingQuick(false);
+        e.preventDefault();
+        return;
+      }
+
+      // Find the active tab
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeTab) {
+        if (activeTab.canGoBack) {
+          if (isCapacitor) {
+            if (window.AndroidTornBridge && window.AndroidTornBridge.goBack) {
+              console.log('[TornView] Navigating back inside active webview overlay:', activeTab.id);
+              window.AndroidTornBridge.goBack(activeTab.id);
+              e.preventDefault();
+              return;
+            }
+          }
+        } else if (activeTab.id !== 'home') {
+          console.log('[TornView] Closing active webview tab on back button:', activeTab.id);
+          handleCloseTab(null, activeTab.id);
+          e.preventDefault();
+          return;
+        }
+      }
+    };
+
+    document.addEventListener('androidBack', handleAndroidBack);
+    return () => {
+      document.removeEventListener('androidBack', handleAndroidBack);
+    };
+  }, [isActive, isImportOpen, isAddingNew, isEditingQuick, activeTabId, tabs, handleCloseTab]);
+
 
   // Memoize the mapping, filtering, and sorting of enemy faction members
   const sortedAndFilteredGroups = useMemo(() => {
@@ -3511,13 +4773,19 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
       return true;
     });
 
-    const groups = {
-      okay: { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] },
-      jail: { label: '🔒 In Jail', color: '#f39c12', members: [] },
-      other: { label: '✈️ Other', color: '#3498db', members: [] },
-    };
+    // Separate pinned and unpinned members
+    const pinnedMembers = filteredMembers.filter(m => pinnedIds[m.id]);
+    const unpinnedMembers = filteredMembers.filter(m => !pinnedIds[m.id]);
 
-    filteredMembers.forEach(m => {
+    const groups = {};
+    if (pinnedMembers.length > 0) {
+      groups.pinned = { label: '📌 Pinned Targets', color: '#f1c40f', members: pinnedMembers };
+    }
+    groups.okay = { label: '⚔️ Okay & Hospitalized', color: '#2ecc71', members: [] };
+    groups.jail = { label: '🔒 In Jail', color: '#f39c12', members: [] };
+    groups.other = { label: '✈️ Other', color: '#3498db', members: [] };
+
+    unpinnedMembers.forEach(m => {
       const state = m.status?.state || '';
       if (state === 'Okay' || state === 'Hospital') groups.okay.members.push(m);
       else if (state === 'Jail') groups.jail.members.push(m);
@@ -3527,7 +4795,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     Object.values(groups).forEach(g => applySortOrder(g.members));
 
     return groups;
-  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter]);
+  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter, pinnedIds]);
 
   // Sync cache state when cacheKey changes
   useEffect(() => {
@@ -3676,24 +4944,32 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
 
   // Auto-fetch targets on tab switch to war sidebar if not cached
   useEffect(() => {
-    if (isActive && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+    if (isActive && !sidebarCollapsed && sidebarTab === 'war' && !enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
       doFetchTargets(false);
     }
-  }, [isActive, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
+  }, [isActive, sidebarCollapsed, sidebarTab, enemyFactionData, isLoadingTargets, isSyncingTargets, enemyFactionId, apiKey, doFetchTargets]);
 
   // Auto-sync timer effect
   useEffect(() => {
-    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war') return;
+    if (!isActive || syncInterval <= 0 || !enemyFactionId || !apiKey || sidebarTab !== 'war' || sidebarCollapsed) return;
 
     const intervalId = setInterval(() => {
-      if (!isLoadingTargets && !isSyncingTargets) {
+      if (document.visibilityState === 'visible' && !isLoadingTargets && !isSyncingTargets) {
         if (loadFactionData) loadFactionData();
         doFetchTargets(true);
       }
     }, syncInterval * 1000);
 
     return () => clearInterval(intervalId);
-  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+  }, [isActive, syncInterval, enemyFactionId, apiKey, sidebarTab, sidebarCollapsed, isLoadingTargets, isSyncingTargets, doFetchTargets, loadFactionData]);
+
+  // Trigger target status refresh immediately when sidebar war tab becomes active and visible
+  useEffect(() => {
+    if (isActive && !sidebarCollapsed && sidebarTab === 'war' && enemyFactionData && !isLoadingTargets && !isSyncingTargets && enemyFactionId && apiKey) {
+      doFetchTargets(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, sidebarCollapsed, sidebarTab]);
 
   const activeTab = tabs.find(t => t.id === activeTabId);
   const isGymPage = activeTab?.url?.includes('gym.php');
@@ -3809,24 +5085,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     }
   }, [requestedUrl, tabs, setTabs, setActiveTabId, setRequestedUrl]);
 
-  const handleTabUpdate = useCallback((id, updates) => {
-    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  }, [setTabs]);
 
-  const handleCloseTab = (e, id) => {
-    e.stopPropagation();
-    setTabs(prev => {
-      const idx = prev.findIndex(t => t.id === id);
-      const newTabs = prev.filter(t => t.id !== id);
-      if (newTabs.length === 0) return [defaultTab];
-      if (activeTabId === id) {
-        // Switch to the adjacent tab
-        const nextTab = newTabs[idx] || newTabs[idx - 1] || newTabs[0];
-        setActiveTabId(nextTab.id);
-      }
-      return newTabs;
-    });
-  };
 
   const handleNewTab = (initialUrl) => {
     // Guard: when called from onClick, initialUrl is a SyntheticEvent — ignore it
@@ -4034,6 +5293,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 tab={tab}
                 isActive={isActive && activeTabId === tab.id}
                 onUpdate={handleTabUpdate}
+                onNewTab={handleNewTab}
                 targetCountry={targetCountry}
                 setTargetCountry={setTargetCountry}
                 itemsData={itemsData}
@@ -4042,6 +5302,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                 showNavControls={showNavControls}
                 userData={userData}
                 factionData={factionData}
+                baldrHighestStat={baldrHighestStat}
+                setBaldrHighestStat={setBaldrHighestStat}
               />
             ))}
           </div>
@@ -5135,7 +6397,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                               // Seed default section-open state on first render
                               Object.entries(sortedAndFilteredGroups).forEach(([key]) => {
                                 if (sectionOpenState.current[key] === undefined) {
-                                  sectionOpenState.current[key] = key === 'okay';
+                                  sectionOpenState.current[key] = key === 'okay' || key === 'pinned';
                                 }
                               });
 
@@ -5151,6 +6413,8 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                     memberOpenState.current[member.id] = !memberOpenState.current[member.id];
                                     bumpRender();
                                   }}
+                                  isPinned={!!pinnedIds[member.id]}
+                                  onTogglePin={handleTogglePin}
                                 />
                               ));
 

@@ -145,6 +145,7 @@ const ApiLogsView = () => {
         .api-card-torn::before { background: #3498db; }
         .api-card-yata::before { background: #2ecc71; }
         .api-card-firebase::before { background: #f39c12; }
+        .api-card-weav3r::before { background: #9b59b6; }
         
         .api-card:hover {
           transform: translateY(-2px);
@@ -154,6 +155,7 @@ const ApiLogsView = () => {
         .api-card-torn:hover { border-color: rgba(52, 152, 219, 0.4); }
         .api-card-yata:hover { border-color: rgba(46, 204, 113, 0.4); }
         .api-card-firebase:hover { border-color: rgba(243, 156, 18, 0.4); }
+        .api-card-weav3r:hover { border-color: rgba(155, 89, 182, 0.4); }
 
         .api-card-title {
           font-size: 0.8rem;
@@ -338,6 +340,7 @@ const ApiLogsView = () => {
         .badge-torn { background-color: rgba(52, 152, 219, 0.15); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.2); }
         .badge-yata { background-color: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
         .badge-firebase { background-color: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.2); }
+        .badge-weav3r { background-color: rgba(155, 89, 182, 0.15); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.2); }
         
         .badge-success { background-color: rgba(46, 204, 113, 0.1); color: #2ecc71; }
         .badge-error { background-color: rgba(231, 76, 60, 0.1); color: #e74c3c; }
@@ -371,6 +374,7 @@ const ApiLogsView = () => {
         .pulse-blue { background-color: #3498db; animation: pulse-blue-anim 2s infinite; }
         .pulse-green { background-color: #2ecc71; animation: pulse-green-anim 2s infinite; }
         .pulse-orange { background-color: #f39c12; animation: pulse-orange-anim 2s infinite; }
+        .pulse-purple { background-color: #9b59b6; animation: pulse-purple-anim 2s infinite; }
 
         @keyframes pulse-blue-anim {
           0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.6); }
@@ -386,6 +390,11 @@ const ApiLogsView = () => {
           0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.6); }
           70% { box-shadow: 0 0 0 6px rgba(243, 156, 18, 0); }
           100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
+        }
+        @keyframes pulse-purple-anim {
+          0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.6); }
+          70% { box-shadow: 0 0 0 6px rgba(155, 89, 182, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
         }
       `}</style>
 
@@ -448,6 +457,22 @@ const ApiLogsView = () => {
             <span style={{ fontWeight: 'bold', color: '#f39c12' }}>{counters.lifetime.Firebase.toLocaleString()}</span>
           </div>
         </div>
+
+        {/* Weav3r Card */}
+        <div className="api-card api-card-weav3r">
+          <div className="api-card-title">
+            <span>Weav3r API</span>
+            <span className="pulse-dot pulse-purple"></span>
+          </div>
+          <div className="api-card-number">
+            {counters.session.Weav3r || 0}
+            <span className="api-card-unit">Session Calls</span>
+          </div>
+          <div className="api-card-stats">
+            <span style={{ color: '#666' }}>Lifetime cumulative:</span>
+            <span style={{ fontWeight: 'bold', color: '#9b59b6' }}>{(counters.lifetime.Weav3r || 0).toLocaleString()}</span>
+          </div>
+        </div>
       </div>
 
       {/* Developer Log Console */}
@@ -488,6 +513,7 @@ const ApiLogsView = () => {
               <option value="TORN">TORN API</option>
               <option value="YATA">YATA API</option>
               <option value="Firebase">Firebase</option>
+              <option value="Weav3r">Weav3r API</option>
             </select>
             <select 
               className="console-select"

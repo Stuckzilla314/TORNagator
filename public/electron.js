@@ -173,19 +173,23 @@ function createWindow() {
     }
   });
 
-  // Strip X-Frame-Options and Content-Security-Policy to allow embedding Torn.com
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  // Strip X-Frame-Options and Content-Security-Policy ONLY for Torn.com domains to allow embedding safely
+  const stripTornHeaders = (details, callback) => {
     const responseHeaders = { ...details.responseHeaders };
     
-    // Headers to remove
-    const headersToRemove = [
-      'x-frame-options', 
-      'content-security-policy'
-    ];
-    
-    for (const key of Object.keys(responseHeaders)) {
-      if (headersToRemove.includes(key.toLowerCase())) {
-        delete responseHeaders[key];
+    // Check if the request is loading a Torn-related page/resource
+    const isTornRequest = details.url.toLowerCase().includes('torn.com');
+
+    if (isTornRequest) {
+      const headersToRemove = [
+        'x-frame-options', 
+        'content-security-policy'
+      ];
+      
+      for (const key of Object.keys(responseHeaders)) {
+        if (headersToRemove.includes(key.toLowerCase())) {
+          delete responseHeaders[key];
+        }
       }
     }
     
@@ -193,7 +197,10 @@ function createWindow() {
       cancel: false,
       responseHeaders: responseHeaders
     });
-  });
+  };
+
+  session.defaultSession.webRequest.onHeadersReceived(stripTornHeaders);
+  session.fromPartition('persist:torn').webRequest.onHeadersReceived(stripTornHeaders);
 
   // Load the React app
   win.loadFile(path.join(__dirname, '../build/index.html'));
@@ -222,6 +229,7 @@ app.userAgentFallback = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
 
 app.whenReady().then(() => {
   session.defaultSession.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+  session.fromPartition('persist:torn').setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
   
   if (process.platform === 'darwin' && app.dock) {
     try {

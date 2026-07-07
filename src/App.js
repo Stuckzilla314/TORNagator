@@ -3,11 +3,12 @@ import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
 import './App.css';
 import OverseasStock, { COUNTRY_MAP } from './OverseasStock';
+import BazaarSearch from './BazaarSearch';
 import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
 import ApiLogsView from './ApiLogsView';
-import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData, fetchUserIcons } from './tornApi';
+import { fetchUserData, fetchTornItems, fetchUserInventoryV2, fetchFactionData, fetchUserIcons, fetchUserTargets } from './tornApi';
 import { useTravelTimer } from './useTravelTimer';
 import { IconGamepad, IconPlane, IconHospital, IconScales, IconClock, IconRaceway } from './Icons';
 import { isCapacitor } from './utils';
@@ -66,7 +67,7 @@ function useLocalStorage(key, initialValue) {
       'tornagator_stock_auto_sync', 'cargo_capacity', 'manual_override',
       'tornagator_items_cache', 'tornagator_country_filter', 'torn_view_url',
       'tornagator_lifetime_torn', 'tornagator_lifetime_yata', 'tornagator_lifetime_firebase',
-      'dashboard_poll_interval', 'travel_notifications_enabled'
+      'dashboard_poll_interval', 'travel_notifications_enabled', 'chain_watcher_enabled', 'chain_watcher_interval'
     ]);
     // Remove known stale keys from previous feature iterations
     ['auto_sync_stock', 'setting_refresh_stock_auto', 'app_stock_sync_v2'].forEach(k => localStorage.removeItem(k));
@@ -111,31 +112,30 @@ function TitleBarTimer({ userData, showTabTimer }) {
       marginLeft: '12px',
       padding: '2px 8px',
       backgroundColor: state === 'Traveling' ? 'rgba(52, 152, 219, 0.2)' :
-                       state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
-                       state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
-                       state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-      border: `1px solid ${
-                       state === 'Traveling' ? '#3498db' :
-                       state === 'Hospital' ? '#e74c3c' :
-                       state === 'Jail' ? '#f39c12' :
-                       state === 'Racing' ? '#9b59b6' : '#888'
-      }`,
+        state === 'Hospital' ? 'rgba(231, 76, 60, 0.2)' :
+          state === 'Jail' ? 'rgba(243, 156, 18, 0.2)' :
+            state === 'Racing' ? 'rgba(155, 89, 182, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+      border: `1px solid ${state === 'Traveling' ? '#3498db' :
+        state === 'Hospital' ? '#e74c3c' :
+          state === 'Jail' ? '#f39c12' :
+            state === 'Racing' ? '#9b59b6' : '#888'
+        }`,
       borderRadius: '4px',
       fontSize: '0.8rem',
       fontWeight: 'bold',
       color: state === 'Traveling' ? '#3498db' :
-             state === 'Hospital' ? '#e74c3c' :
-             state === 'Jail' ? '#f39c12' :
-             state === 'Racing' ? '#9b59b6' : '#e0e0e0',
+        state === 'Hospital' ? '#e74c3c' :
+          state === 'Jail' ? '#f39c12' :
+            state === 'Racing' ? '#9b59b6' : '#e0e0e0',
       display: 'flex',
       alignItems: 'center',
       gap: '6px'
     }}>
       <span style={{ display: 'flex', alignItems: 'center' }}>
         {state === 'Traveling' ? <IconPlane size={13} color={"#3498db"} /> :
-         state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
-         state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> :
-         state === 'Racing' ? <IconRaceway size={13} color={"#9b59b6"} /> : <IconClock size={13} color={"#aaa"} />}
+          state === 'Hospital' ? <IconHospital size={13} color={"#e74c3c"} /> :
+            state === 'Jail' ? <IconScales size={13} color={"#f39c12"} /> :
+              state === 'Racing' ? <IconRaceway size={13} color={"#9b59b6"} /> : <IconClock size={13} color={"#aaa"} />}
       </span>
       <span>{timeLeft}</span>
     </span>
@@ -143,10 +143,10 @@ function TitleBarTimer({ userData, showTabTimer }) {
 }
 
 const VALID_INVENTORY_CATEGORIES = new Set([
-  'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive', 
-  'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special', 
-  'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower', 
-  'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie', 
+  'Collectible', 'Clothing', 'Other', 'Tool', 'Melee', 'Defensive',
+  'Material', 'Car', 'Primary', 'Secondary', 'Book', 'Special',
+  'Supply Pack', 'Temporary', 'Enhancer', 'Artifact', 'Flower',
+  'Booster', 'Medical', 'Candy', 'Jewelry', 'Alcohol', 'Plushie',
   'Drug', 'Energy Drink'
 ]);
 
@@ -160,7 +160,7 @@ const getRequiredCategories = (itemsData) => {
   if (!itemsData) return [];
   const categories = new Set();
   const trackedIds = Object.values(COUNTRY_MAP).flat();
-  
+
   trackedIds.forEach(id => {
     const item = itemsData[id];
     if (item && item.type) {
@@ -170,9 +170,132 @@ const getRequiredCategories = (itemsData) => {
       }
     }
   });
-  
+
   return Array.from(categories);
 };
+
+/**
+ * Persistent chain watcher banner for Android/Capacitor.
+ * Displayed above the mobile nav bar when chain watcher is enabled in settings.
+ * Ticks down locally and resyncs whenever new factionData arrives from the API poll.
+ *
+ * @param {Object} props - The component props.
+ * @param {Object|null} props.factionData - The faction data object from the Torn API.
+ * @returns {React.JSX.Element|null} The rendered banner, or null if no active chain.
+ */
+function ChainWatcherBanner({ factionData, apiKey, onOpenInTorn }) {
+  const chain = factionData?.chain || {};
+  const timeout = chain.timeout || 0;
+  const current = chain.current || 0;
+
+  const [localTimeout, setLocalTimeout] = React.useState(timeout);
+  const [isFetching, setIsFetching] = React.useState(false);
+
+  // Resync from API data whenever factionData updates
+  React.useEffect(() => {
+    setLocalTimeout(timeout);
+  }, [timeout]);
+
+  // Tick down locally every second
+  React.useEffect(() => {
+    if (localTimeout <= 0) return;
+    const timer = setInterval(() => {
+      setLocalTimeout(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [localTimeout]);
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleClick = async () => {
+    if (!onOpenInTorn || isFetching) return;
+    if (!apiKey) {
+      alert("API Key is required to fetch targets.");
+      return;
+    }
+
+    setIsFetching(true);
+    try {
+      const targetsList = await fetchUserTargets(apiKey);
+      const target = targetsList.find(t => {
+        const state = t.status?.state || '';
+        const desc = t.status?.description || '';
+
+        return state === 'Okay' && desc === 'Okay';
+      });
+
+      if (target) {
+        onOpenInTorn(`https://www.torn.com/page.php?sid=attack&user2ID=${target.id}`);
+      } else {
+        alert("No available targets with state 'Okay' and description 'Okay' found.");
+      }
+    } catch (e) {
+      console.error("Error navigating to target:", e);
+      alert("Failed to retrieve targets. Please check your network connection.");
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const hasActiveChain = current > 0 || localTimeout > 0;
+
+  // Determine color based on time remaining
+  let bannerColor, textColor, glowColor, statusLabel;
+  if (!hasActiveChain || localTimeout <= 0) {
+    bannerColor = 'rgba(40, 40, 40, 0.95)';
+    textColor = '#666';
+    glowColor = 'transparent';
+    statusLabel = 'No Active Chain';
+  } else if (localTimeout < 60) {
+    bannerColor = 'rgba(180, 20, 20, 0.92)';
+    textColor = '#fff';
+    glowColor = 'rgba(231, 76, 60, 0.6)';
+    statusLabel = null;
+  } else if (localTimeout < 120) {
+    bannerColor = 'rgba(160, 100, 0, 0.92)';
+    textColor = '#fff';
+    glowColor = 'rgba(243, 156, 18, 0.5)';
+    statusLabel = null;
+  } else {
+    bannerColor = 'rgba(15, 90, 40, 0.92)';
+    textColor = '#fff';
+    glowColor = 'rgba(46, 204, 113, 0.4)';
+    statusLabel = null;
+  }
+
+  return (
+    <div
+      className="chain-watcher-banner"
+      onClick={handleClick}
+      style={{
+        backgroundColor: bannerColor,
+        boxShadow: glowColor !== 'transparent' ? `0 0 8px ${glowColor}` : 'none',
+        cursor: isFetching ? 'wait' : 'pointer',
+        opacity: isFetching ? 0.7 : 1
+      }}
+    >
+      <span className="chain-watcher-banner-label" style={{ color: textColor }}>
+        🔗 Chain
+      </span>
+      {statusLabel ? (
+        <span className="chain-watcher-banner-status" style={{ color: textColor }}>{statusLabel}</span>
+      ) : (
+        <>
+          <span className="chain-watcher-banner-hits" style={{ color: textColor }}>
+            {current.toLocaleString()} hits
+          </span>
+          <span className="chain-watcher-banner-timer" style={{ color: textColor }}>
+            {formatTime(localTimeout)}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
 
 /**
  * The main application component.
@@ -199,7 +322,9 @@ function App() {
       'tornagator_lifetime_yata',
       'tornagator_lifetime_firebase',
       'dashboard_poll_interval',
-      'travel_notifications_enabled'
+      'travel_notifications_enabled',
+      'chain_watcher_enabled',
+      'chain_watcher_interval'
     ]);
 
     // Stale keys from previous iterations of this feature
@@ -236,6 +361,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useLocalStorage('active_tab', 'dashboard');
+  const [tabHistory, setTabHistory] = useState([activeTab]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [requestedUrl, setRequestedUrl] = useState(null);
   const [targetCountry, setTargetCountry] = useState(null);
@@ -245,6 +371,77 @@ function App() {
     setTargetCountry(country);
     setActiveTab('torn');
   }, [setActiveTab]);
+
+  // Track tab history
+  useEffect(() => {
+    setTabHistory(prev => {
+      if (prev[prev.length - 1] === activeTab) return prev;
+      return [...prev, activeTab];
+    });
+  }, [activeTab]);
+
+  const isSettingsOpenRef = useRef(isSettingsOpen);
+  useEffect(() => {
+    isSettingsOpenRef.current = isSettingsOpen;
+  }, [isSettingsOpen]);
+
+  const tabHistoryRef = useRef(tabHistory);
+  useEffect(() => {
+    tabHistoryRef.current = tabHistory;
+  }, [tabHistory]);
+
+  // Android native back button listener
+  useEffect(() => {
+    if (!isCapacitor) return;
+
+    let backListenerHandle = null;
+
+    import('@capacitor/app').then(({ App: CapacitorApp }) => {
+      CapacitorApp.addListener('backButton', () => {
+        console.log('[App] Android hardware back button pressed');
+
+        // 1. If settings is open, close settings
+        if (isSettingsOpenRef.current) {
+          setIsSettingsOpen(false);
+          return;
+        }
+
+        // 2. Dispatch a cancelable custom event for child components to intercept
+        const event = new CustomEvent('androidBack', { cancelable: true });
+        const defaultPrevented = !document.dispatchEvent(event);
+
+        if (defaultPrevented) {
+          console.log('[App] Back button press intercepted by a child component.');
+          return;
+        }
+
+        // 3. Fallback: Go back to the previous tab in history
+        const currentHistory = tabHistoryRef.current;
+        if (currentHistory.length <= 1) {
+          console.log('[App] No more tab history, exiting app.');
+          CapacitorApp.exitApp();
+        } else {
+          const newHistory = [...currentHistory];
+          newHistory.pop(); // Remove the current tab
+          const prevTab = newHistory[newHistory.length - 1];
+          console.log(`[App] Tab history fallback: switching back to ${prevTab}`);
+          setTabHistory(newHistory);
+          setActiveTab(prevTab);
+        }
+      }).then(handle => {
+        backListenerHandle = handle;
+      });
+    }).catch(err => {
+      console.warn("Failed to load @capacitor/app:", err);
+    });
+
+    return () => {
+      if (backListenerHandle) {
+        backListenerHandle.remove();
+      }
+    };
+  }, [setActiveTab]);
+
 
   useEffect(() => {
     if (!window.require) return;
@@ -265,6 +462,20 @@ function App() {
   const [manualOverride, setManualOverride] = useLocalStorage('manual_override', false);
   const [countryFilter, setCountryFilter] = useLocalStorage('tornagator_country_filter', 'All');
   const [travelNotificationsEnabled, setTravelNotificationsEnabled] = useLocalStorage('travel_notifications_enabled', true);
+  const [chainWatcherEnabled, setChainWatcherEnabled] = useLocalStorage('chain_watcher_enabled', false);
+  const [chainWatcherInterval, setChainWatcherInterval] = useLocalStorage('chain_watcher_interval', 10);
+  const [baldrHighestStat, setBaldrHighestStat] = useLocalStorage('tornagator_baldr_highest_stat', 'strength');
+
+
+  const [isMobile, setIsMobile] = useState(isCapacitor || window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(isCapacitor || window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const loadedApiKeyRef = useRef(null); // Ref to track the API key for which data has been loaded
   const isElectron = typeof window !== 'undefined' && window.process && window.process.versions && window.process.versions.electron;
@@ -336,7 +547,7 @@ function App() {
             try {
               const { data } = JSON.parse(cachedItemsRaw);
               items = data;
-            } catch (e) {}
+            } catch (e) { }
           }
         }
         if (!items) {
@@ -344,7 +555,7 @@ function App() {
           if (items) {
             try {
               localStorage.setItem('tornagator_items_cache', JSON.stringify({ data: items, timestamp: Date.now() }));
-            } catch (e) {}
+            } catch (e) { }
           }
         }
         if (items) {
@@ -473,8 +684,10 @@ function App() {
     let interval;
     let lastFetchTime = Date.now();
 
+    const isDashboardVisible = activeTab === 'dashboard' || activeTab === 'torn';
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && pollInterval > 0) {
+      if (document.visibilityState === 'visible' && isDashboardVisible && pollInterval > 0) {
         if (Date.now() - lastFetchTime >= (pollInterval * 1000 - 1000)) {
           loadDashboardData(false);
           lastFetchTime = Date.now();
@@ -493,7 +706,7 @@ function App() {
 
       if (pollInterval > 0) {
         interval = setInterval(() => {
-          if (document.visibilityState === 'visible') {
+          if (document.visibilityState === 'visible' && isDashboardVisible) {
             if (Date.now() - lastFetchTime >= (pollInterval * 1000 - 1000)) {
               loadDashboardData(false);
               lastFetchTime = Date.now();
@@ -506,18 +719,40 @@ function App() {
       if (interval) clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [apiKey, loadDashboardData, pollInterval]);
+  }, [apiKey, loadDashboardData, pollInterval, activeTab]);
 
-  // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open
+  // Trigger a sync when switching to dashboard or torn tab if they were not the active tab
+  const prevActiveTabRef = useRef(activeTab);
+  useEffect(() => {
+    const wasDashboardVisible = prevActiveTabRef.current === 'dashboard' || prevActiveTabRef.current === 'torn';
+    const isDashboardVisible = activeTab === 'dashboard' || activeTab === 'torn';
+    if (apiKey && isDashboardVisible && !wasDashboardVisible) {
+      loadDashboardData(false);
+    }
+    prevActiveTabRef.current = activeTab;
+  }, [activeTab, apiKey, loadDashboardData]);
+
+  // Fetch faction data once when faction tab is activated, and periodically refresh when faction tab is open or chain watcher is enabled
   useEffect(() => {
     let interval;
-    if (apiKey && activeTab === 'faction') {
+    const isChainWatcherActive = isCapacitor && chainWatcherEnabled;
+    const shouldFetch = apiKey && (activeTab === 'faction' || isChainWatcherActive);
+
+    if (shouldFetch) {
       if (!hasFactionSyncRun.current) {
         hasFactionSyncRun.current = true;
         loadFactionData();
       }
 
-      if (pollInterval > 0) {
+      if (isChainWatcherActive) {
+        // Use the chain watcher interval setting (in seconds)
+        interval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            loadFactionData();
+          }
+        }, chainWatcherInterval * 1000);
+      } else if (pollInterval > 0) {
+        // Fallback to general poll interval when chain watcher is off (only when faction tab is open)
         interval = setInterval(() => {
           if (document.visibilityState === 'visible') {
             loadFactionData();
@@ -531,7 +766,7 @@ function App() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [apiKey, activeTab, loadFactionData, pollInterval]);
+  }, [apiKey, activeTab, loadFactionData, pollInterval, chainWatcherEnabled, chainWatcherInterval]);
 
   // Overseas fetch based on stockAutoSync (Only if on Stock tab)
   useEffect(() => {
@@ -554,13 +789,17 @@ function App() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        if (!hasOverseasSyncRun.current) {
+          hasOverseasSyncRun.current = true;
+          loadOverseasData();
+        }
         checkOverseasSync();
       }
     };
 
     if (apiKey && activeTab === 'stock' && stockAutoSync) {
       // Initial fetch
-      if (!hasOverseasSyncRun.current) {
+      if (!hasOverseasSyncRun.current && document.visibilityState === 'visible') {
         hasOverseasSyncRun.current = true;
         loadOverseasData();
       }
@@ -592,7 +831,7 @@ function App() {
     // 1. Base capacity check based on method or property setup
     const method = data.travel?.method || "";
     const base15Methods = ["Airstrip", "Private", "Business", "Pilot", "WLT Block"];
-    let total = 5;
+    let total = 10;
 
     // WLT Stock benefit check
     const hasWLT = (data.stock_perks || []).some(perk => perk.toLowerCase().includes("wlt block"));
@@ -712,16 +951,19 @@ function App() {
   });
 
   return (
-    <div style={{
-      backgroundColor: '#0f0f0f',
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      color: '#e0e0e0',
-      lineHeight: '1.6',
-      overflow: 'hidden',
-      boxSizing: 'border-box'
-    }}>
+    <div
+      className={isMobile ? 'is-mobile' : ''}
+      style={{
+        backgroundColor: '#0f0f0f',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        color: '#e0e0e0',
+        lineHeight: '1.6',
+        overflow: 'hidden',
+        boxSizing: 'border-box'
+      }}
+    >
       {isElectron && (
         <div style={{
           height: '40px',
@@ -796,6 +1038,12 @@ function App() {
               setPollInterval={setPollInterval}
               travelNotificationsEnabled={travelNotificationsEnabled}
               setTravelNotificationsEnabled={setTravelNotificationsEnabled}
+              chainWatcherEnabled={chainWatcherEnabled}
+              setChainWatcherEnabled={setChainWatcherEnabled}
+              chainWatcherInterval={chainWatcherInterval}
+              setChainWatcherInterval={setChainWatcherInterval}
+              baldrHighestStat={baldrHighestStat}
+              setBaldrHighestStat={setBaldrHighestStat}
             />
           )}
         </div>
@@ -831,6 +1079,7 @@ function App() {
             <button style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
             <button style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</button>
             <button style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</button>
+            <button style={navItemStyle('bazaar')} onClick={() => setActiveTab('bazaar')}>Bazaar</button>
             <button style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
             <button style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
@@ -848,7 +1097,7 @@ function App() {
           flex: 1,
           overflowY: activeTab === 'torn' ? 'hidden' : 'auto',
           position: 'relative',
-          padding: activeTab === 'torn' ? '0' : '20px',
+          padding: activeTab === 'torn' ? '0' : (isMobile ? '10px' : '20px'),
           boxSizing: 'border-box'
         }}>
           {!apiKey && <LoginForm onLogin={setApiKey} />}
@@ -859,15 +1108,15 @@ function App() {
                 <UserDashboard userData={userData} onLogout={handleLogout} onOpenInTorn={handleOpenInTorn} />
               </div>
               <div style={{ display: activeTab === 'faction' ? 'block' : 'none' }}>
-                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} />
+                <FactionWar apiKey={apiKey} factionData={factionData} userData={userData} onOpenInTorn={handleOpenInTorn} pollInterval={pollInterval} isActive={activeTab === 'faction'} />
               </div>
               <div style={{ display: activeTab === 'torn' ? 'flex' : 'none', flexDirection: 'column', height: '100%', width: '100%' }}>
-                <TornView 
-                  userData={userData} 
+                <TornView
+                  userData={userData}
                   factionData={factionData}
                   loadFactionData={loadFactionData}
-                  apiKey={apiKey} 
-                  requestedUrl={requestedUrl} 
+                  apiKey={apiKey}
+                  requestedUrl={requestedUrl}
                   setRequestedUrl={setRequestedUrl}
                   targetCountry={targetCountry}
                   setTargetCountry={setTargetCountry}
@@ -875,6 +1124,8 @@ function App() {
                   cargoCapacity={cargoCapacity}
                   showNavControls={showNavControls}
                   isActive={activeTab === 'torn'}
+                  baldrHighestStat={baldrHighestStat}
+                  setBaldrHighestStat={setBaldrHighestStat}
                 />
               </div>
               <div style={{ display: activeTab === 'apilogs' ? 'block' : 'none' }}>
@@ -892,6 +1143,9 @@ function App() {
                   onOpenInTorn={handleOpenInTorn}
                 />
               </div>
+              <div style={{ display: activeTab === 'bazaar' ? 'block' : 'none' }}>
+                <BazaarSearch onOpenInTorn={handleOpenInTorn} />
+              </div>
             </>
           )}
 
@@ -899,6 +1153,11 @@ function App() {
           {error && <div style={{ color: '#ff4444', marginBottom: '10px' }}>Error: {error}</div>}
           {apiKey && !userData && !loading && !error && <p>Initializing connection...</p>}
         </div>
+
+        {/* Chain Watcher Banner — Capacitor/Android only, above nav bar */}
+        {isCapacitor && chainWatcherEnabled && apiKey && userData && (
+          <ChainWatcherBanner factionData={factionData} apiKey={apiKey} onOpenInTorn={handleOpenInTorn} />
+        )}
 
         {/* Render Capacitor mobile nav at the bottom */}
         {isCapacitor && apiKey && userData && (
@@ -920,24 +1179,32 @@ function App() {
           >
             <div style={mobileNavItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
               <span>Dashboard</span>
             </div>
             <div style={mobileNavItemStyle('faction')} onClick={() => setActiveTab('faction')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               <span>Faction War</span>
             </div>
             <div style={mobileNavItemStyle('stock')} onClick={() => setActiveTab('stock')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
               <span>Overseas</span>
+            </div>
+            <div style={mobileNavItemStyle('bazaar')} onClick={() => setActiveTab('bazaar')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+              <span>Bazaar</span>
             </div>
             <div style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
               <IconGamepad size={20} color={activeTab === 'torn' ? '#3498db' : '#777'} />

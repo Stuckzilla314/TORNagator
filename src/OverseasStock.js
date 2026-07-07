@@ -33,17 +33,17 @@ export const COUNTRY_MAP = {
  * @type {Object<string, number>}
  */
 const TRAVEL_TIMES = {
-  "Mexico": 26,
-  "Cayman Islands": 35,
-  "Canada": 41,
-  "Hawaii": 134,
-  "United Kingdom": 159,
-  "Argentina": 167,
-  "Switzerland": 175,
-  "Japan": 225,
-  "China": 242,
-  "UAE": 271,
-  "South Africa": 297
+  "Mexico": 24,
+  "Cayman Islands": 33,
+  "Canada": 39,
+  "Hawaii": 127,
+  "United Kingdom": 151,
+  "Argentina": 158,
+  "Switzerland": 166,
+  "Japan": 213,
+  "China": 229,
+  "UAE": 257,
+  "South Africa": 282
 };
 
 /**
@@ -100,6 +100,49 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [lowCashItem, setLowCashItem] = useState(null);
   const [showTotalProfit, setShowTotalProfit] = useState(false);
+  const [fetchingItemStock, setFetchingItemStock] = useState({});
+
+  const fetchItemStockData = useCallback(async (item) => {
+    const key = `${item.country}_${item.id}`;
+    setFetchingItemStock(prev => ({ ...prev, [key]: true }));
+    try {
+      const q = query(
+        collection(db, "stock_history"),
+        where("itemId", "==", Number(item.id)),
+        where("country", "==", item.country),
+        orderBy("timestamp", "desc"),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docData = snap.docs[0].data();
+        const latestStock = docData.stock;
+        const latestTimestamp = docData.timestamp * 1000;
+
+        setHistoryStockOverrides(prev => ({
+          ...prev,
+          [key]: {
+            quantity: latestStock,
+            cost: docData.cost !== undefined ? docData.cost : 0,
+            timestamp: latestTimestamp
+          }
+        }));
+      } else {
+        setHistoryStockOverrides(prev => ({
+          ...prev,
+          [key]: {
+            quantity: 0,
+            cost: 0,
+            timestamp: Date.now()
+          }
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching single item stock:", err);
+    } finally {
+      setFetchingItemStock(prev => ({ ...prev, [key]: false }));
+    }
+  }, []);
 
   const toggleShowTotalProfit = () => {
     setShowTotalProfit(prev => {
@@ -121,27 +164,16 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     const modalOpen = !!selectedItemForGraph || !!lowCashItem;
     if (!modalOpen) return;
 
-    let listenerHandle = null;
-
     if (isCapacitor) {
-      let isSubscribed = true;
-      import('@capacitor/app').then(({ App }) => {
-        if (!isSubscribed) return;
-        App.addListener('backButton', () => {
-          setSelectedItemForGraph(null);
-          setLowCashItem(null);
-        }).then(handle => {
-          listenerHandle = handle;
-        });
-      }).catch(err => {
-        console.warn("Failed to load @capacitor/app:", err);
-      });
+      const handleAndroidBack = (e) => {
+        setSelectedItemForGraph(null);
+        setLowCashItem(null);
+        e.preventDefault();
+      };
 
+      document.addEventListener('androidBack', handleAndroidBack);
       return () => {
-        isSubscribed = false;
-        if (listenerHandle) {
-          listenerHandle.remove();
-        }
+        document.removeEventListener('androidBack', handleAndroidBack);
       };
     } else {
       window.history.pushState({ modalOpen: true }, '');
@@ -170,7 +202,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     }
   }, [onOpenInTorn]);
   // Overrides stock quantities with the freshest value seen from Firestore history fetches.
-  // Keyed as 'country_itemId' -> { quantity, timestamp }
+  // Keyed as 'country_itemId' -> { quantity, cost, timestamp }
   const [historyStockOverrides, setHistoryStockOverrides] = useState(() => {
     try {
       const cached = sessionStorage.getItem('tornagator_stock_overrides');
@@ -209,9 +241,17 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
     // Apply overrides from history fetches (higher priority than stale snapshot)
     Object.entries(historyStockOverrides).forEach(([key, override]) => {
       if (map[key]) {
-        map[key] = { ...map[key], quantity: override.quantity };
+        map[key] = {
+          ...map[key],
+          quantity: override.quantity,
+          cost: override.cost !== undefined && override.cost !== 0 ? override.cost : map[key].cost
+        };
       } else {
-        map[key] = { quantity: override.quantity, cost: 0, update: 0 };
+        map[key] = {
+          quantity: override.quantity,
+          cost: override.cost !== undefined ? override.cost : 0,
+          update: 0
+        };
       }
     });
     return map;
@@ -352,7 +392,8 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
 
         let history = windowSnap.docs.map(doc => ({
           timestamp: doc.data().timestamp * 1000,
-          stock: doc.data().stock
+          stock: doc.data().stock,
+          cost: doc.data().cost
         }));
 
         if (!seedSnap.empty) {
@@ -361,6 +402,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {
               timestamp: windowStart * 1000,
               stock: seedData.stock,
+              cost: seedData.cost,
               isSeed: true
             },
             ...history
@@ -372,6 +414,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
             {
               timestamp: windowStart * 1000,
               stock: selectedItemForGraph.stockQuantity,
+              cost: selectedItemForGraph.buy_price,
               isFallback: true
             }
           ];
@@ -385,7 +428,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
           const key = `${selectedItemForGraph.country}_${selectedItemForGraph.id}`;
           setHistoryStockOverrides(prev => ({
             ...prev,
-            [key]: { quantity: latestPoint.stock, timestamp: latestPoint.timestamp }
+            [key]: {
+              quantity: latestPoint.stock,
+              cost: latestPoint.cost !== undefined ? latestPoint.cost : 0,
+              timestamp: latestPoint.timestamp
+            }
           }));
         }
       } catch (err) {
@@ -701,7 +748,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
               </button>
             </div>
           </div>
-          
+
           {yataData?.stocks && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '-6px' }}>
               <span style={{ fontSize: '0.65rem', color: '#666' }}>
@@ -967,7 +1014,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   <span style={{ fontSize: '0.7rem', color: '#555' }}>
                     Tap card to travel
                   </span>
-                  
+
                   {loadingYata ? (
                     <span style={{ color: '#555', fontSize: '0.75rem' }}>Syncing...</span>
                   ) : stockInfo ? (
@@ -995,8 +1042,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                       <span>Stock: {stockInfo.quantity.toLocaleString()}</span>
                       <span style={{ fontSize: '0.65rem' }}>📈</span>
                     </button>
+                  ) : fetchingItemStock[`${item.country}_${item.id}`] ? (
+                    <span style={{ color: '#888', fontSize: '0.75rem' }}>Syncing...</span>
                   ) : (
-                    <span style={{ color: '#444', fontSize: '0.75rem', fontWeight: 'bold' }}>No Stock Data</span>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fetchItemStockData(item);
+                      }}
+                      style={{
+                        color: '#3498db',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: '4px'
+                      }}
+                      title="Click to fetch stock for this item"
+                    >
+                      No Stock Data
+                    </span>
                   )}
                 </div>
               </div>
@@ -1106,7 +1171,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                     <td style={{ ...cellStyle, color: '#f39c12' }}>
                       ${(item.market_value || 0).toLocaleString()}
                     </td>
-                    <td 
+                    <td
                       style={{ ...cellStyle, color: item.profitPerItem > 0 ? '#2ecc71' : '#e0e0e0', cursor: 'pointer' }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1151,8 +1216,26 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                             Total: ${(item.buy_price * buyableQuantity).toLocaleString()} ({buyableQuantity})
                           </div>
                         </div>
+                      ) : fetchingItemStock[`${item.country}_${item.id}`] ? (
+                        <span style={{ color: '#888', fontSize: '0.75rem' }}>Syncing...</span>
                       ) : (
-                        <span style={{ color: '#444' }}>No Data</span>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchItemStockData(item);
+                          }}
+                          style={{
+                            color: '#3498db',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: '4px'
+                          }}
+                          title="Click to fetch stock for this item"
+                        >
+                          No Stock Data
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -1264,7 +1347,7 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
               >
                 ×
               </button>
-              
+
               <div style={{
                 fontSize: '3rem',
                 marginBottom: '15px',
@@ -1475,11 +1558,11 @@ const OverseasStock = ({ itemsData, userData, cargoCapacity = 5, autoSyncStock, 
                   }
                 }
 
-                const liveStockQuantity = historicalData.length > 0 
-                  ? historicalData[historicalData.length - 1].stock 
+                const liveStockQuantity = historicalData.length > 0
+                  ? historicalData[historicalData.length - 1].stock
                   : (selectedItemForGraph.stockQuantity || 0);
 
-const selloutToRestockIntervals = [];
+                const selloutToRestockIntervals = [];
                 for (let i = 0; i < sellOuts.length; i++) {
                   const sTime = sellOuts[i];
                   const nextR = restocks.find(r => r > sTime);

@@ -115,9 +115,25 @@ public class MainActivity extends BridgeActivity {
                         targetWebView.setWebChromeClient(new WebChromeClient() {
                             @Override
                             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                                Log.d("OverlayConsole", "[" + tabId + "] " + consoleMessage.message() + " -- From line "
+                                String msg = consoleMessage.message();
+                                Log.d("OverlayConsole", "[" + tabId + "] " + msg + " -- From line "
                                                      + consoleMessage.lineNumber() + " of "
                                                      + consoleMessage.sourceId());
+                                if (msg != null && msg.startsWith("TORNAGATOR_BRIDGE:")) {
+                                    final String payload = msg.substring("TORNAGATOR_BRIDGE:".length());
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            WebView main = getBridge().getWebView();
+                                            if (main != null) {
+                                                String js = "window.dispatchEvent(new CustomEvent('tornagatorBridge', { " +
+                                                            "detail: '" + payload.replace("\\", "\\\\").replace("'", "\\'") + "' " +
+                                                            "}));";
+                                                main.evaluateJavascript(js, null);
+                                            }
+                                        }
+                                    });
+                                }
                                 return true;
                             }
 
