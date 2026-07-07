@@ -3,6 +3,7 @@ import LoginForm from './LoginForm';
 import UserDashboard from './UserDashboard';
 import './App.css';
 import OverseasStock, { COUNTRY_MAP } from './OverseasStock';
+import BazaarSearch from './BazaarSearch';
 import FactionWar from './FactionWar';
 import TornView from './TornView';
 import SettingsMenu from './SettingsMenu';
@@ -1078,6 +1079,7 @@ function App() {
             <button style={navItemStyle('dashboard')} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
             <button style={navItemStyle('faction')} onClick={() => setActiveTab('faction')}>Faction War</button>
             <button style={navItemStyle('stock')} onClick={() => setActiveTab('stock')}>Overseas Stock</button>
+            <button style={navItemStyle('bazaar')} onClick={() => setActiveTab('bazaar')}>Bazaar</button>
             <button style={{ ...navItemStyle('torn'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('torn')}><IconGamepad size={14} color={activeTab === 'torn' ? '#3498db' : '#888'} /> TORN</button>
             <button style={{ ...navItemStyle('apilogs'), display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveTab('apilogs')}>
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'apilogs' ? '#3498db' : '#888'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
@@ -1141,6 +1143,9 @@ function App() {
                   onOpenInTorn={handleOpenInTorn}
                 />
               </div>
+              <div style={{ display: activeTab === 'bazaar' ? 'block' : 'none' }}>
+                <BazaarSearch onOpenInTorn={handleOpenInTorn} />
+              </div>
             </>
           )}
 
@@ -1192,6 +1197,14 @@ function App() {
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
               </svg>
               <span>Overseas</span>
+            </div>
+            <div style={mobileNavItemStyle('bazaar')} onClick={() => setActiveTab('bazaar')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+              <span>Bazaar</span>
             </div>
             <div style={mobileNavItemStyle('torn')} onClick={() => setActiveTab('torn')}>
               <IconGamepad size={20} color={activeTab === 'torn' ? '#3498db' : '#777'} />

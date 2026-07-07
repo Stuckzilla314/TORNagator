@@ -14,3 +14,7 @@
 **Vulnerability:** External or decoded HTML content (like `descHtml` in `UserDashboard.js`) was injected directly into the DOM using React's `dangerouslySetInnerHTML` without sanitization.
 **Learning:** React's `dangerouslySetInnerHTML` bypasses standard XSS protections. If the content being injected is derived from external sources or dynamically generated text containing HTML tags (even after entity decoding), it creates an XSS vulnerability.
 **Prevention:** Always use a dedicated sanitization library, such as `DOMPurify`, to wrap content before passing it to `dangerouslySetInnerHTML`. Ensure `DOMPurify` is installed and wrap the variable: `dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(dirtyHtml) }}`.
+## 2026-06-25 - [CRITICAL] Prevent DOM-based XSS via dangerouslySetInnerHTML
+**Vulnerability:** The application decoded HTML strings manually and passed them directly to React's `dangerouslySetInnerHTML` in `src/UserDashboard.js` without proper sanitization.
+**Learning:** When decoding HTML entities via `document.createElement('textarea')`, passing the resulting `.value` into React's `dangerouslySetInnerHTML` re-evaluates the string as HTML, introducing an XSS vulnerability. If the variable is intended to render HTML, it must be sanitized using a library like DOMPurify instead of rendering plain text to avoid showing raw HTML tags.
+**Prevention:** Always sanitize dynamic data using `DOMPurify.sanitize()` before passing it to `dangerouslySetInnerHTML`.

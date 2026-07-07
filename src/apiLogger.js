@@ -5,7 +5,8 @@ const MAX_LOGS = 200;
 let sessionCounters = {
   TORN: 0,
   YATA: 0,
-  Firebase: 0
+  Firebase: 0,
+  Weav3r: 0
 };
 
 // Track timestamps of TORN API calls for calculating the 5-hour rolling average
@@ -15,30 +16,32 @@ const sessionStartTime = Date.now();
 /**
  * Retrieves the lifetime API counters from local storage.
  *
- * @returns {{TORN: number, YATA: number, Firebase: number}} An object containing the lifetime counters for each service.
+ * @returns {{TORN: number, YATA: number, Firebase: number, Weav3r: number}} An object containing the lifetime counters for each service.
  */
 const getLifetimeCounters = () => {
   try {
     return {
       TORN: parseInt(localStorage.getItem('tornagator_lifetime_torn') || '0', 10),
       YATA: parseInt(localStorage.getItem('tornagator_lifetime_yata') || '0', 10),
-      Firebase: parseInt(localStorage.getItem('tornagator_lifetime_firebase') || '0', 10)
+      Firebase: parseInt(localStorage.getItem('tornagator_lifetime_firebase') || '0', 10),
+      Weav3r: parseInt(localStorage.getItem('tornagator_lifetime_weav3r') || '0', 10)
     };
   } catch (e) {
-    return { TORN: 0, YATA: 0, Firebase: 0 };
+    return { TORN: 0, YATA: 0, Firebase: 0, Weav3r: 0 };
   }
 };
 
 /**
  * Saves the lifetime API counters to local storage.
  *
- * @param {{TORN: number, YATA: number, Firebase: number}} counters - The current lifetime counters to persist.
+ * @param {{TORN: number, YATA: number, Firebase: number, Weav3r: number}} counters - The current lifetime counters to persist.
  */
 const saveLifetimeCounters = (counters) => {
   try {
     localStorage.setItem('tornagator_lifetime_torn', counters.TORN.toString());
     localStorage.setItem('tornagator_lifetime_yata', counters.YATA.toString());
     localStorage.setItem('tornagator_lifetime_firebase', counters.Firebase.toString());
+    localStorage.setItem('tornagator_lifetime_weav3r', counters.Weav3r.toString());
   } catch (e) {
     console.warn("Failed to save lifetime counters:", e);
   }
@@ -108,7 +111,7 @@ export const clearLogs = () => {
  * Resets the lifetime API counters to zero in local storage and notifies subscribers.
  */
 export const resetLifetimeCounters = () => {
-  const zeroCounters = { TORN: 0, YATA: 0, Firebase: 0 };
+  const zeroCounters = { TORN: 0, YATA: 0, Firebase: 0, Weav3r: 0 };
   saveLifetimeCounters(zeroCounters);
   notifySubscribers();
 };
@@ -248,124 +251,161 @@ export const initApiInterceptor = () => {
       endpoint = url.replace(/key=[a-zA-Z0-9]+/g, 'key=******');
     } else if (url.includes('yata.yt')) {
       apiType = 'YATA';
+    } else if (url.includes('weav3r.dev')) {
+      apiType = 'Weav3r';
     }
     
     if (apiType) {
-      const limiter = apiType === 'TORN' ? tornRateLimiter : yataRateLimiter;
-      return limiter.schedule(async () => {
-        const startTime = Date.now();
-        if (url.includes('key=mock_key_1234567890123456') || url.includes('key=mock_key')) {
-          const duration = Math.floor(Math.random() * 80) + 20;
-          let mockBody = {};
-          
-          if (url.includes('/user/') && url.includes('selections=')) {
-            const userIdMatch = url.match(/\/user\/(\d+)/);
-            const userId = userIdMatch ? userIdMatch[1] : '12345';
-            mockBody = {
-              player_id: parseInt(userId, 10),
-              name: userId === '12345' ? 'AntigravityMock' : `EnemyMember_${userId}`,
-              level: userId === '12345' ? 42 : Math.floor(Math.random() * 80) + 10,
-              age: 500,
-              money_onhand: 1000000,
-              status: { state: 'Okay', color: 'green', description: 'Okay' },
-              energy: { current: 90, maximum: 100, ticktime: 60, interval: 600, increment: 5 },
-              nerve: { current: 15, maximum: 20, ticktime: 30, interval: 300, increment: 1 },
-              life: { current: 5000, maximum: 5000 },
-              happy: { current: 2500, maximum: 2500 },
-              travel: { destination: 'Mexico', method: 'Airstrip', timestamp: 0 },
-              personalstats: {
-                attackswon: Math.floor(Math.random() * 200) + 50,
-                attackslost: Math.floor(Math.random() * 50) + 5,
-                defendswon: Math.floor(Math.random() * 30) + 2,
-                defendslost: Math.floor(Math.random() * 100) + 20,
-                criminaloffenses: 1500,
-                drugsused: 50,
-                refills: 10,
-                boostersused: 5
-              }
-            };
-          } else if (url.includes('/faction/') && url.includes('selections=')) {
-            mockBody = {
-              ID: 999,
-              name: 'Mock Faction',
-              leader: 12345,
-              'co-leader': 0,
-              members: {
-                '12345': { name: 'AntigravityMock', level: 42 }
-              },
-              ranked_wars: {
-                'war_1': {
-                  id: 'war_1',
-                  war: { target: 1000, start: Math.floor(Date.now() / 1000) - 3600 },
-                  factions: {
-                    '999': { name: 'Mock Faction', score: 450 },
-                    '888': { name: 'Enemy Faction', score: 320 }
+      if (apiType === 'TORN' || apiType === 'YATA') {
+        const limiter = apiType === 'TORN' ? tornRateLimiter : yataRateLimiter;
+        return limiter.schedule(async () => {
+          const startTime = Date.now();
+          if (url.includes('key=mock_key_1234567890123456') || url.includes('key=mock_key')) {
+            const duration = Math.floor(Math.random() * 80) + 20;
+            let mockBody = {};
+            
+            if (url.includes('/user/') && url.includes('selections=')) {
+              const userIdMatch = url.match(/\/user\/(\d+)/);
+              const userId = userIdMatch ? userIdMatch[1] : '12345';
+              mockBody = {
+                player_id: parseInt(userId, 10),
+                name: userId === '12345' ? 'AntigravityMock' : `EnemyMember_${userId}`,
+                level: userId === '12345' ? 42 : Math.floor(Math.random() * 80) + 10,
+                age: 500,
+                money_onhand: 1000000,
+                status: { state: 'Okay', color: 'green', description: 'Okay' },
+                energy: { current: 90, maximum: 100, ticktime: 60, interval: 600, increment: 5 },
+                nerve: { current: 15, maximum: 20, ticktime: 30, interval: 300, increment: 1 },
+                life: { current: 5000, maximum: 5000 },
+                happy: { current: 2500, maximum: 2500 },
+                travel: { destination: 'Mexico', method: 'Airstrip', timestamp: 0 },
+                personalstats: {
+                  attackswon: Math.floor(Math.random() * 200) + 50,
+                  attackslost: Math.floor(Math.random() * 50) + 5,
+                  defendswon: Math.floor(Math.random() * 30) + 2,
+                  defendslost: Math.floor(Math.random() * 100) + 20,
+                  criminaloffenses: 1500,
+                  drugsused: 50,
+                  refills: 10,
+                  boostersused: 5
+                }
+              };
+            } else if (url.includes('/faction/') && url.includes('selections=')) {
+              mockBody = {
+                ID: 999,
+                name: 'Mock Faction',
+                leader: 12345,
+                'co-leader': 0,
+                members: {
+                  '12345': { name: 'AntigravityMock', level: 42 }
+                },
+                ranked_wars: {
+                  'war_1': {
+                    id: 'war_1',
+                    war: { target: 1000, start: Math.floor(Date.now() / 1000) - 3600 },
+                    factions: {
+                      '999': { name: 'Mock Faction', score: 450 },
+                      '888': { name: 'Enemy Faction', score: 320 }
+                    }
                   }
                 }
-              }
-            };
-          } else if (url.includes('/faction/')) {
-            mockBody = {
-              ID: 888,
-              name: 'Enemy Faction',
-              members: {
-                '22222': { name: 'EnemyMember1', level: 50, last_action: { status: 'Online' }, status: { state: 'Okay' } },
-                '33333': { name: 'EnemyMember2', level: 30, last_action: { status: 'Offline' }, status: { state: 'Hospital', until: Math.floor(Date.now() / 1000) + 1200 } }
-              }
-            };
-          } else if (url.includes('/torn/') && url.includes('items')) {
-            mockBody = {
-              items: {
-                '1': { name: 'Plushie', market_value: 500 },
-                '2': { name: 'Flower', market_value: 600 }
-              }
-            };
-          } else if (url.includes('/inventory')) {
-            mockBody = {
-              inventory: {
-                items: [
-                  { id: 1, amount: 10 },
-                  { id: 2, amount: 5 }
-                ]
-              }
-            };
-          } else {
-            mockBody = { name: 'Mock User', player_id: 12345 };
+              };
+            } else if (url.includes('/faction/')) {
+              mockBody = {
+                ID: 888,
+                name: 'Enemy Faction',
+                members: {
+                  '22222': { name: 'EnemyMember1', level: 50, last_action: { status: 'Online' }, status: { state: 'Okay' } },
+                  '33333': { name: 'EnemyMember2', level: 30, last_action: { status: 'Offline' }, status: { state: 'Hospital', until: Math.floor(Date.now() / 1000) + 1200 } }
+                }
+              };
+            } else if (url.includes('/torn/') && url.includes('items')) {
+              mockBody = {
+                items: {
+                  '1': { name: 'Plushie', market_value: 500 },
+                  '2': { name: 'Flower', market_value: 600 }
+                }
+              };
+            } else if (url.includes('/inventory')) {
+              mockBody = {
+                inventory: {
+                  items: [
+                    { id: 1, amount: 10 },
+                    { id: 2, amount: 5 }
+                  ]
+                }
+              };
+            } else {
+              mockBody = { name: 'Mock User', player_id: 12345 };
+            }
+
+            logApiCall(apiType, endpoint, 'SUCCESS', duration, null, mockBody);
+            return new Response(JSON.stringify(mockBody), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
           }
 
-          logApiCall(apiType, endpoint, 'SUCCESS', duration, null, mockBody);
-          return new Response(JSON.stringify(mockBody), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-
+          try {
+            const response = await originalFetch(input, init);
+            const duration = Date.now() - startTime;
+            
+            // Log success/failure based on response status
+            if (response.ok) {
+              if (apiType === 'TORN') {
+                try {
+                  const clone = response.clone();
+                  const data = await clone.json();
+                  if (data && data.error) {
+                    logApiCall(apiType, endpoint, 'ERROR', duration, data.error.error || `Torn Error Code ${data.error.code}`, data);
+                  } else {
+                    logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
+                  }
+                } catch (e) {
+                  logApiCall(apiType, endpoint, 'SUCCESS', duration);
+                }
+              } else {
+                try {
+                  const clone = response.clone();
+                  const data = await clone.json();
+                  logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
+                } catch (e) {
+                  logApiCall(apiType, endpoint, 'SUCCESS', duration);
+                }
+              }
+            } else {
+              let errorData = null;
+              try {
+                const clone = response.clone();
+                errorData = await clone.json();
+              } catch (e) {
+                try {
+                  const clone = response.clone();
+                  errorData = await clone.text();
+                } catch (inner) {}
+              }
+              logApiCall(apiType, endpoint, 'ERROR', duration, `HTTP Status ${response.status}`, errorData);
+            }
+            return response;
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            logApiCall(apiType, endpoint, 'ERROR', duration, error.message);
+            throw error;
+          }
+        });
+      } else {
+        // Weav3r API calls (no rate limiting, direct execution with logging)
+        const startTime = Date.now();
         try {
           const response = await originalFetch(input, init);
           const duration = Date.now() - startTime;
-          
-          // Log success/failure based on response status
           if (response.ok) {
-            if (apiType === 'TORN') {
-              try {
-                const clone = response.clone();
-                const data = await clone.json();
-                if (data && data.error) {
-                  logApiCall(apiType, endpoint, 'ERROR', duration, data.error.error || `Torn Error Code ${data.error.code}`, data);
-                } else {
-                  logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
-                }
-              } catch (e) {
-                logApiCall(apiType, endpoint, 'SUCCESS', duration);
-              }
-            } else {
-              try {
-                const clone = response.clone();
-                const data = await clone.json();
-                logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
-              } catch (e) {
-                logApiCall(apiType, endpoint, 'SUCCESS', duration);
-              }
+            try {
+              const clone = response.clone();
+              const data = await clone.json();
+              logApiCall(apiType, endpoint, 'SUCCESS', duration, null, data);
+            } catch (e) {
+              logApiCall(apiType, endpoint, 'SUCCESS', duration);
             }
           } else {
             let errorData = null;
@@ -386,7 +426,7 @@ export const initApiInterceptor = () => {
           logApiCall(apiType, endpoint, 'ERROR', duration, error.message);
           throw error;
         }
-      });
+      }
     }
     
     return originalFetch(input, init);
