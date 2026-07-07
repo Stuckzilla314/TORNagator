@@ -1273,6 +1273,13 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
       }
     };
     const handleConsole = (e) => {
+      // Filter out Electron Security Warnings originating from webview pages (e.g. Torn.com)
+      if (e.message && (
+        e.message.includes('Electron Security Warning') || 
+        e.message.includes('Insecure Content-Security-Policy')
+      )) {
+        return;
+      }
       if (window.process && window.process.stdout) {
         window.process.stdout.write(`[Webview-${tabId || 'unknown'}] ${e.message}\n`);
       }
@@ -3822,6 +3829,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
           <webview
             ref={webviewRef}
             src={initialUrlRef.current}
+            partition="persist:torn"
             useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             title={tabTitle}
             className="torn-iframe"
