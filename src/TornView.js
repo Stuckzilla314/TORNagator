@@ -3187,6 +3187,23 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                             e.preventDefault();
                             e.stopPropagation();
                             if (btn.textContent === '⏳') return;
+
+                            const marketValues = window._tornagator_market_values || {};
+                            const weav3rValues = window._weav3r_marketplace_prices || {};
+                            const marketPrice = marketValues[name];
+                            const bazaarMin = weav3rValues[pid]?.lowest_price;
+
+                            if (bazaarMin && marketPrice && bazaarMin > marketPrice) {
+                              if (window.confirm("Bazaar minimum price ($" + bazaarMin.toLocaleString() + ") is above market price ($" + marketPrice.toLocaleString() + ").\n\nClick OK to go to Item Market, or Cancel to check Bazaar anyway.")) {
+                                console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                                  tabId: window._tornagator_tab_id,
+                                  type: "open_tab",
+                                  url: 'https://www.torn.com/imarket.php#/p=shop&step=shop&type=&searchname=' + encodeURIComponent(name)
+                                }));
+                                return;
+                              }
+                            }
+
                             btn.textContent = '⏳';
                             window._tornagator_bazaar_clicks = window._tornagator_bazaar_clicks || {};
                             window._tornagator_bazaar_clicks['precise_item_' + pid] = btn;
@@ -3230,6 +3247,17 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                           price = weav3rValues[pid]?.bazaar_average || weav3rValues[pid]?.market_price || marketValues[name];
                         } else if (activeSource === 'lowest_price') {
                           price = weav3rValues[pid]?.lowest_price || weav3rValues[pid]?.market_price || marketValues[name];
+                        }
+
+                        const bazaarMin = weav3rValues[pid]?.lowest_price;
+                        const marketPrice = marketValues[name];
+                        const result = findPlushieCard(name);
+                        if (result && result.title) {
+                          if (bazaarMin && marketPrice && bazaarMin > marketPrice) {
+                            result.title.style.color = 'red';
+                          } else {
+                            result.title.style.color = '';
+                          }
                         }
 
                         if (price !== undefined) {
