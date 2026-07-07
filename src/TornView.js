@@ -2858,6 +2858,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                     }
                   });
                   window._weav3r_marketplace_prices = map;
+                  try {
+                    localStorage.setItem('tornagator_weav3r_marketplace_prices', JSON.stringify(map));
+                  } catch (e) {
+                    console.error('[TORNagator Museum] Failed to save marketplace prices to localStorage', e);
+                  }
                   console.log('[TORNagator Museum] Processed Weav3r marketplace prices.');
                   if (window._tornagator_update_profit_display) {
                     window._tornagator_update_profit_display();
@@ -3445,6 +3450,70 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
           }
 
           if (isBazaar) {
+            try {
+              const pricesStr = localStorage.getItem('tornagator_weav3r_marketplace_prices');
+              if (pricesStr) {
+                const pricesMap = JSON.parse(pricesStr);
+                const itemNames = Object.keys(pricesMap)
+                  .filter(k => isNaN(parseInt(k))) // Filter out ID keys, keep only name keys
+                  .sort((a, b) => b.length - a.length); // Longest first for specific matching
+
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+                  acceptNode: (node) => {
+                    if (node.parentNode && node.parentNode.dataset && node.parentNode.dataset.tgAvgInjected) {
+                      return NodeFilter.FILTER_REJECT;
+                    }
+                    return node.nodeValue.includes('%') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                  }
+                }, false);
+
+                const textNodes = [];
+                let currentNode;
+                while ((currentNode = walker.nextNode())) {
+                  textNodes.push(currentNode);
+                }
+
+                textNodes.forEach(node => {
+                  let parent = node.parentNode;
+                  let matchedItem = null;
+
+                  // Traverse up up to 4 levels to find a matching item name in textContent
+                  let traverseCount = 0;
+                  let searchParent = parent;
+                  while (searchParent && searchParent !== document.body && traverseCount < 4) {
+                    const text = searchParent.textContent.toLowerCase();
+                    matchedItem = itemNames.find(name => text.includes(name.toLowerCase()));
+                    if (matchedItem) break;
+                    searchParent = searchParent.parentNode;
+                    traverseCount++;
+                  }
+
+                  if (matchedItem) {
+                    const itemData = pricesMap[matchedItem];
+                    if (itemData && itemData.bazaar_average) {
+                      const avgPrice = itemData.bazaar_average;
+                      const span = document.createElement('span');
+                      span.style.color = '#a0aec0';
+                      span.style.fontSize = '0.9em';
+                      span.style.marginLeft = '4px';
+                      span.textContent = ' (Avg: $' + avgPrice.toLocaleString() + ')';
+
+                      parent.dataset.tgAvgInjected = 'true';
+
+                      // Insert after the text node
+                      if (node.nextSibling) {
+                        parent.insertBefore(span, node.nextSibling);
+                      } else {
+                        parent.appendChild(span);
+                      }
+                    }
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('[TORNagator Bazaar] Failed to inject bazaar averages', err);
+            }
+
             try {
               const prefill = localStorage.getItem('tornagator_bazaar_search_prefill');
               if (prefill) {
