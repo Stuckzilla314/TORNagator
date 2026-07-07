@@ -49,7 +49,7 @@ const BazaarSearch = ({ onOpenInTorn }) => {
       const res = await fetch('https://weav3r.dev/api/marketplace');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      const data = json.items || [];
+      const data = (json.items || []).filter(item => item.item_id == null || item.item_id >= 0);
       const now = Date.now();
       setItems(data);
       setLastFetched(now);
