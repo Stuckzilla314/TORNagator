@@ -24,6 +24,12 @@ const BazaarSearch = ({ onOpenInTorn }) => {
   // Map of item_id -> 'loading' | null for the buy button per card
   const [buyingId, setBuyingId] = useState(null);
   const searchInputRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  // Reset pagination on search
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [search]);
 
   // ── Fetch marketplace ──────────────────────────────────────────────────────
 
@@ -299,7 +305,7 @@ const BazaarSearch = ({ onOpenInTorn }) => {
         isCapacitor ? (
           /* ─ Mobile cards ─ */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {filtered.map(item => {
+            {filtered.slice(0, visibleCount).map(item => {
               const canBuy = item.item_id > 0 && item.total_bazaars > 0 && item.lowest_price != null;
               const isLoading = buyingId === item.item_id;
               return (
@@ -401,6 +407,28 @@ const BazaarSearch = ({ onOpenInTorn }) => {
                 </div>
               );
             })}
+            {filtered.length > visibleCount && (
+              <button
+                onClick={() => setVisibleCount(prev => prev + 30)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  margin: '10px 0 10px 0',
+                  borderRadius: '8px',
+                  border: '1px solid #2d2d2d',
+                  background: 'linear-gradient(145deg, #1e1e1e 0%, #131313 100%)',
+                  color: '#3498db',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Load More ({filtered.length - visibleCount} remaining)
+              </button>
+            )}
           </div>
         ) : (
           /* ─ Desktop table ─ */
@@ -421,7 +449,7 @@ const BazaarSearch = ({ onOpenInTorn }) => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(item => {
+                {filtered.slice(0, visibleCount).map(item => {
                   const canBuy = item.item_id > 0 && item.total_bazaars > 0 && item.lowest_price != null;
                   const isLoading = buyingId === item.item_id;
                   return (
@@ -475,6 +503,35 @@ const BazaarSearch = ({ onOpenInTorn }) => {
                 })}
               </tbody>
             </table>
+            {filtered.length > visibleCount && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', marginBottom: '10px' }}>
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 50)}
+                  style={{
+                    padding: '10px 24px',
+                    borderRadius: '20px',
+                    border: '1px solid #444',
+                    background: 'transparent',
+                    color: '#3498db',
+                    fontWeight: 'bold',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    letterSpacing: '1px',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = '#3498db';
+                    e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.05)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#444';
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  LOAD MORE ({filtered.length - visibleCount} REMAINING)
+                </button>
+              </div>
+            )}
           </div>
         )
       ) : null}
@@ -496,4 +553,5 @@ const BazaarSearch = ({ onOpenInTorn }) => {
   );
 };
 
-export default BazaarSearch;
+// ⚡ Bolt: Wrapped with React.memo() to prevent deep tree re-renders of large items lists when other App state changes
+export default React.memo(BazaarSearch);
