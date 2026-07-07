@@ -77,9 +77,59 @@ const LoginForm = ({ onLogin }) => {
           Access API
         </button>
       </form>
-      <p style={{ fontSize: '0.78rem', marginTop: '1.5rem', color: '#aaa', maxWidth: '300px', margin: '1.5rem auto 0 auto', lineHeight: '1.4' }}>
-        <strong>Torn API ToS Compliance:</strong> This application runs entirely locally on your system. Your API key and data are saved only in your local storage and are never shared or transmitted to any external server.
-      </p>
+      <div style={{
+        marginTop: '2rem',
+        padding: '1.2rem',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '8px',
+        textAlign: 'left',
+        fontSize: '0.8rem',
+        color: '#ccc',
+        maxWidth: '650px',
+        margin: '2rem auto 0 auto',
+        lineHeight: '1.5',
+        fontFamily: "'Inter', -apple-system, sans-serif"
+      }}>
+        <h3 style={{ margin: '0 0 0.5rem 0', color: '#3498db', fontSize: '0.95rem', fontWeight: 'bold' }}>
+          🛡️ Torn API Terms of Service & Data Transparency
+        </h3>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: '#aaa' }}>
+          This application runs entirely locally on your system. Your API key and retrieved data are saved only on your local device (localStorage and sessionStorage) and are never shared or stored remotely.
+        </p>
+
+        <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '0.75rem',
+            color: '#ddd'
+          }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.15)', color: '#fff' }}>
+                <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>Data Storage</th>
+                <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>Data Sharing</th>
+                <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>Purpose of Use</th>
+                <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>Key Storage & Sharing</th>
+                <th style={{ padding: '8px 6px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>Key Access Level</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ padding: '8px 6px', verticalAlign: 'top' }}><strong>Only locally</strong><br /><span style={{ color: '#888', fontSize: '0.7rem' }}>Stored in browser's local/session storage</span></td>
+                <td style={{ padding: '8px 6px', verticalAlign: 'top' }}><strong>Nobody</strong><br /><span style={{ color: '#888', fontSize: '0.7rem' }}>Data never leaves your local device</span></td>
+                <td style={{ padding: '8px 6px', verticalAlign: 'top' }}><strong>Personal assistance</strong><br /><span style={{ color: '#888', fontSize: '0.7rem' }}>Travel profit calculations, faction war helper, and stats overlay</span></td>
+                <td style={{ padding: '8px 6px', verticalAlign: 'top' }}><strong>Stored locally / Not shared</strong><br /><span style={{ color: '#888', fontSize: '0.7rem' }}>Retained on device for auto-refresh</span></td>
+                <td style={{ padding: '8px 6px', verticalAlign: 'top' }}><strong>Limited or Full</strong><br /><span style={{ color: '#888', fontSize: '0.7rem' }}>Required to read travel, faction status, and item logs</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style={{ margin: 0, fontSize: '0.72rem', color: '#888', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem' }}>
+          <strong>Third-Party Integration:</strong> TORNagator integrates automatically with <a href="https://weav3r.dev" target="_blank" rel="noopener noreferrer" style={{ color: '#3498db', textDecoration: 'none' }}>weav3r.dev</a> to display public bazaar and market price estimations. No API keys or private user data are ever shared with Weav3r.
+        </p>
+      </div>
     </div>
   );
 };

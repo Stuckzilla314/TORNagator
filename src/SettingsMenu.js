@@ -53,6 +53,7 @@ const SettingsMenu = ({
 }) => {  
 
   const [permissionStatus, setPermissionStatus] = useState('prompt');
+  const [isToSModalOpen, setIsToSModalOpen] = useState(false);
   const notificationsSupported = isNotificationsSupported();
 
   useEffect(() => {
@@ -458,6 +459,28 @@ const SettingsMenu = ({
         </div>
       )}
 
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <button
+          onClick={() => setIsToSModalOpen(true)}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: '#2c3e50',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '0.8rem',
+            transition: 'background-color 0.2s',
+            textAlign: 'center'
+          }}
+          onMouseEnter={e => { e.target.style.backgroundColor = '#1a252f'; }}
+          onMouseLeave={e => { e.target.style.backgroundColor = '#2c3e50'; }}
+        >
+          ToS & Compliance
+        </button>
+      </div>
+
       {!isCapacitor && (
         <div style={{ padding: '8px 12px', borderTop: '1px solid #333', marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button
@@ -479,6 +502,122 @@ const SettingsMenu = ({
           >
             Open DevTools
           </button>
+        </div>
+      )}
+
+      {isToSModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999999,
+          color: '#fff',
+          padding: '20px',
+          boxSizing: 'border-box'
+        }} onClick={() => setIsToSModalOpen(false)}>
+          <div style={{
+            backgroundColor: '#1c1c1c',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '680px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+            boxSizing: 'border-box'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#e74c3c', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                🛡️ Torn API Compliance & ToS
+              </h2>
+              <button 
+                onClick={() => setIsToSModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#aaa',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  padding: '0 4px',
+                  lineHeight: '1'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ fontSize: '0.88rem', color: '#ccc', lineHeight: '1.6', fontFamily: "'Inter', -apple-system, sans-serif" }}>
+              <p style={{ marginTop: 0 }}>
+                TORNagator is committed to full compliance with Torn City's official API Scripting Rules and Terms of Service. Below is the mandatory transparency disclosure outlining how your API key and data are managed.
+              </p>
+
+              <div style={{ overflowX: 'auto', margin: '20px 0', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '0.78rem',
+                  color: '#ddd'
+                }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.15)', color: '#fff', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                      <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 'bold' }}>Data Storage</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 'bold' }}>Data Sharing</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 'bold' }}>Purpose of Use</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 'bold' }}>Key Storage & Sharing</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 'bold' }}>Key Access Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '10px 8px', verticalAlign: 'top' }}><strong>Only locally</strong><br /><span style={{ color: '#888', fontSize: '0.72rem' }}>Stored in browser's local/session storage</span></td>
+                      <td style={{ padding: '10px 8px', verticalAlign: 'top' }}><strong>Nobody</strong><br /><span style={{ color: '#888', fontSize: '0.72rem' }}>Data never leaves your local device</span></td>
+                      <td style={{ padding: '10px 8px', verticalAlign: 'top' }}><strong>Personal assistance</strong><br /><span style={{ color: '#888', fontSize: '0.72rem' }}>Travel profit calculations, faction war helper, and stats overlay</span></td>
+                      <td style={{ padding: '10px 8px', verticalAlign: 'top' }}><strong>Stored locally / Not shared</strong><br /><span style={{ color: '#888', fontSize: '0.72rem' }}>Retained on device for auto-refresh</span></td>
+                      <td style={{ padding: '10px 8px', verticalAlign: 'top' }}><strong>Limited or Full</strong><br /><span style={{ color: '#888', fontSize: '0.72rem' }}>Required to read travel, faction status, and item logs</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <h3 style={{ fontSize: '0.95rem', color: '#fff', margin: '20px 0 8px 0', fontWeight: 'bold' }}>🔌 Third-Party Integrations</h3>
+              <p style={{ margin: '0 0 16px 0' }}>
+                To support on-the-fly valuation and trade optimizations, this application integrates automatically with <a href="https://weav3r.dev" target="_blank" rel="noopener noreferrer" style={{ color: '#3498db', textDecoration: 'none' }}>weav3r.dev</a>. 
+              </p>
+              <ul style={{ margin: '0 0 20px 0', paddingLeft: '20px' }}>
+                <li><strong>No private data sharing:</strong> Sensitive fields, profiles, and API keys are strictly excluded from all external requests.</li>
+                <li><strong>On-demand querying:</strong> Marketplace prices and bazaar details are retrieved solely on user action or cached to optimize performance and prevent rate limiting.</li>
+              </ul>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+                <button
+                  onClick={() => setIsToSModalOpen(false)}
+                  style={{
+                    padding: '8px 20px',
+                    backgroundColor: '#e74c3c',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={e => e.target.style.backgroundColor = '#c0392b'}
+                  onMouseLeave={e => e.target.style.backgroundColor = '#e74c3c'}
+                >
+                  Close Disclosure
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
