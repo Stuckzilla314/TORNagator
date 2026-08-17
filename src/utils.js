@@ -87,3 +87,78 @@ export const cleanStatusDescription = (description) => {
     .trim();
 };
 
+/**
+ * Retrieves cached target data for a given enemy faction from localStorage.
+ *
+ * @param {string|number} enemyFactionId - The enemy faction ID.
+ * @returns {{ factionData: Object, profiles: Object, fetchedAt: number }|null}
+ */
+export const getTargetsCache = (enemyFactionId) => {
+  if (!enemyFactionId) return null;
+  try {
+    const raw = localStorage.getItem(`tornagator_targets_${enemyFactionId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.factionData) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('[TORNagator] Failed to read targets cache from localStorage:', e);
+  }
+  return null;
+};
+
+/**
+ * Persists target data for a given enemy faction to localStorage.
+ *
+ * @param {string|number} enemyFactionId - The enemy faction ID.
+ * @param {Object} data - The target payload ({ factionData, profiles, fetchedAt }).
+ */
+export const setTargetsCache = (enemyFactionId, data) => {
+  if (!enemyFactionId || !data) return;
+  try {
+    localStorage.setItem(`tornagator_targets_${enemyFactionId}`, JSON.stringify(data));
+  } catch (e) {
+    console.warn('[TORNagator] Failed to write targets cache to localStorage:', e);
+  }
+};
+
+/**
+ * Clears target cache for a given enemy faction from localStorage.
+ *
+ * @param {string|number} enemyFactionId - The enemy faction ID.
+ */
+export const clearTargetsCache = (enemyFactionId) => {
+  if (!enemyFactionId) return;
+  try {
+    localStorage.removeItem(`tornagator_targets_${enemyFactionId}`);
+  } catch (e) {
+    console.warn('[TORNagator] Failed to clear targets cache:', e);
+  }
+};
+
+/**
+ * Cleans up old war target caches that do not match the current enemy faction ID.
+ * If currentEnemyFactionId is null (war ended), all old war target caches are removed.
+ *
+ * @param {string|number|null} currentEnemyFactionId - The currently active enemy faction ID, or null if no war.
+ */
+export const cleanupOldWarCaches = (currentEnemyFactionId) => {
+  try {
+    const targetPrefix = 'tornagator_targets_';
+    const keepKey = currentEnemyFactionId ? `${targetPrefix}${currentEnemyFactionId}` : null;
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(targetPrefix) && key !== keepKey) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    console.warn('[TORNagator] Failed to clean up old war caches:', e);
+  }
+};
+
+
