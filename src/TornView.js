@@ -11,7 +11,7 @@ import {
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
-import { isElectron, isCapacitor } from './utils';
+import { isElectron, isCapacitor, getHospitalAbroadInfo, cleanStatusDescription } from './utils';
 
 /**
  * Custom hook to safely sync state with localStorage.
@@ -4132,7 +4132,7 @@ const parseSuspectedStats = (text) => {
  */
 const parseTornDescriptionTime = (description) => {
   if (!description) return 0;
-  const clean = description.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '').trim();
+  const clean = cleanStatusDescription(description);
   let totalSeconds = 0;
 
   const dayMatch = clean.match(/(\d+)\s*d/i);
@@ -4291,6 +4291,9 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
   };
   const isOkay = currentStatusState === 'Okay';
   const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
+  const abroadInfo = getHospitalAbroadInfo(member.status);
+  const isHospitalAbroad = currentStatusState === 'Hospital' && abroadInfo.isAbroad;
+  const abroadLocation = abroadInfo.country || 'Abroad';
   const profile = member.profile || {};
   const hasProfile = Object.keys(profile).length > 0;
 
@@ -4390,8 +4393,29 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
         </div>
 
         <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-          <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem' }}>
-            {currentStatusState || 'Unknown'}
+          <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+            <span>{currentStatusState || 'Unknown'}</span>
+            {isHospitalAbroad && (
+              <span
+                title={`In Hospital Abroad (${abroadLocation})`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  color: '#3498db',
+                  backgroundColor: 'rgba(52, 152, 219, 0.15)',
+                  border: '1px solid rgba(52, 152, 219, 0.3)',
+                  borderRadius: '3px',
+                  padding: '0 3px',
+                  fontSize: '0.62rem',
+                  fontWeight: 'bold',
+                  lineHeight: '1.2'
+                }}
+              >
+                <IconPlane size={9} color="#3498db" />
+                {abroadLocation}
+              </span>
+            )}
           </span>
           {isOkay ? (
             <button
@@ -4425,7 +4449,7 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
           ) : (
             currentDescription && currentDescription !== currentStatusState && (
               <span style={{ color: '#666', fontSize: '0.65rem' }}>
-                {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                {cleanStatusDescription(currentDescription)}
               </span>
             )
           )}

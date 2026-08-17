@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
-import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin } from './Icons';
-import { isCapacitor } from './utils';
+import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin, IconPlane } from './Icons';
+import { isCapacitor, getHospitalAbroadInfo, cleanStatusDescription } from './utils';
 
 /**
  * Renders a card displaying details for a specific Ranked War (upcoming or active).
@@ -201,7 +201,7 @@ const parseSuspectedStats = (text) => {
  */
 const parseTornDescriptionTime = (description) => {
   if (!description) return 0;
-  const clean = description.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '').trim();
+  const clean = cleanStatusDescription(description);
   let totalSeconds = 0;
   
   const dayMatch = clean.match(/(\d+)\s*d/i);
@@ -345,6 +345,10 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
   const isOkay = currentStatusState === 'Okay';
   const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
   
+  const abroadInfo = getHospitalAbroadInfo(member.status);
+  const isHospitalAbroad = currentStatusState === 'Hospital' && abroadInfo.isAbroad;
+  const abroadLocation = abroadInfo.country || 'Abroad';
+
   const profile = member.profile;
   const daysPlaying = profile.age;
   const ps = profile.personalstats || {};
@@ -421,11 +425,34 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
               </div>
 
               {/* Line 2: Status */}
-              <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2' }}>
-                <span>{currentStatusState}</span>
+              <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span>{currentStatusState}</span>
+                  {isHospitalAbroad && (
+                    <span
+                      title={`In Hospital Abroad (${abroadLocation})`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        color: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.15)',
+                        border: '1px solid rgba(52, 152, 219, 0.3)',
+                        borderRadius: '4px',
+                        padding: '1px 5px',
+                        fontSize: '0.72rem',
+                        fontWeight: 'bold',
+                        lineHeight: '1.2'
+                      }}
+                    >
+                      <IconPlane size={11} color="#3498db" />
+                      {abroadLocation}
+                    </span>
+                  )}
+                </span>
                 {currentStatusState === 'Hospital' && currentDescription && (
                   <span style={{ color: '#aaa', fontSize: '0.78rem' }}>
-                    ({currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')})
+                    ({cleanStatusDescription(currentDescription)})
                   </span>
                 )}
               </div>
@@ -519,10 +546,33 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
             
             <div className="member-card-status-col">
               <div className="member-card-status-wrapper">
-                <span className="member-card-status-text" style={{ color: statusColor }}>{currentStatusState}</span>
+                <span className="member-card-status-text" style={{ color: statusColor, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  {currentStatusState}
+                  {isHospitalAbroad && (
+                    <span
+                      title={`In Hospital Abroad (${abroadLocation})`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        color: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.15)',
+                        border: '1px solid rgba(52, 152, 219, 0.3)',
+                        borderRadius: '4px',
+                        padding: '1px 6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        lineHeight: '1.2'
+                      }}
+                    >
+                      <IconPlane size={12} color="#3498db" />
+                      {abroadLocation}
+                    </span>
+                  )}
+                </span>
                 {currentDescription && currentDescription !== currentStatusState && (
                   <span className="member-card-status-desc">
-                    {currentDescription.replace(/<[^>]+>/g, '').replace(/Hospitalized for /i, '')}
+                    {cleanStatusDescription(currentDescription)}
                   </span>
                 )}
               </div>
