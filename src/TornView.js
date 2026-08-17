@@ -801,20 +801,56 @@ const STATS_REDIR_SCRIPT = `
   (() => {
     console.log("TORNagator: STATS_REDIR_SCRIPT loaded and running. Location: " + window.location.href + " bound=" + window._tornagator_global_listeners_bound);
 
-    const isInside = (x, y, rect) => {
-      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    const isElementVisible = (el) => {
+      if (!el || !el.isConnected) return false;
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') <= 0) {
+        return false;
+      }
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return false;
+      }
+      return true;
+    };
+
+    const isElementHit = (el, container, x, y, target) => {
+      if (!isElementVisible(el)) return false;
+      if (container && !isElementVisible(container)) return false;
+
+      const targetNode = container || el;
+
+      // 1. If we have valid coordinates, check what element is actually on top at (x, y)
+      if (typeof x === 'number' && typeof y === 'number') {
+        const topEl = document.elementFromPoint(x, y);
+        if (topEl) {
+          // If the topmost element is NOT inside our element/container, something (like a dialog or search bar) is occluding it!
+          const isTopInside = targetNode.contains(topEl) || el.contains(topEl);
+          if (!isTopInside) {
+            return false;
+          }
+          return true;
+        }
+      }
+
+      // 2. Fallback to event target if coordinates / elementFromPoint are not available
+      if (target) {
+        return targetNode.contains(target) || el.contains(target);
+      }
+
+      return false;
     };
 
     const handleGlobalTap = (e) => {
-      let x, y;
-      if (e.type === 'touchstart') {
-        if (e.touches && e.touches.length > 0) {
-          x = e.touches[0].clientX;
-          y = e.touches[0].clientY;
-        } else {
-          return;
+      let x = null;
+      let y = null;
+      if (e.type === 'touchstart' || e.type === 'touchend') {
+        const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+        if (touch) {
+          x = touch.clientX;
+          y = touch.clientY;
         }
-      } else {
+      } else if (typeof e.clientX === 'number' && typeof e.clientY === 'number') {
         x = e.clientX;
         y = e.clientY;
       }
@@ -843,10 +879,9 @@ const STATS_REDIR_SCRIPT = `
       }
 
       if (energyEl) {
-        const rect = energyEl.getBoundingClientRect();
-        const isTargetInside = isInside(x, y, rect) || energyEl.contains(e.target);
-        if (isTargetInside) {
-          console.log("TORNagator: Global intercept! Clicked inside energy bar. Navigating to gym.php. event=" + e.type + " coords=" + x + "," + y);
+        const energyContainer = energyEl.closest('[class*="energy" i], [class*="bar" i]') || energyEl;
+        if (isElementHit(energyEl, energyContainer, x, y, e.target)) {
+          console.log("TORNagator: Global intercept! Clicked inside visible energy bar. Navigating to gym.php. event=" + e.type + " coords=" + x + "," + y);
           e.preventDefault();
           e.stopPropagation();
           window.location.href = 'https://www.torn.com/gym.php';
@@ -878,10 +913,9 @@ const STATS_REDIR_SCRIPT = `
       }
 
       if (nerveEl) {
-        const rect = nerveEl.getBoundingClientRect();
-        const isTargetInside = isInside(x, y, rect) || nerveEl.contains(e.target);
-        if (isTargetInside) {
-          console.log("TORNagator: Global intercept! Clicked inside nerve bar. Navigating to crimes.php. event=" + e.type + " coords=" + x + "," + y);
+        const nerveContainer = nerveEl.closest('[class*="nerve" i], [class*="bar" i]') || nerveEl;
+        if (isElementHit(nerveEl, nerveContainer, x, y, e.target)) {
+          console.log("TORNagator: Global intercept! Clicked inside visible nerve bar. Navigating to crimes.php. event=" + e.type + " coords=" + x + "," + y);
           e.preventDefault();
           e.stopPropagation();
           window.location.href = 'https://www.torn.com/crimes.php';
