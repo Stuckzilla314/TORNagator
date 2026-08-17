@@ -3761,15 +3761,35 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                 }
               };
 
-              // Locate enemy name element
-              const findEnemyNameEl = () => {
-                const selectors = [
+              // Locate "Attack" heading or label element to position badge next to it on the same line
+              const findAttackLabelEl = () => {
+                // Priority 1: .content-title h4, .content-title, or header element with "Attack"
+                const contentTitleH4 = document.querySelector('.content-title h4, [class*="titleContainer___"] h4, h4[class*="heading___"]');
+                if (contentTitleH4) {
+                  return contentTitleH4;
+                }
+
+                const contentTitle = document.querySelector('.content-title, [class*="titleContainer___"]');
+                if (contentTitle) {
+                  const h4 = contentTitle.querySelector('h4, h3, h2, span, div');
+                  return h4 || contentTitle;
+                }
+
+                // Priority 2: Any heading or title starting with or containing "Attack"
+                const headings = document.querySelectorAll('h4, h3, h2, [class*="heading___"], [class*="title___"]');
+                for (const h of headings) {
+                  const txt = (h.textContent || '').trim().toLowerCase();
+                  if (txt === 'attack' || txt.startsWith('attack') || txt.startsWith('attacking')) {
+                    return h;
+                  }
+                }
+
+                // Priority 3: Defender header / name element fallback
+                const fallbackSelectors = [
                   '[class*="defender___"] [class*="userName___"]',
                   '[class*="defender___"] [class*="name___"]',
                   '[class*="defender___"] [class*="user___"]',
                   '[class*="defender___"] [class*="honorWrap___"]',
-                  '[class*="defender___"] [class*="textWrap___"]',
-                  '[class*="defender___"] [class*="userWrap___"]',
                   '[class*="defender___"] [class*="header___"]',
                   '[class*="defender___"] a[href*="profiles.php?XID="]',
                   '[class*="custom-bg-defender"] [class*="name___"]',
@@ -3783,7 +3803,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                   '[class*="msg___"] a[href*="profiles.php?XID="]'
                 ];
 
-                for (const sel of selectors) {
+                for (const sel of fallbackSelectors) {
                   const el = document.querySelector(sel);
                   if (el && el.textContent && el.textContent.trim()) {
                     return el;
@@ -3795,20 +3815,15 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                   if (link && link.textContent.trim()) return link;
                 }
 
-                const contentTitle = document.querySelector('.content-title h4, .content-title');
-                if (contentTitle && contentTitle.textContent.trim()) {
-                  return contentTitle;
-                }
-
                 return null;
               };
 
-              const nameEl = findEnemyNameEl();
+              const attackLabelEl = findAttackLabelEl();
               let badge = document.getElementById('tornagator-attack-hospital-badge');
               const remaining = attackState.statusUntil ? Math.max(0, attackState.statusUntil - nowSec) : 0;
               const isHospital = attackState.state === 'Hospital' || remaining > 0;
 
-              if (isHospital && nameEl) {
+              if (isHospital && attackLabelEl) {
                 if (!badge) {
                   badge = document.createElement('span');
                   badge.id = 'tornagator-attack-hospital-badge';
@@ -3816,16 +3831,25 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                   badge.style.display = 'inline-flex';
                   badge.style.alignItems = 'center';
                   badge.style.gap = '4px';
-                  badge.style.marginLeft = '8px';
+                  badge.style.marginLeft = '10px';
                   badge.style.verticalAlign = 'middle';
                   badge.style.padding = '2px 8px';
                   badge.style.borderRadius = '12px';
                   badge.style.fontSize = '12px';
                   badge.style.fontWeight = 'bold';
+                  badge.style.lineHeight = '1.2';
                   badge.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace";
                   badge.style.userSelect = 'none';
+                  badge.style.whiteSpace = 'nowrap';
+                  badge.style.flexShrink = '0';
                   badge.style.transition = 'all 0.2s ease';
                   badge.style.zIndex = '100';
+                  badge.style.pointerEvents = 'none';
+                }
+
+                // Strip any title attribute to completely eliminate the lingering touch tooltip on mobile
+                if (badge.hasAttribute('title')) {
+                  badge.removeAttribute('title');
                 }
 
                 if (remaining > 0) {
@@ -3834,22 +3858,24 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                   badge.style.color = '#ff6b6b';
                   badge.style.boxShadow = '0 0 8px rgba(231, 76, 60, 0.25)';
                   badge.innerHTML = '<span>🏥</span> <span>' + formatRemaining(remaining) + '</span>';
-                  badge.title = 'In Hospital for ' + formatRemaining(remaining) + (attackState.description ? ' (' + attackState.description.replace(/<[^>]+>/g, '') + ')' : '');
                 } else {
                   badge.style.backgroundColor = 'rgba(46, 204, 113, 0.2)';
                   badge.style.border = '1px solid rgba(46, 204, 113, 0.6)';
                   badge.style.color = '#2ecc71';
                   badge.style.boxShadow = '0 0 10px rgba(46, 204, 113, 0.4)';
                   badge.innerHTML = '<span>⚔️</span> <span>Out of Hospital!</span>';
-                  badge.title = 'Enemy is now out of the hospital and can be attacked!';
                 }
 
-                if (badge.parentNode !== nameEl && badge.parentNode !== nameEl.parentNode) {
-                  if (nameEl.nextSibling) {
-                    nameEl.parentNode.insertBefore(badge, nameEl.nextSibling);
-                  } else {
-                    nameEl.parentNode.appendChild(badge);
-                  }
+                // Ensure container has inline-flex and flex-wrap: nowrap to keep it on the exact same line
+                const currentDisplay = window.getComputedStyle(attackLabelEl).display;
+                if (currentDisplay !== 'inline-flex' && currentDisplay !== 'flex') {
+                  attackLabelEl.style.display = 'inline-flex';
+                  attackLabelEl.style.alignItems = 'center';
+                  attackLabelEl.style.flexWrap = 'nowrap';
+                }
+
+                if (badge.parentNode !== attackLabelEl) {
+                  attackLabelEl.appendChild(badge);
                 }
               } else if (!isHospital && badge && badge.parentNode) {
                 badge.parentNode.removeChild(badge);
