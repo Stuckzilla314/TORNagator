@@ -88,6 +88,50 @@ export const cleanStatusDescription = (description) => {
 };
 
 /**
+ * Parses remaining seconds from Torn description text.
+ * E.g. "Hospitalized for 3h 12m" -> 11520 seconds
+ *
+ * @param {string} description - Raw status description.
+ * @returns {number} Parsed seconds.
+ */
+export const parseTornDescriptionTime = (description) => {
+  if (!description) return 0;
+  const clean = cleanStatusDescription(description);
+  let totalSeconds = 0;
+
+  const dayMatch = clean.match(/(\d+)\s*d/i);
+  const hourMatch = clean.match(/(\d+)\s*h/i);
+  const minuteMatch = clean.match(/(\d+)\s*m/i);
+  const secondMatch = clean.match(/(\d+)\s*s/i);
+
+  if (dayMatch) totalSeconds += parseInt(dayMatch[1], 10) * 86400;
+  if (hourMatch) totalSeconds += parseInt(hourMatch[1], 10) * 3600;
+  if (minuteMatch) totalSeconds += parseInt(minuteMatch[1], 10) * 60;
+  if (secondMatch) totalSeconds += parseInt(secondMatch[1], 10);
+
+  return totalSeconds;
+};
+
+/**
+ * Calculates remaining hospital time in seconds for a member/user status object.
+ *
+ * @param {Object} status - Status object ({ state, until, description }).
+ * @returns {number} Remaining seconds in hospital (0 if not in hospital or expired).
+ */
+export const getHospitalRemainingSeconds = (status) => {
+  if (!status) return 0;
+  const state = status.state || '';
+  if (state !== 'Hospital' && !/hospital/i.test(state)) return 0;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (status.until && status.until > 0) {
+    return Math.max(0, status.until - now);
+  }
+  return parseTornDescriptionTime(status.description);
+};
+
+
+/**
  * Resolves the location/country of a user or target from their Torn status object.
  *
  * @param {Object} status - Torn status object ({ state, description, details }).

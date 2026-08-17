@@ -11,7 +11,7 @@ import {
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
-import { isElectron, isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches, getDynamicStatusTier } from './utils';
+import { isElectron, isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches, getDynamicStatusTier, getHospitalRemainingSeconds } from './utils';
 
 /**
  * Custom hook to safely sync state with localStorage.
@@ -5198,19 +5198,21 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
           return sortOrder === 'asc' ? tierB - tierA : tierA - tierB;
         }
 
+        // For hospitalized targets (Tier 3 or 4): prioritize least amount of time in hospital at the top
+        const isHospital = a.status?.state === 'Hospital' || tierA === 3 || tierA === 4;
+        if (isHospital) {
+          const timeA = getHospitalRemainingSeconds(a.status);
+          const timeB = getHospitalRemainingSeconds(b.status);
+          if (timeA !== timeB) {
+            return sortOrder === 'asc' ? timeB - timeA : timeA - timeB;
+          }
+        }
+
         if (a.suspectedVal !== b.suspectedVal) {
           if (a.suspectedVal === -1) return sortOrder === 'asc' ? -1 : 1;
           if (b.suspectedVal === -1) return sortOrder === 'asc' ? 1 : -1;
           const statsDiff = b.suspectedVal - a.suspectedVal;
           return sortOrder === 'asc' ? -statsDiff : statsDiff;
-        }
-
-        if (a.status?.state === 'Hospital' && b.status?.state === 'Hospital') {
-          const timeA = a.status?.until || 999999;
-          const timeB = b.status?.until || 999999;
-          if (timeA !== timeB) {
-            return sortOrder === 'asc' ? timeB - timeA : timeA - timeB;
-          }
         }
 
         const levelDiff = b.level - a.level;

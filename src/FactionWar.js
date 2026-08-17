@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
 import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin, IconPlane } from './Icons';
-import { isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches, getDynamicStatusTier } from './utils';
+import { isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches, getDynamicStatusTier, getHospitalRemainingSeconds } from './utils';
 
 /**
  * Renders a card displaying details for a specific Ranked War (upcoming or active).
@@ -1674,6 +1674,16 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                       return sortOrder === 'asc' ? tierB - tierA : tierA - tierB;
                     }
 
+                    // For hospitalized targets (Tier 3 or 4): prioritize least amount of time in hospital at the top
+                    const isHospital = a.status?.state === 'Hospital' || tierA === 3 || tierA === 4;
+                    if (isHospital) {
+                      const timeA = getHospitalRemainingSeconds(a.status);
+                      const timeB = getHospitalRemainingSeconds(b.status);
+                      if (timeA !== timeB) {
+                        return sortOrder === 'asc' ? timeB - timeA : timeA - timeB;
+                      }
+                    }
+
                     // 2. Suspected stats (highest suspected value at top)
                     if (a.suspectedVal !== b.suspectedVal) {
                       if (a.suspectedVal === -1) return sortOrder === 'asc' ? -1 : 1;
@@ -1682,17 +1692,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                       return sortOrder === 'asc' ? -statsDiff : statsDiff;
                     }
 
-                    // 3. Tie-breaker
-                    // For hospital: shortest hospital time remaining first
-                    if (a.status?.state === 'Hospital' && b.status?.state === 'Hospital') {
-                      const timeA = a.status?.until || parseTornDescriptionTime(a.status?.description) || 999999;
-                      const timeB = b.status?.until || parseTornDescriptionTime(b.status?.description) || 999999;
-                      if (timeA !== timeB) {
-                        return sortOrder === 'asc' ? timeB - timeA : timeA - timeB;
-                      }
-                    }
-
-                    // Otherwise level (highest level first in desc)
+                    // 3. Level (highest level first in desc)
                     const levelDiff = b.level - a.level;
                     return sortOrder === 'asc' ? -levelDiff : levelDiff;
                   }
