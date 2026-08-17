@@ -3821,7 +3821,7 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
               const attackLabelEl = findAttackLabelEl();
               let badge = document.getElementById('tornagator-attack-hospital-badge');
               const remaining = attackState.statusUntil ? Math.max(0, attackState.statusUntil - nowSec) : 0;
-              const isHospital = attackState.state === 'Hospital' || remaining > 0;
+              const isHospital = (attackState.state === 'Hospital' || attackState.statusUntil > nowSec) && remaining > 0;
 
               if (isHospital && attackLabelEl) {
                 if (!badge) {
@@ -3852,19 +3852,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
                   badge.removeAttribute('title');
                 }
 
-                if (remaining > 0) {
-                  badge.style.backgroundColor = 'rgba(231, 76, 60, 0.18)';
-                  badge.style.border = '1px solid rgba(231, 76, 60, 0.5)';
-                  badge.style.color = '#ff6b6b';
-                  badge.style.boxShadow = '0 0 8px rgba(231, 76, 60, 0.25)';
-                  badge.innerHTML = '<span>🏥</span> <span>' + formatRemaining(remaining) + '</span>';
-                } else {
-                  badge.style.backgroundColor = 'rgba(46, 204, 113, 0.2)';
-                  badge.style.border = '1px solid rgba(46, 204, 113, 0.6)';
-                  badge.style.color = '#2ecc71';
-                  badge.style.boxShadow = '0 0 10px rgba(46, 204, 113, 0.4)';
-                  badge.innerHTML = '<span>⚔️</span> <span>Out of Hospital!</span>';
-                }
+                badge.style.backgroundColor = 'rgba(231, 76, 60, 0.18)';
+                badge.style.border = '1px solid rgba(231, 76, 60, 0.5)';
+                badge.style.color = '#ff6b6b';
+                badge.style.boxShadow = '0 0 8px rgba(231, 76, 60, 0.25)';
+                badge.innerHTML = '<span>🏥</span> <span>' + formatRemaining(remaining) + '</span>';
 
                 // Ensure container has inline-flex and flex-wrap: nowrap to keep it on the exact same line
                 const currentDisplay = window.getComputedStyle(attackLabelEl).display;
