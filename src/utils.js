@@ -8,23 +8,23 @@ export const isCapacitor = typeof window !== 'undefined' && (
 );
 
 /**
- * List of Torn foreign travel destinations.
+ * List of Torn foreign travel destinations and their demonym patterns.
  */
-export const TORN_COUNTRIES = [
-  'United Arab Emirates',
-  'Cayman Islands',
-  'United Kingdom',
-  'South Africa',
-  'Switzerland',
-  'Argentina',
-  'Canada',
-  'Hawaii',
-  'Japan',
-  'Mexico',
-  'China',
-  'UAE',
-  'UK'
+export const TORN_COUNTRIES_MAP = [
+  { country: 'Mexico', patterns: [/\bmexic(?:o|an)\b/i] },
+  { country: 'Switzerland', patterns: [/\bswiss\b/i, /\bswitzerland\b/i] },
+  { country: 'Japan', patterns: [/\bjapan(?:ese)?\b/i] },
+  { country: 'Canada', patterns: [/\bcanad(?:a|ian)\b/i] },
+  { country: 'Hawaii', patterns: [/\bhawai(?:i|ian)\b/i] },
+  { country: 'China', patterns: [/\bchin(?:a|ese)\b/i] },
+  { country: 'Argentina', patterns: [/\bargentin(?:a|e|ian)\b/i] },
+  { country: 'South Africa', patterns: [/\bsouth african?\b/i] },
+  { country: 'United Kingdom', patterns: [/\b(?:united kingdom|uk|british|britain|england)\b/i] },
+  { country: 'Cayman Islands', patterns: [/\bcayman(?:ian)?(?: islands)?\b/i] },
+  { country: 'UAE', patterns: [/\b(?:uae|united arab emirates|emirati|dubai)\b/i] }
 ];
+
+export const TORN_COUNTRIES = TORN_COUNTRIES_MAP.map(c => c.country);
 
 /**
  * Analyzes a Torn member status object to detect if the user is abroad and/or in hospital abroad.
@@ -41,28 +41,27 @@ export const getHospitalAbroadInfo = (status) => {
   const combined = `${desc} ${details}`;
 
   let matchedCountry = null;
-  for (const country of TORN_COUNTRIES) {
-    const regex = new RegExp(`\\b${country}\\b`, 'i');
-    if (regex.test(combined)) {
-      matchedCountry = country === 'UK' ? 'United Kingdom' : (country === 'UAE' ? 'UAE' : country);
+  for (const entry of TORN_COUNTRIES_MAP) {
+    if (entry.patterns.some(p => p.test(combined))) {
+      matchedCountry = entry.country;
       break;
     }
   }
 
-  // Also check pattern like "in a hospital in <Country/Abroad>"
+  // Also check pattern like "in a hospital in <Country/Abroad>" or "in a <Demonym> hospital"
   if (!matchedCountry) {
-    const hospPattern = /in (?:a )?hospital in ([A-Za-z\s]+?)(?: for|\.|$)/i;
+    const hospPattern = /in (?:a|an)?\s*(?:[A-Za-z]+\s+)?hospital (?:in\s+)?([A-Za-z\s]+?)(?: for|\.|$)/i;
     const match = desc.match(hospPattern) || details.match(hospPattern);
     if (match && match[1]) {
       const extracted = match[1].trim();
-      if (!/^(torn|the city|hospital)$/i.test(extracted)) {
+      if (!/^(torn|the city|hospital|a|an)$/i.test(extracted)) {
         matchedCountry = extracted.charAt(0).toUpperCase() + extracted.slice(1);
       }
     }
   }
 
   const isAbroad = !!matchedCountry || /\babroad\b/i.test(combined) || state === 'Abroad';
-  const isHospital = state === 'Hospital' || /hospital/i.test(state);
+  const isHospital = state === 'Hospital' || /hospital/i.test(state) || /hospital/i.test(desc);
   const isHospitalAbroad = isHospital && isAbroad;
 
   return {
@@ -83,7 +82,7 @@ export const cleanStatusDescription = (description) => {
   if (!description) return '';
   return description
     .replace(/<[^>]+>/g, '')
-    .replace(/^(?:In (?:a )?hospital (?:in [A-Za-z\s]+? )?for |Hospitalized for )/i, '')
+    .replace(/^(?:In (?:a|an)?\s*(?:[A-Za-z]+\s+)?hospital\s*(?:in\s+[A-Za-z\s]+?)?\s*for\s*|Hospitalized\s*(?:in\s+[A-Za-z\s]+?)?\s*for\s*)/i, '')
     .trim();
 };
 

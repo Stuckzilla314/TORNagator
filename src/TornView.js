@@ -4557,11 +4557,11 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
       setInternalIsOpen(o => !o);
     }
   };
-  const isOkay = currentStatusState === 'Okay';
-  const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
   const abroadInfo = getHospitalAbroadInfo(member.status);
   const isHospitalAbroad = currentStatusState === 'Hospital' && abroadInfo.isAbroad;
   const abroadLocation = abroadInfo.country || 'Abroad';
+  const isOkay = currentStatusState === 'Okay';
+  const statusColor = isHospitalAbroad ? '#f1c40f' : isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
   const profile = member.profile || {};
   const hasProfile = Object.keys(profile).length > 0;
 
@@ -4662,6 +4662,9 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
 
         <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
           <span style={{ color: statusColor, fontWeight: 'bold', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+            {isHospitalAbroad && (
+              <IconPlane size={11} color={statusColor} />
+            )}
             <span>{currentStatusState || 'Unknown'}</span>
             {isHospitalAbroad && (
               <span
@@ -4670,17 +4673,16 @@ const MemberSidebarRow = React.memo(({ member, userData, compareMode, navigateTo
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '2px',
-                  color: '#3498db',
-                  backgroundColor: 'rgba(52, 152, 219, 0.15)',
-                  border: '1px solid rgba(52, 152, 219, 0.3)',
+                  color: '#f1c40f',
+                  backgroundColor: 'rgba(241, 196, 15, 0.15)',
+                  border: '1px solid rgba(241, 196, 15, 0.3)',
                   borderRadius: '3px',
-                  padding: '0 3px',
+                  padding: '0 4px',
                   fontSize: '0.62rem',
                   fontWeight: 'bold',
                   lineHeight: '1.2'
                 }}
               >
-                <IconPlane size={9} color="#3498db" />
                 {abroadLocation}
               </span>
             )}

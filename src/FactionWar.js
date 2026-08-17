@@ -342,12 +342,12 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
     return () => clearInterval(interval);
   }, [currentStatusState, statusUntil]);
 
-  const isOkay = currentStatusState === 'Okay';
-  const statusColor = isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
-  
   const abroadInfo = getHospitalAbroadInfo(member.status);
   const isHospitalAbroad = currentStatusState === 'Hospital' && abroadInfo.isAbroad;
   const abroadLocation = abroadInfo.country || 'Abroad';
+
+  const isOkay = currentStatusState === 'Okay';
+  const statusColor = isHospitalAbroad ? '#f1c40f' : isOkay ? '#2ecc71' : currentStatusState === 'Hospital' ? '#e74c3c' : currentStatusState === 'Jail' ? '#f39c12' : '#3498db';
 
   const profile = member.profile;
   const daysPlaying = profile.age;
@@ -427,6 +427,9 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
               {/* Line 2: Status */}
               <div style={{ marginTop: '4px', fontSize: '0.82rem', color: statusColor, display: 'flex', alignItems: 'center', gap: '6px', lineHeight: '1.2', flexWrap: 'wrap' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  {isHospitalAbroad && (
+                    <IconPlane size={12} color={statusColor} />
+                  )}
                   <span>{currentStatusState}</span>
                   {isHospitalAbroad && (
                     <span
@@ -435,9 +438,9 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '3px',
-                        color: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.15)',
-                        border: '1px solid rgba(52, 152, 219, 0.3)',
+                        color: '#f1c40f',
+                        backgroundColor: 'rgba(241, 196, 15, 0.15)',
+                        border: '1px solid rgba(241, 196, 15, 0.3)',
                         borderRadius: '4px',
                         padding: '1px 5px',
                         fontSize: '0.72rem',
@@ -445,7 +448,6 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                         lineHeight: '1.2'
                       }}
                     >
-                      <IconPlane size={11} color="#3498db" />
                       {abroadLocation}
                     </span>
                   )}
@@ -547,7 +549,10 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
             <div className="member-card-status-col">
               <div className="member-card-status-wrapper">
                 <span className="member-card-status-text" style={{ color: statusColor, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  {currentStatusState}
+                  {isHospitalAbroad && (
+                    <IconPlane size={13} color={statusColor} />
+                  )}
+                  <span>{currentStatusState}</span>
                   {isHospitalAbroad && (
                     <span
                       title={`In Hospital Abroad (${abroadLocation})`}
@@ -555,9 +560,9 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '3px',
-                        color: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.15)',
-                        border: '1px solid rgba(52, 152, 219, 0.3)',
+                        color: '#f1c40f',
+                        backgroundColor: 'rgba(241, 196, 15, 0.15)',
+                        border: '1px solid rgba(241, 196, 15, 0.3)',
                         borderRadius: '4px',
                         padding: '1px 6px',
                         fontSize: '0.75rem',
@@ -565,7 +570,6 @@ const FactionMemberCard = ({ member, userData, compareMode, hasImportedStats, on
                         lineHeight: '1.2'
                       }}
                     >
-                      <IconPlane size={12} color="#3498db" />
                       {abroadLocation}
                     </span>
                   )}
