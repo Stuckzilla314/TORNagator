@@ -88,6 +88,77 @@ export const cleanStatusDescription = (description) => {
 };
 
 /**
+ * Resolves the location/country of a user or target from their Torn status object.
+ *
+ * @param {Object} status - Torn status object ({ state, description, details }).
+ * @returns {{ country: string, isAbroad: boolean, state: string, isTraveling: boolean }}
+ */
+export const getUserLocation = (status) => {
+  if (!status) {
+    return { country: 'Torn', isAbroad: false, state: 'Okay', isTraveling: false };
+  }
+  const state = status.state || 'Okay';
+  const isTraveling = state === 'Traveling';
+  const abroadInfo = getHospitalAbroadInfo(status);
+
+  let country = 'Torn';
+  if (abroadInfo.isAbroad) {
+    country = abroadInfo.country || 'Abroad';
+  } else if (isTraveling) {
+    country = null;
+  }
+
+  return {
+    country,
+    isAbroad: abroadInfo.isAbroad,
+    state,
+    isTraveling
+  };
+};
+
+/**
+ * Computes the dynamic status priority tier (1-7) for an enemy target relative to the user.
+ * Lower numbers represent higher priority:
+ * 1: Okay - Same Country
+ * 2: Okay - Different Country
+ * 3: Hospital - Same Country
+ * 4: Hospital - Different Country
+ * 5: Abroad
+ * 6: Traveling
+ * 7: In Jail / Other
+ *
+ * @param {Object} memberStatus - Enemy member status object.
+ * @param {Object} userStatus - Current player user status object.
+ * @returns {number} The priority tier from 1 to 7.
+ */
+export const getDynamicStatusTier = (memberStatus, userStatus) => {
+  const memberLoc = getUserLocation(memberStatus);
+  const userLoc = getUserLocation(userStatus);
+
+  const memberState = memberStatus?.state || 'Okay';
+  const isSameCountry = !!(
+    memberLoc.country &&
+    userLoc.country &&
+    memberLoc.country.toLowerCase() === userLoc.country.toLowerCase()
+  );
+
+  if (memberState === 'Okay') {
+    return isSameCountry ? 1 : 2;
+  }
+  if (memberState === 'Hospital') {
+    return isSameCountry ? 3 : 4;
+  }
+  if (memberState === 'Abroad') {
+    return 5;
+  }
+  if (memberState === 'Traveling' || memberLoc.isTraveling) {
+    return 6;
+  }
+  return 7;
+};
+
+
+/**
  * Retrieves cached target data for a given enemy faction from localStorage.
  *
  * @param {string|number} enemyFactionId - The enemy faction ID.

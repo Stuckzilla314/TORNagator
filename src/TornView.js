@@ -11,7 +11,7 @@ import {
   getQuickActionIcon
 } from './Icons';
 import { fetchFactionById } from './tornApi';
-import { isElectron, isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches } from './utils';
+import { isElectron, isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches, getDynamicStatusTier } from './utils';
 
 /**
  * Custom hook to safely sync state with localStorage.
@@ -5190,6 +5190,33 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     };
 
     const applySortOrder = (arr) => arr.sort((a, b) => {
+      if (sortBy === 'dynamic') {
+        const tierA = getDynamicStatusTier(a.status, userData?.status);
+        const tierB = getDynamicStatusTier(b.status, userData?.status);
+
+        if (tierA !== tierB) {
+          return sortOrder === 'asc' ? tierB - tierA : tierA - tierB;
+        }
+
+        if (a.suspectedVal !== b.suspectedVal) {
+          if (a.suspectedVal === -1) return sortOrder === 'asc' ? -1 : 1;
+          if (b.suspectedVal === -1) return sortOrder === 'asc' ? 1 : -1;
+          const statsDiff = b.suspectedVal - a.suspectedVal;
+          return sortOrder === 'asc' ? -statsDiff : statsDiff;
+        }
+
+        if (a.status?.state === 'Hospital' && b.status?.state === 'Hospital') {
+          const timeA = a.status?.until || 999999;
+          const timeB = b.status?.until || 999999;
+          if (timeA !== timeB) {
+            return sortOrder === 'asc' ? timeB - timeA : timeA - timeB;
+          }
+        }
+
+        const levelDiff = b.level - a.level;
+        return sortOrder === 'asc' ? -levelDiff : levelDiff;
+      }
+
       if (sortBy === 'default') {
         return a.level - b.level;
       }
@@ -5245,7 +5272,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
     Object.values(groups).forEach(g => applySortOrder(g.members));
 
     return groups;
-  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter, pinnedIds]);
+  }, [enemyFactionData, memberProfiles, importedStats, sortBy, sortOrder, statusFilter, pinnedIds, userData?.status]);
 
   // Sync cache with state & cleanup old war caches when war or enemy faction changes
   useEffect(() => {
@@ -6648,6 +6675,7 @@ const TornView = ({ userData, factionData, loadFactionData, apiKey, requestedUrl
                                   }}
                                 >
                                   <option value="default">Status & Lvl</option>
+                                  <option value="dynamic">Dynamic Priority</option>
                                   <option value="level">Level</option>
                                   {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP</option>}
                                   <option value="age">Days Playing</option>

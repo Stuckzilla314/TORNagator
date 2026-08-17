@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFactionById } from './tornApi';
 import { useWarTimer } from './useWarTimer';
 import { IconSword, IconPeace, IconTarget, IconSwords, IconPill, IconBolt, IconMuscle, IconClock, IconBarChart, IconTrash, IconPin, IconPlane } from './Icons';
-import { isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches } from './utils';
+import { isCapacitor, getHospitalAbroadInfo, cleanStatusDescription, getTargetsCache, setTargetsCache, clearTargetsCache, cleanupOldWarCaches, getDynamicStatusTier } from './utils';
 
 /**
  * Renders a card displaying details for a specific Ranked War (upcoming or active).
@@ -1372,6 +1372,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                       }}
                     >
                       <option value="default">Status & Level (Default)</option>
+                      <option value="dynamic">Dynamic Priority (Stats & Status)</option>
                       <option value="level">Level</option>
                       {Object.keys(importedStats).length > 0 && <option value="xp">Suspected XP/Stats</option>}
                       <option value="age">Days Playing</option>
@@ -1446,6 +1447,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                   >
                     <option value="detailed">Detailed</option>
                     <option value="minimal">Minimal</option>
+                    <option value="minimal-dynamic">Minimal - Dynamic</option>
                   </select>
                 </div>
               </div>
@@ -1661,6 +1663,40 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                 };
 
                 const applySortOrder = (arr) => arr.sort((a, b) => {
+                  const isDynamic = layoutView === 'minimal-dynamic' || sortBy === 'dynamic';
+
+                  if (isDynamic) {
+                    // 1. Dynamic status tier (1 = Okay same country, 2 = Okay diff country, 3 = Hospital same country, 4 = Hospital diff country, 5 = Abroad, 6 = Traveling, 7 = Other)
+                    const tierA = getDynamicStatusTier(a.status, userData?.status);
+                    const tierB = getDynamicStatusTier(b.status, userData?.status);
+
+                    if (tierA !== tierB) {
+                      return sortOrder === 'asc' ? tierB - tierA : tierA - tierB;
+                    }
+
+                    // 2. Suspected stats (highest suspected value at top)
+                    if (a.suspectedVal !== b.suspectedVal) {
+                      if (a.suspectedVal === -1) return sortOrder === 'asc' ? -1 : 1;
+                      if (b.suspectedVal === -1) return sortOrder === 'asc' ? 1 : -1;
+                      const statsDiff = b.suspectedVal - a.suspectedVal;
+                      return sortOrder === 'asc' ? -statsDiff : statsDiff;
+                    }
+
+                    // 3. Tie-breaker
+                    // For hospital: shortest hospital time remaining first
+                    if (a.status?.state === 'Hospital' && b.status?.state === 'Hospital') {
+                      const timeA = a.status?.until || parseTornDescriptionTime(a.status?.description) || 999999;
+                      const timeB = b.status?.until || parseTornDescriptionTime(b.status?.description) || 999999;
+                      if (timeA !== timeB) {
+                        return sortOrder === 'asc' ? timeB - timeA : timeA - timeB;
+                      }
+                    }
+
+                    // Otherwise level (highest level first in desc)
+                    const levelDiff = b.level - a.level;
+                    return sortOrder === 'asc' ? -levelDiff : levelDiff;
+                  }
+
                   if (sortBy === 'default') {
                     return a.level - b.level;
                   }
@@ -1724,7 +1760,7 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                     onOpenInTorn={onOpenInTorn}
                     isPinned={!!pinnedIds[member.id]}
                     onTogglePin={handleTogglePin}
-                    isMinimal={layoutView === 'minimal'}
+                    isMinimal={layoutView === 'minimal' || layoutView === 'minimal-dynamic'}
                   />
                 ));
 
