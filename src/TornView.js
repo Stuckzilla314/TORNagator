@@ -1529,8 +1529,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
           const isGym = window.location.href.includes('gym.php');
           const isMuseum = window.location.href.includes('museum.php');
           const isBazaar = window.location.href.includes('bazaar.php');
+          const isAttack = window.location.href.includes('sid=attack');
 
-          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) {
+          if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar && !isAttack) {
             return null;
           }
 
@@ -3650,6 +3651,219 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
             }
           }
 
+          if (isAttack) {
+            try {
+              let enemyId = null;
+              const currentHref = window.location.href;
+              const user2Match = currentHref.match(/(?:user2ID|user2id|XID|xid)=(\\d+)/i);
+              if (user2Match) {
+                enemyId = user2Match[1];
+              }
+
+              if (!enemyId) {
+                const profileLink = document.querySelector('[class*="defender___"] a[href*="profiles.php?XID="], [class*="custom-bg-defender"] a[href*="profiles.php?XID="], [class*="playerWrap___"]:last-child a[href*="profiles.php?XID="], [class*="dialog___"] a[href*="profiles.php?XID="], a[href*="profiles.php?XID="]');
+                if (profileLink) {
+                  const xidMatch = (profileLink.getAttribute('href') || '').match(/XID=(\\d+)/i);
+                  if (xidMatch) {
+                    enemyId = xidMatch[1];
+                  }
+                }
+              }
+
+              const nowSec = Math.floor(Date.now() / 1000);
+              window._tornagator_attack_state = window._tornagator_attack_state || {};
+              const attackState = window._tornagator_attack_state;
+
+              // If navigated to a different enemy, reset target state
+              if (enemyId && attackState.enemyId !== enemyId) {
+                attackState.enemyId = enemyId;
+                attackState.statusUntil = 0;
+                attackState.state = null;
+                attackState.description = null;
+                attackState.lastFetchTime = 0;
+                attackState.fetching = false;
+                attackState.fetchId = null;
+              }
+
+              // Handle bridge API response if returned
+              if (attackState.fetchId && window._tornagator_fetch_responses && window._tornagator_fetch_responses[attackState.fetchId]) {
+                const res = window._tornagator_fetch_responses[attackState.fetchId];
+                delete window._tornagator_fetch_responses[attackState.fetchId];
+                attackState.fetching = false;
+                attackState.fetchId = null;
+
+                if (res && res.data && !res.error) {
+                  const profile = res.data;
+                  if (profile.status) {
+                    attackState.state = profile.status.state || 'Okay';
+                    attackState.description = profile.status.description || '';
+                    attackState.statusUntil = profile.status.until || 0;
+                    attackState.name = profile.name || '';
+                    attackState.lastFetchTime = nowSec;
+                  }
+                }
+              }
+
+              // Fallback: parse hospital duration from DOM text if available (e.g., "Hospitalized for 23 minutes" or "in hospital for 15 mins")
+              if (!attackState.statusUntil || attackState.statusUntil <= nowSec) {
+                const dialogTextEl = document.querySelector('[class*="dialog___"], [class*="dialogText___"], [class*="message___"], [class*="msg___"], [class*="error___"], [class*="alert___"], [class*="defender___"]');
+                if (dialogTextEl) {
+                  const rawText = dialogTextEl.textContent || '';
+                  if (/hospital/i.test(rawText)) {
+                    let totalSec = 0;
+                    const dayMatch = rawText.match(/(\\d+)\\s*(?:d|day|days)\\b/i);
+                    const hourMatch = rawText.match(/(\\d+)\\s*(?:h|hr|hrs|hour|hours)\\b/i);
+                    const minMatch = rawText.match(/(\\d+)\\s*(?:m|min|mins|minute|minutes)\\b/i);
+                    const secMatch = rawText.match(/(\\d+)\\s*(?:s|sec|secs|second|seconds)\\b/i);
+
+                    if (dayMatch) totalSec += parseInt(dayMatch[1], 10) * 86400;
+                    if (hourMatch) totalSec += parseInt(hourMatch[1], 10) * 3600;
+                    if (minMatch) totalSec += parseInt(minMatch[1], 10) * 60;
+                    if (secMatch) totalSec += parseInt(secMatch[1], 10);
+
+                    if (totalSec > 0) {
+                      attackState.statusUntil = nowSec + totalSec;
+                      attackState.state = 'Hospital';
+                      attackState.description = rawText.trim();
+                    }
+                  }
+                }
+              }
+
+              // Fetch fresh status from TORN API if needed
+              if (enemyId && window._tornagator_api_key && !attackState.fetching) {
+                const isStale = (nowSec - (attackState.lastFetchTime || 0)) > 30;
+                if (!attackState.lastFetchTime || isStale) {
+                  attackState.fetching = true;
+                  const fetchId = 'attack_enemy_' + enemyId + '_' + Date.now();
+                  attackState.fetchId = fetchId;
+                  console.log("TORNAGATOR_BRIDGE:" + JSON.stringify({
+                    type: "fetch",
+                    id: fetchId,
+                    url: "https://api.torn.com/user/" + enemyId + "?selections=profile&key=" + window._tornagator_api_key,
+                    tabId: window._tornagator_tab_id
+                  }));
+                }
+              }
+
+              // Format time helper
+              const formatRemaining = (sec) => {
+                if (sec <= 0) return '0s';
+                const h = Math.floor(sec / 3600);
+                const m = Math.floor((sec % 3600) / 60);
+                const s = sec % 60;
+                if (h > 0) {
+                  return h + 'h ' + m + 'm ' + s + 's';
+                } else if (m > 0) {
+                  return m + 'm ' + s + 's';
+                } else {
+                  return s + 's';
+                }
+              };
+
+              // Locate enemy name element
+              const findEnemyNameEl = () => {
+                const selectors = [
+                  '[class*="defender___"] [class*="userName___"]',
+                  '[class*="defender___"] [class*="name___"]',
+                  '[class*="defender___"] [class*="user___"]',
+                  '[class*="defender___"] [class*="honorWrap___"]',
+                  '[class*="defender___"] [class*="textWrap___"]',
+                  '[class*="defender___"] [class*="userWrap___"]',
+                  '[class*="defender___"] [class*="header___"]',
+                  '[class*="defender___"] a[href*="profiles.php?XID="]',
+                  '[class*="custom-bg-defender"] [class*="name___"]',
+                  '[class*="custom-bg-defender"] a',
+                  '[class*="playerWrap___"]:last-child [class*="name___"]',
+                  '[class*="playerWrap___"]:last-child a[href*="profiles.php?XID="]',
+                  '[class*="playersBox___"] [class*="defender___"]',
+                  '[class*="dialog___"] a[href*="profiles.php?XID="]',
+                  '[class*="dialogText___"] a[href*="profiles.php?XID="]',
+                  '[class*="message___"] a[href*="profiles.php?XID="]',
+                  '[class*="msg___"] a[href*="profiles.php?XID="]'
+                ];
+
+                for (const sel of selectors) {
+                  const el = document.querySelector(sel);
+                  if (el && el.textContent && el.textContent.trim()) {
+                    return el;
+                  }
+                }
+
+                if (enemyId) {
+                  const link = document.querySelector('a[href*="profiles.php?XID=' + enemyId + '"]');
+                  if (link && link.textContent.trim()) return link;
+                }
+
+                const contentTitle = document.querySelector('.content-title h4, .content-title');
+                if (contentTitle && contentTitle.textContent.trim()) {
+                  return contentTitle;
+                }
+
+                return null;
+              };
+
+              const nameEl = findEnemyNameEl();
+              let badge = document.getElementById('tornagator-attack-hospital-badge');
+              const remaining = attackState.statusUntil ? Math.max(0, attackState.statusUntil - nowSec) : 0;
+              const isHospital = attackState.state === 'Hospital' || remaining > 0;
+
+              if (isHospital && nameEl) {
+                if (!badge) {
+                  badge = document.createElement('span');
+                  badge.id = 'tornagator-attack-hospital-badge';
+                  badge.className = 'tornagator-attack-hospital-badge';
+                  badge.style.display = 'inline-flex';
+                  badge.style.alignItems = 'center';
+                  badge.style.gap = '4px';
+                  badge.style.marginLeft = '8px';
+                  badge.style.verticalAlign = 'middle';
+                  badge.style.padding = '2px 8px';
+                  badge.style.borderRadius = '12px';
+                  badge.style.fontSize = '12px';
+                  badge.style.fontWeight = 'bold';
+                  badge.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace";
+                  badge.style.userSelect = 'none';
+                  badge.style.transition = 'all 0.2s ease';
+                  badge.style.zIndex = '100';
+                }
+
+                if (remaining > 0) {
+                  badge.style.backgroundColor = 'rgba(231, 76, 60, 0.18)';
+                  badge.style.border = '1px solid rgba(231, 76, 60, 0.5)';
+                  badge.style.color = '#ff6b6b';
+                  badge.style.boxShadow = '0 0 8px rgba(231, 76, 60, 0.25)';
+                  badge.innerHTML = '<span>🏥</span> <span>' + formatRemaining(remaining) + '</span>';
+                  badge.title = 'In Hospital for ' + formatRemaining(remaining) + (attackState.description ? ' (' + attackState.description.replace(/<[^>]+>/g, '') + ')' : '');
+                } else {
+                  badge.style.backgroundColor = 'rgba(46, 204, 113, 0.2)';
+                  badge.style.border = '1px solid rgba(46, 204, 113, 0.6)';
+                  badge.style.color = '#2ecc71';
+                  badge.style.boxShadow = '0 0 10px rgba(46, 204, 113, 0.4)';
+                  badge.innerHTML = '<span>⚔️</span> <span>Out of Hospital!</span>';
+                  badge.title = 'Enemy is now out of the hospital and can be attacked!';
+                }
+
+                if (badge.parentNode !== nameEl && badge.parentNode !== nameEl.parentNode) {
+                  if (nameEl.nextSibling) {
+                    nameEl.parentNode.insertBefore(badge, nameEl.nextSibling);
+                  } else {
+                    nameEl.parentNode.appendChild(badge);
+                  }
+                }
+              } else if (!isHospital && badge && badge.parentNode) {
+                badge.parentNode.removeChild(badge);
+              }
+            } catch (err) {
+              console.error('[TORNagator Attack] Hospital timer error:', err);
+            }
+          } else {
+            const attackBadge = document.getElementById('tornagator-attack-hospital-badge');
+            if (attackBadge && attackBadge.parentNode) {
+              attackBadge.parentNode.removeChild(attackBadge);
+            }
+          }
+
           return null;
         } catch (e) {
           console.error("Profit/Crimes injection error:", e);
@@ -3669,10 +3883,11 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
         const isGym = currentUrl.includes('gym.php');
         const isMuseum = currentUrl.includes('museum.php');
         const isBazaar = currentUrl.includes('bazaar.php');
+        const isAttack = currentUrl.includes('sid=attack');
 
         console.log('[TORNagator] interval tick - tabUrl:', currentUrl, 'isGym:', isGym, 'tabId:', tabId);
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar && !isAttack) return;
 
         if (isGym) {
           window._tornagator_last_injected_script = script;
@@ -3702,8 +3917,9 @@ const WebviewTab = ({ tab, isActive, onUpdate, onNewTab, targetCountry, setTarge
         const isGym = currentUrl.includes('gym.php');
         const isMuseum = currentUrl.includes('museum.php');
         const isBazaar = currentUrl.includes('bazaar.php');
+        const isAttack = currentUrl.includes('sid=attack');
 
-        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar) return;
+        if (!isTravel && !isCrimes && !isItemMarket && !isGym && !isMuseum && !isBazaar && !isAttack) return;
 
         wv.executeJavaScript(script)
           .then(result => {
