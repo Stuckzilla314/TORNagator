@@ -1350,12 +1350,31 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                 display: 'flex', 
                 flexDirection: isCapacitor ? 'column' : 'row',
                 alignItems: isCapacitor ? 'stretch' : 'center', 
-                gap: '12px',
+                gap: isCapacitor ? '10px' : '15px',
+                flex: isCapacitor ? 'none' : 1,
                 flexWrap: 'wrap'
               }}>
-                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Sort By:</span>
-                  <div style={{ display: 'flex', gap: '6px', flex: isCapacitor ? 1 : 'none', justifyContent: 'flex-end' }}>
+                {/* Row 1: Sort By */}
+                <div className="targets-filter-item" style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '10px', 
+                  width: isCapacitor ? '100%' : 'auto' 
+                }}>
+                  <span className="targets-filter-label" style={{ 
+                    fontSize: '0.78rem', 
+                    color: '#888', 
+                    fontWeight: 'bold', 
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    width: '64px',
+                    minWidth: '64px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    Sort By:
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px', flex: 1, alignItems: 'center' }}>
                     <select 
                       value={sortBy} 
                       onChange={(e) => setSortBy(e.target.value)}
@@ -1364,11 +1383,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                         border: '1px solid #444',
                         borderRadius: '4px',
                         color: '#fff',
-                        padding: '4px 8px',
-                        fontSize: '0.85rem',
+                        padding: '6px 8px',
+                        fontSize: '0.82rem',
                         cursor: 'pointer',
                         outline: 'none',
-                        flex: isCapacitor ? 1 : 'none'
+                        flex: 1,
+                        height: '34px',
+                        boxSizing: 'border-box'
                       }}
                     >
                       <option value="default">Status & Level (Default)</option>
@@ -1378,7 +1399,6 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                       <option value="age">Days Playing</option>
                       <option value="winrate">Win Rate</option>
                     </select>
-                    
                     <button
                       onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                       style={{
@@ -1386,69 +1406,117 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                         border: '1px solid #444',
                         borderRadius: '4px',
                         color: '#aaa',
-                        padding: '4.5px 10px',
+                        padding: '0 10px',
+                        height: '34px',
                         fontSize: '0.8rem',
                         cursor: 'pointer',
                         fontWeight: 'bold',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        boxSizing: 'border-box'
                       }}
+                      title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                     >
                       {sortOrder === 'asc' ? '▲' : '▼'}
                     </button>
                   </div>
                 </div>
 
-                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>Show:</span>
-                  <select 
-                    value={statusFilter} 
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{
-                      backgroundColor: '#222',
-                      border: '1px solid #444',
-                      borderRadius: '4px',
-                      color: '#fff',
-                      padding: '4px 8px',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      flex: isCapacitor ? 1 : 'none',
-                      maxWidth: isCapacitor ? 'none' : 'auto'
-                    }}
-                  >
-                    <option value="all">All Members</option>
-                    <option value="online">Online / Idle</option>
-                    <option value="offline">Offline Only</option>
-                  </select>
+                {/* Row 2: Show */}
+                <div className="targets-filter-item" style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '10px', 
+                  width: isCapacitor ? '100%' : 'auto' 
+                }}>
+                  <span className="targets-filter-label" style={{ 
+                    fontSize: '0.78rem', 
+                    color: '#888', 
+                    fontWeight: 'bold', 
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    width: '64px',
+                    minWidth: '64px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    Show:
+                  </span>
+                  <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
+                    <select 
+                      value={statusFilter} 
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      style={{
+                        backgroundColor: '#222',
+                        border: '1px solid #444',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        padding: '6px 8px',
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        flex: 1,
+                        width: '100%',
+                        height: '34px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="all">All Members</option>
+                      <option value="online">Online / Idle</option>
+                      <option value="offline">Offline Only</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="targets-filter-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>View:</span>
-                  <select 
-                    value={layoutView} 
-                    onChange={(e) => {
-                      setLayoutView(e.target.value);
-                      localStorage.setItem('tornagator_faction_layout_view', e.target.value);
-                    }}
-                    style={{
-                      backgroundColor: '#222',
-                      border: '1px solid #444',
-                      borderRadius: '4px',
-                      color: '#fff',
-                      padding: '4px 8px',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      flex: isCapacitor ? 1 : 'none',
-                      maxWidth: isCapacitor ? 'none' : 'auto'
-                    }}
-                  >
-                    <option value="detailed">Detailed</option>
-                    <option value="minimal">Minimal</option>
-                    <option value="minimal-dynamic">Minimal - Dynamic</option>
-                  </select>
+                {/* Row 3: View */}
+                <div className="targets-filter-item" style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '10px', 
+                  width: isCapacitor ? '100%' : 'auto' 
+                }}>
+                  <span className="targets-filter-label" style={{ 
+                    fontSize: '0.78rem', 
+                    color: '#888', 
+                    fontWeight: 'bold', 
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    width: '64px',
+                    minWidth: '64px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    View:
+                  </span>
+                  <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
+                    <select 
+                      value={layoutView} 
+                      onChange={(e) => {
+                        setLayoutView(e.target.value);
+                        localStorage.setItem('tornagator_faction_layout_view', e.target.value);
+                      }}
+                      style={{
+                        backgroundColor: '#222',
+                        border: '1px solid #444',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        padding: '6px 8px',
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        flex: 1,
+                        width: '100%',
+                        height: '34px',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="detailed">Detailed</option>
+                      <option value="minimal">Minimal</option>
+                      <option value="minimal-dynamic">Minimal - Dynamic</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1459,23 +1527,28 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                 alignItems: isCapacitor ? 'stretch' : 'center', 
                 gap: '10px',
                 borderTop: isCapacitor ? '1px solid #222' : 'none',
-                paddingTop: isCapacitor ? '10px' : '0'
+                paddingTop: isCapacitor ? '12px' : '0'
               }}>
                 {Object.keys(importedStats).length > 0 ? (
                   <>
-                    <span className="targets-import-status" style={{ 
-                      fontSize: '0.8rem', 
+                    <div className="targets-import-status" style={{ 
+                      fontSize: '0.78rem', 
                       color: '#2ecc71', 
                       display: 'flex', 
                       alignItems: 'center', 
-                      gap: '6px',
+                      gap: '8px',
                       justifyContent: isCapacitor ? 'center' : 'flex-start',
-                      textAlign: 'center',
-                      lineHeight: '1.3'
+                      textAlign: isCapacitor ? 'center' : 'left',
+                      lineHeight: '1.3',
+                      backgroundColor: 'rgba(46, 204, 113, 0.08)',
+                      border: '1px solid rgba(46, 204, 113, 0.2)',
+                      borderRadius: '4px',
+                      padding: '6px 10px'
                     }}>
-                      <span style={{ fontSize: '1rem' }}>📊</span> Suspected stats loaded {suspectedStatsFaction ? `(${suspectedStatsFaction})` : ''}
-                    </span>
-                    <div className="targets-import-actions" style={{ display: 'flex', gap: '10px', width: isCapacitor ? '100%' : 'auto' }}>
+                      <span style={{ fontSize: '0.9rem', flexShrink: 0 }}>📊</span>
+                      <span>Suspected stats loaded {suspectedStatsFaction ? `(${suspectedStatsFaction})` : ''}</span>
+                    </div>
+                    <div className="targets-import-actions" style={{ display: 'flex', gap: '8px', width: isCapacitor ? '100%' : 'auto' }}>
                       <button
                         onClick={() => setIsImportOpen(true)}
                         style={{
@@ -1484,11 +1557,13 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                           border: '1px solid #3498db',
                           borderRadius: '4px',
                           color: '#3498db',
-                          padding: '6px 10px',
-                          fontSize: '0.8rem',
+                          padding: '6px 12px',
+                          height: '32px',
+                          fontSize: '0.78rem',
                           cursor: 'pointer',
                           fontWeight: 'bold',
-                          transition: 'all 0.2s'
+                          transition: 'all 0.2s',
+                          boxSizing: 'border-box'
                         }}
                       >
                         Update Stats
@@ -1501,15 +1576,17 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                           border: '1px solid #e74c3c',
                           borderRadius: '4px',
                           color: '#e74c3c',
-                          padding: '6px 10px',
-                          fontSize: '0.8rem',
+                          padding: '6px 12px',
+                          height: '32px',
+                          fontSize: '0.78rem',
                           cursor: 'pointer',
                           fontWeight: 'bold',
                           transition: 'all 0.2s',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '4px'
+                          gap: '4px',
+                          boxSizing: 'border-box'
                         }}
                       >
                         <IconTrash size={12} color="#e74c3c" /> Clear
@@ -1526,11 +1603,17 @@ const FactionWar = ({ apiKey, factionData, userData, onOpenInTorn, pollInterval 
                       borderRadius: '4px',
                       color: '#fff',
                       padding: '8px 12px',
+                      height: '34px',
                       fontSize: '0.8rem',
                       cursor: 'pointer',
                       fontWeight: 'bold',
                       boxShadow: '0 2px 4px rgba(231, 76, 60, 0.3)',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxSizing: 'border-box'
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
                     onMouseLeave={(e) => e.currentTarget.style.filter = 'brightness(1)'}
